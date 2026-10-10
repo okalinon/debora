@@ -1455,6 +1455,969 @@
         "uk": "Оновити або повернути сам winget.",
         "en": "Update or restore winget itself."
       }
+    },
+    {
+      "id": "Waterfox.Waterfox",
+      "category": "browsers",
+      "name": "Waterfox",
+      "description": {
+        "uk": "Браузер на основі Firefox без телеметрії.",
+        "en": "Firefox-based browser without telemetry."
+      }
+    },
+    {
+      "id": "Ablaze.Floorp",
+      "category": "browsers",
+      "name": "Floorp",
+      "description": {
+        "uk": "Firefox з вертикальними вкладками й гнучким інтерфейсом.",
+        "en": "Firefox with vertical tabs and a flexible UI."
+      }
+    },
+    {
+      "id": "Zen-Team.Zen-Browser",
+      "category": "browsers",
+      "name": "Zen Browser",
+      "description": {
+        "uk": "Сучасний браузер на Firefox: вертикальні вкладки, робочі простори.",
+        "en": "Modern Firefox-based browser with workspaces."
+      }
+    },
+    {
+      "id": "MullvadVPN.MullvadBrowser",
+      "category": "browsers",
+      "name": "Mullvad Browser",
+      "description": {
+        "uk": "Приватний браузер від авторів Tor, без збору даних.",
+        "en": "Privacy browser made with the Tor Project."
+      }
+    },
+    {
+      "id": "Microsoft.Teams",
+      "category": "messengers",
+      "name": "Microsoft Teams",
+      "description": {
+        "uk": "Робочі чати й відеозустрічі.",
+        "en": "Work chat and meetings."
+      }
+    },
+    {
+      "id": "Mattermost.MattermostDesktop",
+      "category": "messengers",
+      "name": "Mattermost",
+      "description": {
+        "uk": "Відкритий робочий месенджер (аналог Slack).",
+        "en": "Open-source team chat."
+      }
+    },
+    {
+      "id": "Ferdium.Ferdium",
+      "category": "messengers",
+      "name": "Ferdium",
+      "description": {
+        "uk": "Усі месенджери й пошта в одному вікні.",
+        "en": "All messengers in one window."
+      }
+    },
+    {
+      "id": "Gyan.FFmpeg",
+      "category": "media",
+      "name": "FFmpeg",
+      "description": {
+        "uk": "Конвертація відео й аудіо з командного рядка.",
+        "en": "Command-line audio/video converter."
+      }
+    },
+    {
+      "id": "yt-dlp.yt-dlp",
+      "category": "media",
+      "name": "yt-dlp",
+      "description": {
+        "uk": "Завантаження відео з YouTube та інших сайтів.",
+        "en": "Download videos from YouTube and other sites."
+      }
+    },
+    {
+      "id": "MediaArea.MediaInfo.GUI",
+      "category": "media",
+      "name": "MediaInfo",
+      "description": {
+        "uk": "Показує кодеки, бітрейт і параметри медіафайлів.",
+        "en": "Shows codecs and technical info of media files."
+      }
+    },
+    {
+      "id": "MoritzBunkus.MKVToolNix",
+      "category": "media",
+      "name": "MKVToolNix",
+      "description": {
+        "uk": "Редагування MKV: доріжки, субтитри без перекодування.",
+        "en": "Edit MKV tracks and subtitles without re-encoding."
+      }
+    },
+    {
+      "id": "XnSoft.XnConvert",
+      "category": "media",
+      "name": "XnConvert",
+      "description": {
+        "uk": "Пакетна конвертація й зміна розміру фото.",
+        "en": "Batch image converter and resizer."
+      }
+    },
+    {
+      "id": "Upscayl.Upscayl",
+      "category": "media",
+      "name": "Upscayl",
+      "description": {
+        "uk": "Збільшення роздільності фото нейромережею.",
+        "en": "AI image upscaler."
+      }
+    },
+    {
+      "id": "XBMCFoundation.Kodi",
+      "category": "media",
+      "name": "Kodi",
+      "description": {
+        "uk": "Медіацентр для телевізора: фільми, серіали, музика.",
+        "en": "Media center for TV."
+      }
+    },
+    {
+      "id": "SMPlayer.SMPlayer",
+      "category": "media",
+      "name": "SMPlayer",
+      "description": {
+        "uk": "Відеоплеєр, що пам'ятає позицію перегляду.",
+        "en": "Video player that remembers playback position."
+      }
+    },
+    {
+      "id": "darktable.darktable",
+      "category": "media",
+      "name": "darktable",
+      "description": {
+        "uk": "Обробка RAW-фото (аналог Lightroom).",
+        "en": "RAW photo editor (Lightroom alternative)."
+      }
+    },
+    {
+      "id": "RawTherapee.RawTherapee",
+      "category": "media",
+      "name": "RawTherapee",
+      "description": {
+        "uk": "Потужний редактор RAW-фото.",
+        "en": "Powerful RAW photo editor."
+      }
+    },
+    {
+      "id": "Stremio.Stremio",
+      "category": "media",
+      "name": "Stremio",
+      "description": {
+        "uk": "Каталог фільмів і серіалів з доповненнями.",
+        "en": "Movies and series hub with add-ons."
+      }
+    },
+    {
+      "id": "Microsoft.Office",
+      "category": "office",
+      "name": "Microsoft 365 (Office)",
+      "description": {
+        "uk": "Word, Excel, PowerPoint. Потрібна підписка або ліцензія.",
+        "en": "Word, Excel, PowerPoint. Subscription or license required."
+      }
+    },
+    {
+      "id": "Foxit.FoxitReader",
+      "category": "office",
+      "name": "Foxit PDF Reader",
+      "description": {
+        "uk": "Швидкий переглядач PDF з коментарями й підписом.",
+        "en": "Fast PDF reader with comments and signing."
+      }
+    },
+    {
+      "id": "TrackerSoftware.PDF-XChangeEditor",
+      "category": "office",
+      "name": "PDF-XChange Editor",
+      "description": {
+        "uk": "Перегляд і редагування PDF, розпізнавання тексту.",
+        "en": "PDF viewer/editor with OCR."
+      }
+    },
+    {
+      "id": "DigitalScholar.Zotero",
+      "category": "office",
+      "name": "Zotero",
+      "description": {
+        "uk": "Бібліографія й джерела для навчання та наукових робіт.",
+        "en": "Reference manager for research."
+      }
+    },
+    {
+      "id": "Logseq.Logseq",
+      "category": "office",
+      "name": "Logseq",
+      "description": {
+        "uk": "Нотатки-щоденник з посиланнями між записами.",
+        "en": "Outliner notes with backlinks."
+      }
+    },
+    {
+      "id": "Anki.Anki",
+      "category": "office",
+      "name": "Anki",
+      "description": {
+        "uk": "Картки для запам'ятовування (мови, іспити).",
+        "en": "Flashcards with spaced repetition."
+      }
+    },
+    {
+      "id": "eMClient.eMClient",
+      "category": "office",
+      "name": "eM Client",
+      "description": {
+        "uk": "Пошта, календар і контакти в одній програмі.",
+        "en": "Email, calendar and contacts."
+      }
+    },
+    {
+      "id": "KDE.Okular",
+      "category": "office",
+      "name": "Okular",
+      "description": {
+        "uk": "Переглядач PDF, EPUB і документів з анотаціями.",
+        "en": "Document viewer with annotations."
+      }
+    },
+    {
+      "id": "Scribus.Scribus",
+      "category": "office",
+      "name": "Scribus",
+      "description": {
+        "uk": "Верстка буклетів, листівок і журналів.",
+        "en": "Desktop publishing."
+      }
+    },
+    {
+      "id": "Microsoft.Sysinternals.Autoruns",
+      "category": "tools",
+      "name": "Autoruns",
+      "description": {
+        "uk": "Усе, що запускається з Windows: служби, завдання, розширення.",
+        "en": "Everything that starts with Windows."
+      }
+    },
+    {
+      "id": "Microsoft.Sysinternals.ProcessExplorer",
+      "category": "tools",
+      "name": "Process Explorer",
+      "description": {
+        "uk": "Розширений диспетчер завдань від Microsoft.",
+        "en": "Advanced task manager from Microsoft."
+      }
+    },
+    {
+      "id": "WinDirStat.WinDirStat",
+      "category": "tools",
+      "name": "WinDirStat",
+      "description": {
+        "uk": "Наочна карта того, що займає місце на диску.",
+        "en": "Visual disk usage map."
+      }
+    },
+    {
+      "id": "Bandisoft.Bandizip",
+      "category": "tools",
+      "name": "Bandizip",
+      "description": {
+        "uk": "Зручний архіватор з підтримкою всіх форматів.",
+        "en": "Easy archiver for all formats."
+      }
+    },
+    {
+      "id": "RARLab.WinRAR",
+      "category": "tools",
+      "name": "WinRAR",
+      "description": {
+        "uk": "Класичний архіватор RAR/ZIP (умовно безкоштовний).",
+        "en": "Classic RAR/ZIP archiver (shareware)."
+      }
+    },
+    {
+      "id": "FilesCommunity.Files",
+      "category": "tools",
+      "name": "Files",
+      "description": {
+        "uk": "Сучасний провідник з вкладками.",
+        "en": "Modern file manager with tabs."
+      }
+    },
+    {
+      "id": "QL-Win.QuickLook",
+      "category": "tools",
+      "name": "QuickLook",
+      "description": {
+        "uk": "Перегляд файлу пробілом, як на Mac.",
+        "en": "Preview files with the space bar."
+      }
+    },
+    {
+      "id": "rocksdanister.LivelyWallpaper",
+      "category": "tools",
+      "name": "Lively Wallpaper",
+      "description": {
+        "uk": "Живі шпалери робочого столу.",
+        "en": "Animated desktop wallpapers."
+      }
+    },
+    {
+      "id": "Rainmeter.Rainmeter",
+      "category": "tools",
+      "name": "Rainmeter",
+      "description": {
+        "uk": "Віджети на робочому столі: час, погода, навантаження.",
+        "en": "Desktop widgets."
+      }
+    },
+    {
+      "id": "StartIsBack.StartAllBack",
+      "category": "tools",
+      "name": "StartAllBack",
+      "description": {
+        "uk": "Класичні меню «Пуск» і панель задач для Windows 11 (платна).",
+        "en": "Classic Start menu and taskbar for Windows 11 (paid)."
+      }
+    },
+    {
+      "id": "Open-Shell.Open-Shell-Menu",
+      "category": "tools",
+      "name": "Open-Shell",
+      "description": {
+        "uk": "Класичне меню «Пуск» (безкоштовне).",
+        "en": "Classic Start menu (free)."
+      }
+    },
+    {
+      "id": "flux.flux",
+      "category": "tools",
+      "name": "f.lux",
+      "description": {
+        "uk": "Теплий колір екрана ввечері.",
+        "en": "Warm screen color at night."
+      }
+    },
+    {
+      "id": "Balena.Etcher",
+      "category": "tools",
+      "name": "balenaEtcher",
+      "description": {
+        "uk": "Запис образів на флешку чи SD-карту.",
+        "en": "Flash images to USB/SD."
+      }
+    },
+    {
+      "id": "Kopia.KopiaUI",
+      "category": "tools",
+      "name": "Kopia",
+      "description": {
+        "uk": "Шифровані резервні копії на диск або в хмару.",
+        "en": "Encrypted backups to disk or cloud."
+      }
+    },
+    {
+      "id": "Duplicati.Duplicati",
+      "category": "tools",
+      "name": "Duplicati",
+      "description": {
+        "uk": "Резервне копіювання за розкладом у хмару.",
+        "en": "Scheduled cloud backups."
+      }
+    },
+    {
+      "id": "Rizonesoft.Notepad3",
+      "category": "tools",
+      "name": "Notepad3",
+      "description": {
+        "uk": "Легкий текстовий редактор з підсвіткою синтаксису.",
+        "en": "Lightweight text editor."
+      }
+    },
+    {
+      "id": "Espanso.Espanso",
+      "category": "tools",
+      "name": "Espanso",
+      "description": {
+        "uk": "Автозаміна тексту: скорочення розгортаються у фрази.",
+        "en": "Text expander."
+      }
+    },
+    {
+      "id": "Henry++.simplewall",
+      "category": "security",
+      "name": "simplewall",
+      "description": {
+        "uk": "Простий брандмауер: які програми мають доступ до інтернету.",
+        "en": "Simple firewall per application."
+      }
+    },
+    {
+      "id": "Safing.Portmaster",
+      "category": "security",
+      "name": "Portmaster",
+      "description": {
+        "uk": "Монітор мережі й блокування трекерів для всіх програм.",
+        "en": "Network monitor and tracker blocker."
+      }
+    },
+    {
+      "id": "DominikReichl.KeePass",
+      "category": "security",
+      "name": "KeePass",
+      "description": {
+        "uk": "Класичний офлайн-менеджер паролів.",
+        "en": "Classic offline password manager."
+      }
+    },
+    {
+      "id": "MullvadVPN.MullvadVPN",
+      "category": "security",
+      "name": "Mullvad VPN",
+      "description": {
+        "uk": "VPN без реєстрації й журналів (платний).",
+        "en": "No-logs VPN without account email (paid)."
+      }
+    },
+    {
+      "id": "Cloudflare.Warp",
+      "category": "security",
+      "name": "Cloudflare WARP",
+      "description": {
+        "uk": "Безкоштовне шифрування трафіку й швидкий DNS 1.1.1.1.",
+        "en": "Free traffic encryption and 1.1.1.1 DNS."
+      }
+    },
+    {
+      "id": "Malwarebytes.AdwCleaner",
+      "category": "security",
+      "name": "AdwCleaner",
+      "description": {
+        "uk": "Видаляє рекламне ПЗ, тулбари й небажані програми.",
+        "en": "Removes adware and PUPs."
+      }
+    },
+    {
+      "id": "ente-io.auth-desktop",
+      "category": "security",
+      "name": "Ente Auth",
+      "description": {
+        "uk": "Коди двофакторної автентифікації з шифрованою синхронізацією.",
+        "en": "2FA codes with encrypted sync."
+      }
+    },
+    {
+      "id": "OCBase.OCCT.Personal",
+      "category": "diagnostic",
+      "name": "OCCT",
+      "description": {
+        "uk": "Стрес-тест процесора, відеокарти, пам'яті й блока живлення.",
+        "en": "Stress test for CPU, GPU, RAM and PSU."
+      }
+    },
+    {
+      "id": "Geeks3D.FurMark.2",
+      "category": "diagnostic",
+      "name": "FurMark 2",
+      "description": {
+        "uk": "Стрес-тест і перевірка нагріву відеокарти.",
+        "en": "GPU stress test."
+      }
+    },
+    {
+      "id": "ALCPU.CoreTemp",
+      "category": "diagnostic",
+      "name": "Core Temp",
+      "description": {
+        "uk": "Температура кожного ядра процесора.",
+        "en": "Per-core CPU temperature."
+      }
+    },
+    {
+      "id": "LibreHardwareMonitor.LibreHardwareMonitor",
+      "category": "diagnostic",
+      "name": "Libre Hardware Monitor",
+      "description": {
+        "uk": "Температури, частоти й вентилятори (відкритий код).",
+        "en": "Temperatures, clocks and fans (open source)."
+      }
+    },
+    {
+      "id": "NirSoft.BlueScreenView",
+      "category": "diagnostic",
+      "name": "BlueScreenView",
+      "description": {
+        "uk": "Показує, який драйвер спричинив синій екран.",
+        "en": "Shows which driver caused a blue screen."
+      }
+    },
+    {
+      "id": "Resplendence.WhoCrashed",
+      "category": "diagnostic",
+      "name": "WhoCrashed",
+      "description": {
+        "uk": "Аналіз синіх екранів простими словами.",
+        "en": "Explains blue screen crashes."
+      }
+    },
+    {
+      "id": "Microsoft.WinDbg",
+      "category": "diagnostic",
+      "name": "WinDbg",
+      "description": {
+        "uk": "Налагоджувач Microsoft для глибокого аналізу дампів.",
+        "en": "Microsoft debugger for crash dumps."
+      }
+    },
+    {
+      "id": "Maxon.CinebenchR23",
+      "category": "diagnostic",
+      "name": "Cinebench R23",
+      "description": {
+        "uk": "Тест швидкодії процесора.",
+        "en": "CPU benchmark."
+      }
+    },
+    {
+      "id": "Mojang.MinecraftLauncher",
+      "category": "games",
+      "name": "Minecraft Launcher",
+      "description": {
+        "uk": "Офіційний лаунчер Minecraft.",
+        "en": "Official Minecraft launcher."
+      }
+    },
+    {
+      "id": "ItchIo.Itch",
+      "category": "games",
+      "name": "itch.io",
+      "description": {
+        "uk": "Інді-ігри з itch.io.",
+        "en": "Indie games from itch.io."
+      }
+    },
+    {
+      "id": "Parsec.Parsec",
+      "category": "games",
+      "name": "Parsec",
+      "description": {
+        "uk": "Грати на віддаленому ПК з мінімальною затримкою.",
+        "en": "Low-latency remote play."
+      }
+    },
+    {
+      "id": "MoonlightGameStreamingProject.Moonlight",
+      "category": "games",
+      "name": "Moonlight",
+      "description": {
+        "uk": "Стрімінг ігор з ПК на ноутбук чи телевізор.",
+        "en": "Stream games from your PC."
+      }
+    },
+    {
+      "id": "LizardByte.Sunshine",
+      "category": "games",
+      "name": "Sunshine",
+      "description": {
+        "uk": "Сервер стрімінгу ігор для Moonlight.",
+        "en": "Game streaming host for Moonlight."
+      }
+    },
+    {
+      "id": "Libretro.RetroArch",
+      "category": "games",
+      "name": "RetroArch",
+      "description": {
+        "uk": "Емулятор старих консолей в одній програмі.",
+        "en": "All-in-one retro console emulator."
+      }
+    },
+    {
+      "id": "PCSX2Team.PCSX2",
+      "category": "games",
+      "name": "PCSX2",
+      "description": {
+        "uk": "Емулятор PlayStation 2.",
+        "en": "PlayStation 2 emulator."
+      }
+    },
+    {
+      "id": "Amazon.Games",
+      "category": "games",
+      "name": "Amazon Games",
+      "description": {
+        "uk": "Лаунчер ігор Prime Gaming.",
+        "en": "Prime Gaming launcher."
+      }
+    },
+    {
+      "id": "Rclone.Rclone",
+      "category": "cloud",
+      "name": "rclone",
+      "description": {
+        "uk": "Синхронізація з будь-якою хмарою з командного рядка.",
+        "en": "Sync with any cloud from the command line."
+      }
+    },
+    {
+      "id": "Tailscale.Tailscale",
+      "category": "cloud",
+      "name": "Tailscale",
+      "description": {
+        "uk": "Приватна мережа між вашими пристроями без налаштувань роутера.",
+        "en": "Private network between your devices."
+      }
+    },
+    {
+      "id": "ZeroTier.ZeroTierOne",
+      "category": "cloud",
+      "name": "ZeroTier",
+      "description": {
+        "uk": "Віртуальна локальна мережа через інтернет.",
+        "en": "Virtual LAN over the internet."
+      }
+    },
+    {
+      "id": "Google.ChromeRemoteDesktopHost",
+      "category": "cloud",
+      "name": "Chrome Remote Desktop",
+      "description": {
+        "uk": "Віддалений доступ до ПК через браузер.",
+        "en": "Remote access via browser."
+      }
+    },
+    {
+      "id": "Box.Box",
+      "category": "cloud",
+      "name": "Box Drive",
+      "description": {
+        "uk": "Хмарне сховище Box.",
+        "en": "Box cloud storage."
+      }
+    },
+    {
+      "id": "Synology.DriveClient",
+      "category": "cloud",
+      "name": "Synology Drive",
+      "description": {
+        "uk": "Синхронізація з NAS Synology.",
+        "en": "Sync with a Synology NAS."
+      }
+    },
+    {
+      "id": "pCloudAG.pCloudDrive",
+      "category": "cloud",
+      "name": "pCloud Drive",
+      "description": {
+        "uk": "Хмара як окремий диск у Провіднику.",
+        "en": "Cloud storage as a drive."
+      }
+    },
+    {
+      "id": "VSCodium.VSCodium",
+      "category": "dev",
+      "name": "VSCodium",
+      "description": {
+        "uk": "VS Code без телеметрії Microsoft.",
+        "en": "VS Code without Microsoft telemetry."
+      }
+    },
+    {
+      "id": "Neovim.Neovim",
+      "category": "dev",
+      "name": "Neovim",
+      "description": {
+        "uk": "Сучасний Vim.",
+        "en": "Modern Vim."
+      }
+    },
+    {
+      "id": "JetBrains.IntelliJIDEA.Community",
+      "category": "dev",
+      "name": "IntelliJ IDEA Community",
+      "description": {
+        "uk": "Середовище для Java і Kotlin.",
+        "en": "Java and Kotlin IDE."
+      }
+    },
+    {
+      "id": "JetBrains.PyCharm.Community",
+      "category": "dev",
+      "name": "PyCharm Community",
+      "description": {
+        "uk": "Середовище для Python.",
+        "en": "Python IDE."
+      }
+    },
+    {
+      "id": "Microsoft.DotNet.SDK.8",
+      "category": "dev",
+      "name": ".NET 8 SDK",
+      "description": {
+        "uk": "Розробка на C# і .NET (LTS).",
+        "en": "C#/.NET development (LTS)."
+      }
+    },
+    {
+      "id": "Microsoft.DotNet.SDK.9",
+      "category": "dev",
+      "name": ".NET 9 SDK",
+      "description": {
+        "uk": "Розробка на C# і .NET.",
+        "en": "C#/.NET development."
+      }
+    },
+    {
+      "id": "Oracle.VirtualBox",
+      "category": "dev",
+      "name": "VirtualBox",
+      "description": {
+        "uk": "Віртуальні машини: інша ОС усередині Windows.",
+        "en": "Virtual machines."
+      }
+    },
+    {
+      "id": "Kitware.CMake",
+      "category": "dev",
+      "name": "CMake",
+      "description": {
+        "uk": "Система збирання C/C++ проєктів.",
+        "en": "C/C++ build system."
+      }
+    },
+    {
+      "id": "DBeaver.DBeaver.Community",
+      "category": "dev",
+      "name": "DBeaver",
+      "description": {
+        "uk": "Універсальний клієнт баз даних.",
+        "en": "Universal database client."
+      }
+    },
+    {
+      "id": "Anysphere.Cursor",
+      "category": "dev",
+      "name": "Cursor",
+      "description": {
+        "uk": "Редактор коду з вбудованим ШІ.",
+        "en": "AI code editor."
+      }
+    },
+    {
+      "id": "Bruno.Bruno",
+      "category": "dev",
+      "name": "Bruno",
+      "description": {
+        "uk": "Тестування API без хмари (аналог Postman).",
+        "en": "Offline API client."
+      }
+    },
+    {
+      "id": "HeidiSQL.HeidiSQL",
+      "category": "dev",
+      "name": "HeidiSQL",
+      "description": {
+        "uk": "Клієнт MySQL, MariaDB, PostgreSQL, SQL Server.",
+        "en": "Client for MySQL/MariaDB/PostgreSQL/SQL Server."
+      }
+    },
+    {
+      "id": "CoreyButler.NVMforWindows",
+      "category": "dev",
+      "name": "NVM for Windows",
+      "description": {
+        "uk": "Кілька версій Node.js на одному ПК.",
+        "en": "Manage multiple Node.js versions."
+      }
+    },
+    {
+      "id": "Insomnia.Insomnia",
+      "category": "dev",
+      "name": "Insomnia",
+      "description": {
+        "uk": "Клієнт для REST і GraphQL API.",
+        "en": "REST and GraphQL client."
+      }
+    },
+    {
+      "id": "Ollama.Ollama",
+      "category": "dev",
+      "name": "Ollama",
+      "description": {
+        "uk": "Мовні моделі ШІ локально на вашому ПК.",
+        "en": "Run AI language models locally."
+      }
+    },
+    {
+      "id": "ElementLabs.LMStudio",
+      "category": "dev",
+      "name": "LM Studio",
+      "description": {
+        "uk": "Чат із локальними моделями ШІ у вікні.",
+        "en": "Chat with local AI models."
+      }
+    },
+    {
+      "id": "Logitech.GHUB",
+      "category": "drivers",
+      "name": "Logitech G HUB",
+      "description": {
+        "uk": "Налаштування ігрових мишей, клавіатур і гарнітур Logitech.",
+        "en": "Logitech gaming gear software."
+      }
+    },
+    {
+      "id": "Logitech.OptionsPlus",
+      "category": "drivers",
+      "name": "Logi Options+",
+      "description": {
+        "uk": "Налаштування офісних мишей і клавіатур Logitech.",
+        "en": "Logitech mice and keyboards software."
+      }
+    },
+    {
+      "id": "SteelSeries.GG",
+      "category": "drivers",
+      "name": "SteelSeries GG",
+      "description": {
+        "uk": "Налаштування пристроїв SteelSeries.",
+        "en": "SteelSeries device software."
+      }
+    },
+    {
+      "id": "Corsair.iCUE.5",
+      "category": "drivers",
+      "name": "Corsair iCUE",
+      "description": {
+        "uk": "Підсвітка, вентилятори й пристрої Corsair.",
+        "en": "Corsair devices, lighting and fans."
+      }
+    },
+    {
+      "id": "Nvidia.PhysX",
+      "category": "drivers",
+      "name": "NVIDIA PhysX",
+      "description": {
+        "uk": "Компонент фізики для старих ігор.",
+        "en": "Physics runtime for older games."
+      }
+    },
+    {
+      "id": "Crucial.StorageExecutive",
+      "category": "drivers",
+      "name": "Crucial Storage Executive",
+      "description": {
+        "uk": "Прошивка й стан SSD Crucial.",
+        "en": "Crucial SSD firmware and health."
+      }
+    },
+    {
+      "id": "Oracle.JavaRuntimeEnvironment",
+      "category": "runtimes",
+      "name": "Java 8 (Oracle JRE)",
+      "description": {
+        "uk": "Для старих програм, яким потрібна саме Java 8.",
+        "en": "For legacy apps that need Java 8."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2012.x64",
+      "category": "runtimes",
+      "name": "Visual C++ 2012 (x64)",
+      "description": {
+        "uk": "Потрібен частині старих програм та ігор.",
+        "en": "Needed by some older apps and games."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2012.x86",
+      "category": "runtimes",
+      "name": "Visual C++ 2012 (x86)",
+      "description": {
+        "uk": "Потрібен частині старих програм та ігор.",
+        "en": "Needed by some older apps and games."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2010.x64",
+      "category": "runtimes",
+      "name": "Visual C++ 2010 (x64)",
+      "description": {
+        "uk": "Потрібен старим програмам та іграм.",
+        "en": "Needed by older apps and games."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2010.x86",
+      "category": "runtimes",
+      "name": "Visual C++ 2010 (x86)",
+      "description": {
+        "uk": "Потрібен старим програмам та іграм.",
+        "en": "Needed by older apps and games."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2013.x86",
+      "category": "runtimes",
+      "name": "Visual C++ 2013 (x86)",
+      "description": {
+        "uk": "Потрібен частині програм та ігор.",
+        "en": "Needed by some apps and games."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2008.x64",
+      "category": "runtimes",
+      "name": "Visual C++ 2008 (x64)",
+      "description": {
+        "uk": "Для дуже старих програм та ігор.",
+        "en": "For very old apps and games."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2008.x86",
+      "category": "runtimes",
+      "name": "Visual C++ 2008 (x86)",
+      "description": {
+        "uk": "Для дуже старих програм та ігор.",
+        "en": "For very old apps and games."
+      }
+    },
+    {
+      "id": "Microsoft.DotNet.Runtime.8",
+      "category": "runtimes",
+      "name": ".NET 8 Runtime",
+      "description": {
+        "uk": "Для консольних і серверних .NET-програм.",
+        "en": "For console and server .NET apps."
+      }
+    },
+    {
+      "id": "Microsoft.DotNet.AspNetCore.8",
+      "category": "runtimes",
+      "name": "ASP.NET Core 8 Runtime",
+      "description": {
+        "uk": "Для вебпрограм на .NET.",
+        "en": "For .NET web apps."
+      }
+    },
+    {
+      "id": "Microsoft.DotNet.Framework.DeveloperPack_4",
+      "category": "runtimes",
+      "name": ".NET Framework 4.8.1 Developer Pack",
+      "description": {
+        "uk": "Для розробки й старих .NET-програм.",
+        "en": "For development and legacy .NET apps."
+      }
     }
   ],
   "bundles": [
@@ -1553,6 +2516,62 @@
         "OpenJS.NodeJS.LTS",
         "Microsoft.WindowsTerminal",
         "Microsoft.PowerShell"
+      ]
+    },
+    {
+      "id": "diagnostics",
+      "name": {
+        "uk": "Діагностика ПК",
+        "en": "PC diagnostics"
+      },
+      "description": {
+        "uk": "Температури, стан дисків, стрес-тести й аналіз синіх екранів — для пошуку апаратних проблем.",
+        "en": "Temperatures, disk health, stress tests and crash analysis."
+      },
+      "apps": [
+        "REALiX.HWiNFO",
+        "CrystalDewWorld.CrystalDiskInfo",
+        "OCBase.OCCT.Personal",
+        "Resplendence.WhoCrashed",
+        "NirSoft.BlueScreenView",
+        "CPUID.CPU-Z"
+      ]
+    },
+    {
+      "id": "privacy",
+      "name": {
+        "uk": "Приватність і безпека",
+        "en": "Privacy and security"
+      },
+      "description": {
+        "uk": "Менеджер паролів, двофакторна автентифікація, приватний браузер і очищення від рекламного ПЗ.",
+        "en": "Password manager, 2FA, private browser and adware cleanup."
+      },
+      "apps": [
+        "Bitwarden.Bitwarden",
+        "ente-io.auth-desktop",
+        "MullvadVPN.MullvadBrowser",
+        "Malwarebytes.AdwCleaner",
+        "Cloudflare.Warp"
+      ]
+    },
+    {
+      "id": "streaming",
+      "name": {
+        "uk": "Стрімінг і відео",
+        "en": "Streaming and video"
+      },
+      "description": {
+        "uk": "Запис і трансляції, монтаж, конвертація й завантаження відео.",
+        "en": "Recording, streaming, editing and converting video."
+      },
+      "apps": [
+        "OBSProject.OBSStudio",
+        "Meltytech.Shotcut",
+        "HandBrake.HandBrake",
+        "yt-dlp.yt-dlp",
+        "Gyan.FFmpeg",
+        "MediaArea.MediaInfo.GUI"
       ]
     }
   ]

@@ -181,7 +181,7 @@ function Show-D9Gui {
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
-                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnIconCache') {
+                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
@@ -190,7 +190,7 @@ function Show-D9Gui {
     $actionButtons = @('BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
                        'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
                        'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'BtnUninstRefresh', 'BtnUninstall',
-                       'BtnDisksRefresh', 'BtnIconCache')
+                       'BtnDisksRefresh', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset')
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -809,6 +809,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.BtnRepair.Add_Click({ & $maintenanceJob 'Відновлення системних файлів' "Перевірити й відновити системні файли Windows?`nЦе триває 10–40 хвилин; комп'ютером можна користуватися." 'Invoke-D9RepairSystem' })
     $ui.BtnNetReset.Add_Click({ & $maintenanceJob 'Скидання мережі' "Скинути мережеві налаштування?`nWi-Fi-мережі й паролі збережуться; після перезавантаження з'єднання налаштується заново." 'Invoke-D9NetworkReset' })
     $ui.BtnWuReset.Add_Click({ & $maintenanceJob 'Скидання Windows Update' "Скинути Windows Update?`nСлужби буде перезапущено, кеш оновлень створиться заново." 'Invoke-D9WindowsUpdateReset' })
+    $ui.BtnMemoryTest.Add_Click({ & $maintenanceJob 'Перевірка пам''яті' "Запланувати перевірку оперативної пам'яті?`nПід час наступного перезавантаження Windows 10–20 хвилин перевірятиме пам'ять, потім запуститься як звичайно." 'Invoke-D9MemoryTestOnReboot' })
+    $ui.BtnSearchReset.Add_Click({ & $maintenanceJob 'Перебудова пошукового індексу' "Перебудувати пошуковий індекс Windows?`nСтарий індекс буде видалено; новий створиться у фоні, і кілька годин пошук знаходитиме не все." 'Reset-D9SearchIndex' })
     $ui.BtnRestorePoint.Add_Click({
         if (-not (& $needAdmin)) { return }
         & $startJob 'Створення точки відновлення' { New-D9RestorePoint } $null {

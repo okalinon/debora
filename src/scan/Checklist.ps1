@@ -203,7 +203,9 @@ function Save-D9Checklist {
     $path = Get-D9ChecklistPath
     $dir = Split-Path $path
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-    [IO.File]::WriteAllText($path, (ConvertTo-Json $Checklist -Depth 10), (New-Object Text.UTF8Encoding $false))
+    # Файл, створений від адміністратора, звичайний користувач перезаписати не може — не падаємо, а попереджаємо
+    try { [IO.File]::WriteAllText($path, (ConvertTo-Json $Checklist -Depth 10), (New-Object Text.UTF8Encoding $false)) }
+    catch [UnauthorizedAccessException] { Write-D9Log 'Чекліст не збережено: немає прав на запис у папку даних (запустіть від адміністратора).' Warn }
 }
 
 function Get-D9Checklist {

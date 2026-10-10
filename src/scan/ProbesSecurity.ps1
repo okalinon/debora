@@ -142,6 +142,9 @@ function Test-D9DefenderConfig {
         if ($pref.PUAProtection -eq 0) {
             New-D9Finding $Check suggestion 'Блокування потенційно небажаних програм вимкнено' 'Захисник не блокує рекламні «довантажувачі», тулбари й майнери. Debloater9 увімкне блокування.' (New-D9ActionsFix @(@{ type = 'command'; run = 'Set-MpPreference -PUAProtection Enabled'; undoRun = 'Set-MpPreference -PUAProtection Disabled'; test = '(Get-MpPreference).PUAProtection -eq 1'; label = @{ uk = 'Увімкнути блокування небажаних програм'; en = 'Enable PUA protection' } })) @($link) -Key "$($Check.id):pua"
         }
+        if ($pref.MAPSReporting -eq 0) {
+            New-D9Finding $Check suggestion 'Хмарний захист Захисника вимкнено' 'Без хмари Захисник розпізнає нові загрози лише після оновлення баз (години чи дні), а з нею — за секунди. Debloater9 увімкне хмарний захист.' (New-D9ActionsFix @(@{ type = 'command'; run = 'Set-MpPreference -MAPSReporting Advanced'; undoRun = 'Set-MpPreference -MAPSReporting Disabled'; test = '(Get-MpPreference).MAPSReporting -ne 0'; label = @{ uk = 'Увімкнути хмарний захист Захисника'; en = 'Enable Defender cloud protection' } })) @($link) -Key "$($Check.id):cloud"
+        }
         $wide = @($pref.ExclusionPath | Where-Object { $_ -and $_ -notmatch '^N/A' -and ($_ -match '^[A-Za-z]:\\?$' -or $_ -match '\\(Users|Temp|AppData|Downloads|Windows)\\?$') })
         if ($wide) {
             # Навмисно вручну: автоматична зміна винятків Захисника (і її відкат) виглядає для антивірусів як шкідлива дія

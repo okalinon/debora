@@ -517,6 +517,20 @@
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,0,12">
               <DockPanel>
+                <Button x:Name="BtnMemoryTest" DockPanel.Dock="Right" Content="Запланувати" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Перевірка оперативної пам'яті" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Коли бувають сині екрани з різними кодами або падають різні програми. Перевірка запуститься під час наступного перезавантаження (10–20 хвилин), результат покаже сканування."/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnSearchReset" DockPanel.Dock="Right" Content="Перебудувати" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Пошуковий індекс Windows" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Коли пошук у «Пуску» не знаходить файли чи програми або індекс займає гігабайти. Індекс створиться заново у фоні за кілька годин."/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
                 <Button x:Name="BtnIconCache" DockPanel.Dock="Right" Content="Скинути кеш" VerticalAlignment="Center"/>
                 <StackPanel><TextBlock Text="Кеш значків і ескізів" FontWeight="SemiBold" FontSize="14"/>
                   <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Коли замість значків білі аркуші, значки переплутані або ескізи фото застарілі. Провідник перезапуститься (відкриті вікна папок закриються)."/></StackPanel>

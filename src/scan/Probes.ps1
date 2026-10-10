@@ -129,7 +129,10 @@ function Test-D9Antivirus {
                 New-D9Finding $Check critical 'Захист у реальному часі вимкнено' 'Захисник Windows не перевіряє файли під час відкриття. Debloater9 увімкне «Захист у реальному часі».' @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
             }
             if ($mp.AntivirusSignatureAge -gt $Check.thresholds.signatureAgeDays) {
-                New-D9Finding $Check warning "Антивірусні бази застаріли ($($mp.AntivirusSignatureAge) дн.)" 'Debloater9 оновить бази (потрібен інтернет).' @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
+                # Причина: остання помилка оновлення баз (подія 2001) — коли Windows сама не може їх оновити
+                $fail = @(Get-D9EventCount @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 2001; StartTime = $Ctx.Now.AddDays(-14) }) | Sort-Object TimeCreated -Descending | Select-Object -First 1
+                $why = if ($fail) { " Windows намагалася оновити їх сама, але отримала помилку ($($fail.TimeCreated.ToString('dd.MM.yyyy'))): $((([string]$fail.Message -split "`r?`n" | Where-Object { $_ -match '0x[0-9a-fA-F]{8}' } | Select-Object -First 1)).Trim()). Якщо після оновлення через Debloater9 бази знову застаріють — скиньте Windows Update на вкладці «Обслуговування»." } else { '' }
+                New-D9Finding $Check warning "Антивірусні бази застаріли ($($mp.AntivirusSignatureAge) дн.)" "Debloater9 оновить бази (потрібен інтернет).$why" @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
             }
         }
     }
@@ -417,22 +420,6 @@ function Get-D9EventCount {
     if ($null -eq $events) { @() } else { @($events) }
 }
 
-function Test-D9Crashes {
-    param($Check, $Ctx)
-    $since = $Ctx.Now.AddDays(-$Check.thresholds.days)
-    $bsod  = Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-WER-SystemErrorReporting'; Id = 1001; StartTime = $since }
-    $power = Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 41; StartTime = $since }
-    $advice = 'Можливі причини: драйвер (оновіть відео, чипсет, мережу), перегрів (чистка від пилу), оперативна пам''ять (перевірка: mdsched.exe), блок живлення.'
-    $links = @((New-D9Link 'Перевірка пам''яті Windows' 'mdsched.exe'))
-    if ($bsod.Count) {
-        $severity = if ($bsod.Count -ge $Check.thresholds.critical) { 'critical' } else { 'warning' }
-        return New-D9Finding $Check $severity "Сині екрани за $($Check.thresholds.days) днів: $($bsod.Count)" $advice @{ type = 'manual' } $links
-    }
-    if ($power.Count -ge 3) {
-        New-D9Finding $Check warning "Аварійні вимкнення за $($Check.thresholds.days) днів: $($power.Count)" "Комп'ютер вимикався без завершення роботи (зависання, живлення, перегрів). $advice" @{ type = 'manual' } $links
-    }
-}
-
 # Томи за літерою, шляхом \\?\Volume{GUID} і міткою → чи це системний том
 function Get-D9VolumeIndex {
     $index = @{}
@@ -537,6 +524,12 @@ function Test-D9BatteryWear {
     $t = $Check.thresholds
     $title = "Батарея зберігає $health% початкової ємності"
     $details = 'Час роботи від батареї помітно скоротився. Батарею можна замінити в сервісі.'
+    if ($health -lt $t.warningPercent) {
+        $cycles = try { [int](Get-CimInstance -Namespace root\wmi -ClassName BatteryCycleCount -ErrorAction Stop | Select-Object -First 1).CycleCount } catch { 0 }
+        if ($cycles -gt 0) {
+            $details += " Циклів заряду: $cycles$(if ($cycles -lt 300) { ' — для такого зносу це мало: ймовірно, батарея старіє від нагріву або постійного заряду 100%. Якщо виробник ноутбука має режим «обмеження заряду» (80%), увімкніть його' } else { '' })."
+        }
+    }
     if ($health -lt $t.criticalPercent) { return New-D9Finding $Check critical $title $details @{ type = 'manual' } }
     if ($health -lt $t.warningPercent) { return New-D9Finding $Check warning $title $details @{ type = 'manual' } }
 }

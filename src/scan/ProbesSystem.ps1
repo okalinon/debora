@@ -201,22 +201,6 @@ function Test-D9LogonTasks {
     }
 }
 
-function Test-D9BootTime {
-    param($Check, $Ctx)
-    $events = Get-D9Events @{ LogName = 'Microsoft-Windows-Diagnostics-Performance/Operational'; Id = 100 }
-    if ($null -eq $events) { return New-D9Skip $Check 'журнал продуктивності недоступний (потрібні права адміністратора)' }
-    $recent = @($events | Sort-Object TimeCreated -Descending | Select-Object -First 5)
-    if (-not $recent) { return }
-    $sec = ($recent | ForEach-Object { ([xml]$_.ToXml()).Event.EventData.Data | Where-Object Name -eq 'BootTime' } | ForEach-Object { [int]$_.'#text' } | Measure-Object -Average).Average / 1000
-    $limit = if ($Ctx.System.SystemDisk -eq 'hdd') { $Check.thresholds.hddSec } else { $Check.thresholds.ssdSec }
-    if ($sec -gt $limit) {
-        $slow = Get-D9Events @{ LogName = 'Microsoft-Windows-Diagnostics-Performance/Operational'; Id = @(101, 102, 103, 106, 109); StartTime = $Ctx.Now.AddDays(-30) }
-        $names = @($slow | ForEach-Object { ([xml]$_.ToXml()).Event.EventData.Data | Where-Object Name -in 'FriendlyName', 'Name' | Select-Object -First 1 } | ForEach-Object { $_.'#text' } | Group-Object | Sort-Object Count -Descending | Select-Object -First 5 -ExpandProperty Name)
-        $who = if ($names) { " Найбільше сповільнюють: $($names -join ', ')." } else { '' }
-        New-D9Finding $Check warning ("Windows завантажується в середньому {0:N0} с" -f $sec) "Норма для цього диска — до $limit с.$who Зменште автозавантаження." @{ type = 'manual' }
-    }
-}
-
 function Test-D9ShellExtensions {
     param($Check, $Ctx)
     $keys = 'Registry::HKEY_CLASSES_ROOT\*\shellex\ContextMenuHandlers', 'Registry::HKEY_CLASSES_ROOT\Directory\shellex\ContextMenuHandlers', 'Registry::HKEY_CLASSES_ROOT\Folder\shellex\ContextMenuHandlers', 'Registry::HKEY_CLASSES_ROOT\Directory\Background\shellex\ContextMenuHandlers'
@@ -273,17 +257,6 @@ function Test-D9PrintSpooler {
 }
 
 # ======================= Стабільність =======================
-
-function Test-D9AppCrashes {
-    param($Check, $Ctx)
-    $events = Get-D9Events @{ LogName = 'Application'; ProviderName = @('Application Error', 'Application Hang'); Id = @(1000, 1002); StartTime = $Ctx.Now.AddDays(-$Check.thresholds.days) }
-    if (-not $events) { return }
-    $apps = @($events | ForEach-Object { $_.Properties[0].Value } | Group-Object | Where-Object Count -ge $Check.thresholds.min | Sort-Object Count -Descending)
-    if ($apps) {
-        $list = ($apps | Select-Object -First 6 | ForEach-Object { "$($_.Name) ($($_.Count))" }) -join ', '
-        New-D9Finding $Check suggestion "Програми, що часто падають або зависають: $list" 'Оновіть або перевстановіть ці програми. Якщо падають різні програми — причина може бути в пам''яті чи драйверах.' @{ type = 'manual' }
-    }
-}
 
 function Test-D9ServiceFailures {
     param($Check, $Ctx)

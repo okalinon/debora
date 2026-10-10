@@ -15,6 +15,11 @@ $script:D9MaintenanceActions = [ordered]@{
     browserCache   = @{ Group = 51; Fn = 'Clear-D9BrowserCache';        Title = 'Очистити кеш браузерів' }
     wingetUpgrade  = @{ Group = 70; Fn = 'Invoke-D9AppUpgradeAll';      Title = 'Оновити програми' }
     repairSystem   = @{ Group = 75; Fn = 'Invoke-D9RepairSystem';       Title = 'Відновити системні файли Windows' }
+    defragHdd      = @{ Group = 13; Fn = 'Invoke-D9DefragHdd';          Title = 'Дефрагментувати жорсткий диск' }
+    networkReset   = @{ Group = 47; Fn = 'Invoke-D9NetworkReset';       Title = 'Скинути мережеві налаштування' }
+    vcRedist       = @{ Group = 69; Fn = 'Repair-D9VcRedist';           Title = 'Перевстановити бібліотеки Visual C++' }
+    searchReset    = @{ Group = 73; Fn = 'Reset-D9SearchIndex';         Title = 'Перебудувати пошуковий індекс Windows' }
+    memoryTest     = @{ Group = 85; Fn = 'Invoke-D9MemoryTestOnReboot'; Title = 'Перевірити оперативну пам''ять під час перезавантаження' }
 }
 
 # Крок чекліста: драйвери для пристроїв без драйвера й новіші версії для решти (без необов'язкових замін).
@@ -150,4 +155,50 @@ function Enable-D9SystemRestore {
     $rp = New-D9RestorePoint
     if ($rp) { Write-D9Log '  Першу точку відновлення створено.' Ok }
     [pscustomobject]@{ Done = $true; RebootRecommended = $false }
+}
+
+# Дефрагментація HDD (SSD не чіпаємо: для них Windows робить TRIM). Звичайно 10–60 хвилин.
+function Invoke-D9DefragHdd {
+    $drive = $env:SystemDrive.TrimEnd(':')
+    Write-D9Log "Дефрагментація диска ${drive}: (може тривати до години, комп'ютером можна користуватися)..."
+    try {
+        Optimize-Volume -DriveLetter $drive -Defrag -ErrorAction Stop
+        Write-D9Log 'Дефрагментацію завершено.' Ok
+    } catch { Write-D9Log "  Не вдалося: $($_.Exception.Message)" Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
+    [pscustomobject]@{ Done = $true; RebootRecommended = $false }
+}
+
+# Перевстановлення Visual C++ 2015–2022 (x64 і x86) поверх наявних — лікує падіння програм у msvcp/vcruntime
+function Repair-D9VcRedist {
+    Write-D9Log 'Перевстановлення бібліотек Visual C++ 2015–2022...'
+    $res = @(Update-D9Apps -Ids @('Microsoft.VCRedist.2015+.x64', 'Microsoft.VCRedist.2015+.x86'))
+    $bad = @($res | Where-Object { $_.result -in 'failed', 'notFound' })
+    [pscustomobject]@{ Done = -not $bad; RebootRecommended = [bool]($res | Where-Object result -eq 'reboot') }
+}
+
+# Пошуковий індекс розрісся або зламаний: зупинити службу, прибрати базу, Windows проіндексує заново (у фоні, кілька годин)
+function Reset-D9SearchIndex {
+    Write-D9Log 'Перебудова пошукового індексу Windows...'
+    $dir = Join-Path $env:ProgramData 'Microsoft\Search\Data\Applications\Windows'
+    $before = [long]((Get-ChildItem -LiteralPath $dir -File -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum)
+    Stop-Service WSearch -Force -ErrorAction SilentlyContinue
+    Set-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows Search' -Name SetupCompletedSuccessfully -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    $failed = 0
+    foreach ($f in @(Get-ChildItem -LiteralPath $dir -File -Recurse -Force -ErrorAction SilentlyContinue)) {
+        try { [IO.File]::Delete($f.FullName) } catch { $failed++ }
+    }
+    Start-Service WSearch -ErrorAction SilentlyContinue
+    if ($failed) { Write-D9Log "  Не вдалося видалити файлів: $failed (зайняті)." Warn }
+    Write-D9Log "Звільнено $(Format-D9Size $before). Індекс створюється заново у фоні; пошук запрацює повністю за кілька годин." Ok
+    [pscustomobject]@{ Done = $true; RebootRecommended = $false }
+}
+
+# Засіб діагностики пам'яті Windows при наступному запуску (bcdedit /bootsequence — лише один раз).
+# Результат Windows запише в журнал (MemoryDiagnostics-Results), його покаже наступне сканування.
+function Invoke-D9MemoryTestOnReboot {
+    Write-D9Log 'Планування перевірки пам''яті на наступне перезавантаження...'
+    $code = Invoke-D9Native 'bcdedit.exe' @('/bootsequence', '{memdiag}')
+    if ($code -ne 0) { Write-D9Log '  Не вдалося. Запустіть вручну: Win+R → mdsched.exe.' Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
+    Write-D9Log 'Після перезавантаження Windows 10–20 хвилин перевірятиме пам''ять, потім запуститься як звичайно. Результат покаже наступне сканування.' Ok
+    [pscustomobject]@{ Done = $true; RebootRecommended = $true }
 }

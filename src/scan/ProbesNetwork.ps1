@@ -30,6 +30,24 @@ function Test-D9Wifi {
     if ($channel -ge 1 -and $channel -le 14 -and $supports5) {
         New-D9Finding $Check suggestion "Wi-Fi підключено на 2,4 ГГц (канал $channel), хоча адаптер підтримує 5 ГГц" 'Якщо роутер має мережу 5 ГГц, підключіться до неї: швидкість у кілька разів вища, менше перешкод від сусідів. На 2,4 ГГц краще лише далеко від роутера.' @{ type = 'manual' } @($link) -Key "$($Check.id):band"
     }
+    # Захист мережі: «Authentication / Автентифікація» і «Cipher / Шифр» (назви полів локалізовані — шукаємо за значеннями)
+    $auth = ($values.GetEnumerator() | Where-Object { $_.Key -match '^(Authentication|Автентифікація|Проверка подлинности|Authentifizierung)$' } | Select-Object -First 1).Value
+    $cipher = ($values.GetEnumerator() | Where-Object { $_.Key -match '^(Cipher|Шифр|Шифрование|Verschlüsselung)$' } | Select-Object -First 1).Value
+    $ssid = ($values.GetEnumerator() | Where-Object { $_.Key -eq 'SSID' } | Select-Object -First 1).Value
+    if ($auth -match '^(Open|Відкрит|Открыт|Offen)' -or $auth -match 'WEP') {
+        $wep = $auth -match 'WEP' -or $cipher -match 'WEP'
+        $text = if ($wep) { 'Мережа захищена застарілим WEP, який зламується за хвилини.' } else { 'Мережа без пароля: усе, що передається не через HTTPS, можуть бачити сусіди й будь-хто поблизу.' }
+        $text += ' Якщо це ваш роутер — увімкніть у його налаштуваннях WPA2 або WPA3 з паролем. У чужих відкритих мережах (кафе, вокзал) користуйтеся VPN.'
+        New-D9Finding $Check warning "Wi-Fi «$ssid» $(if ($wep) { 'захищено застарілим WEP' } else { 'без пароля й шифрування' })" $text @{ type = 'manual' } @($link) -Key "$($Check.id):security"
+        # У відкритій мережі ПК не має бути «видимим» для інших (профіль «Приватна»)
+        $wlan = Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Up' -and ($_.PhysicalMediaType -match '802\.11' -or $_.MediaType -match '802\.11|Native 802') } | Select-Object -First 1
+        $netProfile = if ($wlan) { Get-NetConnectionProfile -InterfaceIndex $wlan.ifIndex -ErrorAction SilentlyContinue | Select-Object -First 1 }
+        if ($netProfile -and [string]$netProfile.NetworkCategory -eq 'Private') {
+            New-D9Finding $Check warning "Відкрита Wi-Fi-мережа «$ssid» позначена як приватна" 'У приватній мережі ПК видно іншим пристроям, доступні спільні папки й принтери. Debloater9 позначить мережу як загальнодоступну (відкат — у «Журналі змін»).' (New-D9ActionsFix @(@{ type = 'command'; run = "Set-NetConnectionProfile -InterfaceIndex $($wlan.ifIndex) -NetworkCategory Public"; undoRun = "Set-NetConnectionProfile -InterfaceIndex $($wlan.ifIndex) -NetworkCategory Private"; test = "[string](Get-NetConnectionProfile -InterfaceIndex $($wlan.ifIndex)).NetworkCategory -eq 'Public'"; label = @{ uk = "Позначити мережу «$ssid» як загальнодоступну"; en = 'Set network to Public' } })) @($link) -Key "$($Check.id):profile"
+        }
+    } elseif ($auth -match '^WPA-' -or $cipher -match 'TKIP') {
+        New-D9Finding $Check suggestion "Wi-Fi «$ssid» захищено застарілим WPA/TKIP" 'Застарілий режим захисту ще й обмежує швидкість до 54 Мбіт/с. У налаштуваннях роутера оберіть WPA2-AES або WPA3.' @{ type = 'manual' } @($link) -Key "$($Check.id):security"
+    }
     if ($signal -and $signal -lt $Check.thresholds.signalPercent) {
         New-D9Finding $Check suggestion "Слабкий сигнал Wi-Fi: $signal% ($radio)" 'Звідси нестабільна швидкість і обриви. Перемістіть роутер ближче / вище, приберіть перешкоди, або використайте ретранслятор чи кабель.' @{ type = 'manual' } @($link) -Key "$($Check.id):signal"
     }

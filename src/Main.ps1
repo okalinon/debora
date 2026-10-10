@@ -227,7 +227,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.13.0-dev'
+$script:D9Version  = '0.14.0-dev'
 $script:D9Language = $Language
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName

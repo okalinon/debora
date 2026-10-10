@@ -170,7 +170,7 @@ function Show-D9Gui {
     $win = [Windows.Markup.XamlReader]::Parse($xamlText)
     $ui = @{}
     foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
-                   'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList',
+                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList',
                    'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnReboot', 'ChecklistSummary', 'ChecklistList',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
@@ -179,14 +179,14 @@ function Show-D9Gui {
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
-                   'BtnStartupApply', 'BtnStartupRefresh', 'StartupSummary', 'StartupGrid',
+                   'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
     $isAdmin = Test-D9IsAdmin
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
-    $actionButtons = @('BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
+    $actionButtons = @('BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
                        'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
                        'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'BtnUninstRefresh', 'BtnUninstall')
 
@@ -437,6 +437,48 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.BtnOpenReport.Add_Click({ if ($state.ReportPath) { Start-Process $state.ReportPath } })
 
     # ---------- кнопки: Чекліст ----------
+    # Одна кнопка для всього: сканування → список автоматичних кроків → виконання → повторне сканування
+    $runChecklistWork = {
+        param($a)
+        $list = Get-D9Checklist
+        $ctx = New-D9ScanContext -Catalog $a.Catalog -SystemInfo $a.Sys
+        foreach ($item in @($list.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' } | Sort-Object number)) {
+            if (-not (Test-D9ChecklistReady $list $item)) { Write-D9Log "Крок $($item.number) пропущено: спершу виконайте попередні" Warn; continue }
+            try { [void](Invoke-D9ChecklistStep -Checklist $list -Item $item -Context $ctx) } catch { Write-D9Log "  Помилка: $($_.Exception.Message)" Error }
+        }
+        Write-D9Log 'Перевірка результату...'
+        $list = Update-D9ChecklistStatus -Checklist $list -Context $ctx
+        Save-D9Checklist $list
+        $list
+    }
+    $ui.BtnFixAll.Add_Click({
+        if (-not (& $needAdmin)) { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Сканування' $scanWork @{ Catalog = $Catalog; Sys = $SystemInfo; Deep = $false; ReportDir = $ReportDir } {
+            param($r)
+            & $onScanned $r
+            $before = $r.Scan.score.overall
+            $todo = @($r.Checklist.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' })
+            if (-not $todo) { [void][Windows.MessageBox]::Show($win, "Оцінка: $before/100. Автоматично виправляти нічого — решта порад на вкладці «Чекліст».", 'Debloater9'); return }
+            $text = ($todo | ForEach-Object { "$($_.number). $($_.title)" }) -join "`r`n"
+            $manual = @($r.Checklist.items | Where-Object { -not $_.auto -and $_.status -ne 'done' }).Count
+            if (-not (Show-D9TextDialog $win 'Виправити все' "Оцінка зараз: $before/100. Debloater9 виконає $($todo.Count) кроків сам (спершу — точка відновлення; усе відкочується в «Журналі змін»)$(if ($manual) { ". Ще $manual порад потребують вашого рішення — вони лишаться на вкладці «Чекліст»" })." $text 'Виконати')) { return }
+            & $startJob 'Виправлення' $runChecklistWork @{ Catalog = $Catalog; Sys = $SystemInfo } {
+                param($list, $c)
+                & $fillChecklist $list
+                & $fillSessions
+                & $loadTweakStates
+                # Повторне сканування — щоб показати результат
+                & $startJob 'Повторне сканування' $scanWork @{ Catalog = $Catalog; Sys = $SystemInfo; Deep = $false; ReportDir = $ReportDir } {
+                    param($r2, $c2)
+                    & $onScanned $r2
+                    $left = @($r2.Checklist.items | Where-Object { $_.status -ne 'done' -and $_.action.action -ne 'reboot' }).Count
+                    $msg = "Оцінка: $($c2.Before) → $($r2.Scan.score.overall)/100.$(if ($left) { "`nЛишилось порад: $left — вкладка «Чекліст»." })`n`nПерезавантажити комп'ютер зараз, щоб усі зміни запрацювали?"
+                    if ([Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
+                } @{ Before = $c.Before }
+            } @{ Before = $before }
+        }
+    })
     $ui.BtnRunAuto.Add_Click({
         if (-not $state.Checklist) { [void][Windows.MessageBox]::Show($win, 'Спочатку проскануйте комп''ютер.', 'Debloater9'); return }
         if (-not (& $needAdmin)) { return }
@@ -675,18 +717,30 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $fillStartup = {
         param($items)
         $state.StartupRows = @(foreach ($i in $items) {
-            $note = @()
-            if ($i.Missing) { $note += 'файл відсутній — запис можна вимкнути' }
-            if (-not $i.Publisher) { $note += 'видавець невідомий' }
+            $note = @(); $color = '#5D6675'
+            switch ($i.Verdict) {
+                'disable'  { $note += "рекомендуємо вимкнути: $($i.Reason)"; $color = '#B26A00' }
+                'optional' { $note += "можна вимкнути: $($i.Reason)" }
+                'keep'     { $note += "потрібне: $($i.Reason)"; $color = '#2E7D32' }
+            }
+            if ($i.Missing) { $note += 'файл відсутній — запис можна вимкнути'; $color = '#C62828' }
+            if (-not $i.Publisher -and -not $i.Verdict) { $note += 'видавець невідомий' }
             New-D9Row @{ Selected = [bool]$i.Enabled; Title = $i.Name; Detail = $i.Command; Group = $(if ($i.Publisher) { $i.Publisher } else { '—' })
-                         Note = $i.Where; Status = ($note -join '; '); Color = $(if ($i.Missing) { '#C62828' } else { '#5D6675' }); Tag = $i }
+                         Note = $i.Where; Status = ($note -join '; '); Color = $color; Tag = $i }
         })
         Set-D9Items $ui.StartupGrid $state.StartupRows
         $on = @($items | Where-Object Enabled).Count
-        $ui.StartupSummary.Text = "Програм в автозавантаженні: $(@($items).Count), запускаються: $on. Зніміть галочку з тих, яким не потрібно стартувати разом із Windows, і натисніть «Застосувати зміни». Програми не видаляються; усе відкочується в «Журналі змін»."
+        $rec = @($items | Where-Object { $_.Enabled -and ($_.Verdict -eq 'disable' -or $_.Missing) }).Count
+        $ui.BtnStartupRecommended.IsEnabled = [bool]$rec
+        $ui.BtnStartupRecommended.Content = if ($rec) { "Вимкнути рекомендовані ($rec)" } else { 'Вимкнути рекомендовані' }
+        $ui.StartupSummary.Text = "Програм в автозавантаженні: $(@($items).Count), запускаються: $on$(if ($rec) { ", з них рекомендуємо вимкнути: $rec" }). Зніміть галочку з тих, яким не потрібно стартувати разом із Windows, і натисніть «Застосувати зміни» — або «Вимкнути рекомендовані». Програми не видаляються; усе відкочується в «Журналі змін»."
     }
     $loadStartup = { & $startJob 'Читання автозавантаження' { Get-D9StartupItems } $null { param($r) & $fillStartup @($r) } }
     $ui.BtnStartupRefresh.Add_Click($loadStartup)
+    $ui.BtnStartupRecommended.Add_Click({
+        foreach ($r in $state.StartupRows) { if ($r.Tag.Enabled -and ($r.Tag.Verdict -eq 'disable' -or $r.Tag.Missing)) { $r.Selected = $false } }
+        $ui.BtnStartupApply.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
+    })
     $ui.BtnStartupApply.Add_Click({
         $changes = @($state.StartupRows | Where-Object { $_.Selected -ne [bool]$_.Tag.Enabled } | ForEach-Object { @{ Item = $_.Tag; Enable = $_.Selected } })
         if (-not $changes) { [void][Windows.MessageBox]::Show($win, 'Змін немає: поставте або зніміть галочки.', 'Debloater9'); return }

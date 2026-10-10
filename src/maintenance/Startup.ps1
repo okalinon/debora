@@ -38,6 +38,23 @@ function Test-D9ApprovedDisabled {
     return ($Bytes -is [byte[]] -and $Bytes.Length -and ($Bytes[0] -band 1))
 }
 
+# Порада для запису автозапуску з config/startup-known.json: Verdict (disable|optional|keep) і Reason
+function Get-D9StartupAdvice {
+    param([Parameter(Mandatory)]$Item, $Rules)
+    if (-not $Rules) {
+        if (-not $script:D9StartupRules) { $script:D9StartupRules = @((ConvertFrom-Json (Get-D9ConfigText 'startup-known.json')).rules) }
+        $Rules = $script:D9StartupRules
+    }
+    $leaf = if ($Item.Exe) { Split-Path ([string]$Item.Exe) -Leaf } else { '' }
+    foreach ($r in $Rules) {
+        if (-not $r.name -and -not $r.exe) { continue }
+        if ($r.name -and $Item.Name -notlike $r.name) { continue }
+        if ($r.exe -and $leaf -notlike $r.exe -and [string]$Item.Exe -notlike $r.exe) { continue }
+        return [pscustomobject]@{ Verdict = [string]$r.verdict; Reason = (Get-D9Text $r.reason) }
+    }
+    return $null
+}
+
 function Get-D9StartupItems {
     $items = New-Object System.Collections.ArrayList
     $shell = $null
@@ -88,6 +105,11 @@ function Get-D9StartupItems {
             }
         }
     } catch { }
+    foreach ($i in $items) {
+        $a = Get-D9StartupAdvice $i
+        $i | Add-Member -NotePropertyName Verdict -NotePropertyValue $(if ($a) { $a.Verdict } else { $null }) -Force
+        $i | Add-Member -NotePropertyName Reason -NotePropertyValue $(if ($a) { $a.Reason } else { $null }) -Force
+    }
     return @($items | Sort-Object @{ Expression = { -not $_.Enabled } }, Name)
 }
 

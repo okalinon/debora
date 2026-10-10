@@ -303,7 +303,14 @@ function Test-D9Trim {
 function Test-D9Startup {
     param($Check, $Ctx)
     $system  = @('SecurityHealth', 'Windows Defender', 'WindowsDefender')   # значок «Безпека Windows» — не чіпаємо
-    $enabled = @(Get-D9StartupItems | Where-Object { $_.Kind -eq 'reg' -and $_.Enabled -and $system -notcontains $_.Name })
+    $all = @(Get-D9StartupItems)
+    # Те, що безпечно вимкнути (лаунчери ігор, «помічники», реклама виробника) — Debloater9 вимкне сам, з відкатом
+    $rec = @($all | Where-Object { $_.Enabled -and $_.Verdict -eq 'disable' })
+    if ($rec) {
+        $list = ($rec | ForEach-Object { "$($_.Name) ($($_.Reason))" }) -join '; '
+        New-D9Finding $Check $(if ($rec.Count -ge 3) { 'warning' } else { 'suggestion' }) "Непотрібне в автозапуску: $($rec.Count)" "Debloater9 вимкне автозапуск (програми не видаляються, відкат — у «Журналі змін»): $list" (New-D9ActionsFix @($rec | ForEach-Object { New-D9StartupAction $_ $false })) -Key "$($Check.id):recommended"
+    }
+    $enabled = @($all | Where-Object { $_.Kind -eq 'reg' -and $_.Enabled -and $system -notcontains $_.Name -and $_.Verdict -ne 'disable' })
     $t = $Check.thresholds
     $weak = $Ctx.Recommendation.Preset -eq 'WeakPC'
     $limit = if ($weak) { $t.weakPcSuggestion } else { $t.suggestion }

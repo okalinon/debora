@@ -137,7 +137,8 @@
         <Grid Margin="20">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
-            <Button x:Name="BtnScan" Style="{StaticResource Primary}" Content="Сканувати комп'ютер"/>
+            <Button x:Name="BtnFixAll" Style="{StaticResource Primary}" Content="Сканувати й виправити все" ToolTip="Перевірити ПК і виконати всі автоматичні кроки чекліста: точка відновлення, виправлення, очищення, оновлення, драйвери"/>
+            <Button x:Name="BtnScan" Content="Лише сканувати"/>
             <Button x:Name="BtnDeepScan" Content="Глибоке сканування"/>
             <Button x:Name="BtnOpenReport" Content="Відкрити HTML-звіт" IsEnabled="False"/>
           </StackPanel>
@@ -439,6 +440,7 @@
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <Button x:Name="BtnStartupApply" Style="{StaticResource Primary}" Content="Застосувати зміни"/>
+            <Button x:Name="BtnStartupRecommended" Content="Вимкнути рекомендовані" ToolTip="Зняти галочки з програм, яким не потрібно стартувати разом із Windows (лаунчери ігор, «помічники», реклама виробника), і застосувати"/>
             <Button x:Name="BtnStartupRefresh" Content="Оновити список"/>
           </StackPanel>
           <TextBlock x:Name="StartupSummary" Grid.Row="1" Margin="0,12,0,8" Foreground="{StaticResource Muted}" TextWrapping="Wrap"

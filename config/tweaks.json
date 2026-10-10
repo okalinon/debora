@@ -1,0 +1,707 @@
+{
+  "schema": 1,
+  "tweaks": [
+    {
+      "id": "apps.remove-bloat",
+      "category": "apps",
+      "risk": "safe",
+      "name": { "uk": "Видалити непотрібні вбудовані застосунки", "en": "Remove bundled bloatware apps" },
+      "description": {
+        "uk": "Новини, Погода, Пасьянс, Clipchamp, To Do, Power Automate, Поради, Office Hub, Feedback Hub, Карти, Кіно й ТБ, Зв'язок із телефоном, Family, Dev Home, Candy Crush, TikTok, Spotify тощо. Store, Калькулятор, Фото, Нотатки й Медіаплеєр лишаються.",
+        "en": "News, Weather, Solitaire, Clipchamp, To Do, Power Automate, Tips, Office Hub, Feedback Hub, Maps, Movies & TV, Phone Link, Family, Dev Home, Candy Crush, TikTok, Spotify, etc. Store, Calculator, Photos, Notepad and Media Player are kept."
+      },
+      "actions": [
+        { "type": "appx", "package": "Microsoft.BingNews" },
+        { "type": "appx", "package": "Microsoft.BingWeather" },
+        { "type": "appx", "package": "Microsoft.BingSearch" },
+        { "type": "appx", "package": "Microsoft.BingFinance" },
+        { "type": "appx", "package": "Microsoft.BingSports" },
+        { "type": "appx", "package": "Clipchamp.Clipchamp" },
+        { "type": "appx", "package": "Microsoft.Todos" },
+        { "type": "appx", "package": "Microsoft.PowerAutomateDesktop" },
+        { "type": "appx", "package": "Microsoft.GetHelp" },
+        { "type": "appx", "package": "Microsoft.Getstarted" },
+        { "type": "appx", "package": "Microsoft.MicrosoftOfficeHub" },
+        { "type": "appx", "package": "Microsoft.MicrosoftSolitaireCollection" },
+        { "type": "appx", "package": "Microsoft.WindowsFeedbackHub" },
+        { "type": "appx", "package": "Microsoft.WindowsMaps" },
+        { "type": "appx", "package": "Microsoft.ZuneVideo" },
+        { "type": "appx", "package": "Microsoft.ZuneMusic", "requires": { "os": ["win10"] } },
+        { "type": "appx", "package": "Microsoft.YourPhone" },
+        { "type": "appx", "package": "MicrosoftCorporationII.MicrosoftFamily" },
+        { "type": "appx", "package": "Microsoft.Windows.DevHome" },
+        { "type": "appx", "package": "Microsoft.549981C3F5F10" },
+        { "type": "appx", "package": "Microsoft.3DBuilder" },
+        { "type": "appx", "package": "Microsoft.Microsoft3DViewer" },
+        { "type": "appx", "package": "Microsoft.MixedReality.Portal" },
+        { "type": "appx", "package": "Microsoft.SkypeApp" },
+        { "type": "appx", "package": "Microsoft.People" },
+        { "type": "appx", "package": "Microsoft.Wallet" },
+        { "type": "appx", "package": "Microsoft.Messaging" },
+        { "type": "appx", "package": "Microsoft.Print3D" },
+        { "type": "appx", "package": "Microsoft.OneConnect" },
+        { "type": "appx", "package": "Microsoft.Office.OneNote" },
+        { "type": "appx", "package": "*CandyCrush*" },
+        { "type": "appx", "package": "*BubbleWitch*" },
+        { "type": "appx", "package": "*Disney*" },
+        { "type": "appx", "package": "*Spotify*" },
+        { "type": "appx", "package": "*Netflix*" },
+        { "type": "appx", "package": "*TikTok*" },
+        { "type": "appx", "package": "*Facebook*" },
+        { "type": "appx", "package": "*Instagram*" },
+        { "type": "appx", "package": "*Twitter*" },
+        { "type": "appx", "package": "*king.com*" },
+        { "type": "appx", "package": "*LinkedIn*" }
+      ]
+    },
+    {
+      "id": "apps.remove-teams-outlook",
+      "category": "apps",
+      "risk": "safe",
+      "name": { "uk": "Видалити Teams і новий Outlook", "en": "Remove Teams and new Outlook" },
+      "description": {
+        "uk": "Безкоштовний Teams і «новий Outlook», що ставляться разом із системою, та іконка чату на панелі завдань.",
+        "en": "Consumer Teams and the 'new Outlook' shipped with Windows, plus the Chat taskbar icon."
+      },
+      "actions": [
+        { "type": "appx", "package": "MSTeams" },
+        { "type": "appx", "package": "MicrosoftTeams" },
+        { "type": "appx", "package": "Microsoft.OutlookForWindows" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Chat", "name": "ChatIcon", "value": 3, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarMn", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "apps.disable-copilot",
+      "category": "apps",
+      "risk": "safe",
+      "requires": { "os": ["win11"] },
+      "name": { "uk": "Вимкнути та видалити Copilot", "en": "Disable and remove Copilot" },
+      "description": {
+        "uk": "Прибирає застосунок Copilot і його кнопку. На слабкому ПК він лише забирає пам'ять.",
+        "en": "Removes the Copilot app and its button."
+      },
+      "actions": [
+        { "type": "appx", "package": "Microsoft.Copilot" },
+        { "type": "appx", "package": "Microsoft.Windows.Ai.Copilot.Provider" },
+        { "type": "registry", "path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\WindowsCopilot", "name": "TurnOffWindowsCopilot", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsCopilot", "name": "TurnOffWindowsCopilot", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ShowCopilotButton", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "apps.remove-onedrive",
+      "category": "apps",
+      "risk": "moderate",
+      "name": { "uk": "Видалити OneDrive", "en": "Remove OneDrive" },
+      "description": {
+        "uk": "OneDrive запускається разом із системою і забирає пам'ять. Не вибирайте, якщо зберігаєте файли в OneDrive.",
+        "en": "OneDrive starts with Windows and uses memory. Do not select if you keep files in OneDrive."
+      },
+      "actions": [
+        {
+          "type": "command",
+          "label": { "uk": "деінсталяція OneDrive", "en": "uninstall OneDrive" },
+          "run": "Stop-Process -Name OneDrive -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; $setup = @(\"$env:SystemRoot\\System32\\OneDriveSetup.exe\", \"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\") + @(Get-ChildItem \"$env:LOCALAPPDATA\\Microsoft\\OneDrive\\*\\OneDriveSetup.exe\" -ErrorAction SilentlyContinue | ForEach-Object FullName) | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $setup) { throw 'Інсталятор OneDrive не знайдено' }; Start-Process $setup '/uninstall' -Wait",
+          "undoRun": "winget install --id Microsoft.OneDrive -e --accept-source-agreements --accept-package-agreements",
+          "test": "-not (Test-Path \"$env:LOCALAPPDATA\\Microsoft\\OneDrive\\OneDrive.exe\") -and -not (Test-Path \"${env:ProgramFiles}\\Microsoft OneDrive\\OneDrive.exe\")"
+        },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive", "name": "DisableFileSyncNGSC", "value": 1, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "apps.remove-xbox",
+      "category": "apps",
+      "risk": "moderate",
+      "name": { "uk": "Видалити Xbox-застосунки та служби", "en": "Remove Xbox apps and services" },
+      "description": {
+        "uk": "Не вибирайте, якщо граєте через Xbox / Game Pass або користуєтеся Xbox Game Bar.",
+        "en": "Do not select if you use Xbox / Game Pass or Xbox Game Bar."
+      },
+      "actions": [
+        { "type": "appx", "package": "Microsoft.XboxApp" },
+        { "type": "appx", "package": "Microsoft.GamingApp" },
+        { "type": "appx", "package": "Microsoft.XboxGameOverlay" },
+        { "type": "appx", "package": "Microsoft.XboxGamingOverlay" },
+        { "type": "appx", "package": "Microsoft.XboxIdentityProvider" },
+        { "type": "appx", "package": "Microsoft.XboxSpeechToTextOverlay" },
+        { "type": "appx", "package": "Microsoft.Xbox.TCUI" },
+        { "type": "service", "name": "XblAuthManager", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "XblGameSave", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "XboxNetApiSvc", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "XboxGipSvc", "startup": "Disabled", "stop": true }
+      ]
+    },
+    {
+      "id": "apps.block-autoinstall",
+      "category": "apps",
+      "risk": "safe",
+      "name": { "uk": "Заборонити автоустановку «рекомендованих» застосунків", "en": "Block automatic install of suggested apps" },
+      "description": {
+        "uk": "Windows сама встановлює ігри та програми партнерів. Цей твік це вимикає.",
+        "en": "Stops Windows from silently installing games and partner apps."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "ContentDeliveryAllowed", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "OemPreInstalledAppsEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "PreInstalledAppsEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "PreInstalledAppsEverEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SilentInstalledAppsEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent", "name": "DisableWindowsConsumerFeatures", "value": 1, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "privacy.telemetry",
+      "category": "privacy",
+      "risk": "safe",
+      "name": { "uk": "Вимкнути телеметрію", "en": "Disable telemetry" },
+      "description": {
+        "uk": "Збір діагностичних даних, служби DiagTrack і dmwappushservice, заплановані завдання телеметрії (CEIP, Compatibility Appraiser).",
+        "en": "Diagnostic data collection, DiagTrack and dmwappushservice services, telemetry scheduled tasks (CEIP, Compatibility Appraiser)."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection", "name": "AllowTelemetry", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection", "name": "AllowTelemetry", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Siuf\\Rules", "name": "NumberOfSIUFInPeriod", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Privacy", "name": "TailoredExperiencesWithDiagnosticDataEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppCompat", "name": "AITEnable", "value": 0, "kind": "DWord" },
+        { "type": "service", "name": "DiagTrack", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "dmwappushservice", "startup": "Disabled", "stop": true },
+        { "type": "scheduledTask", "path": "\\Microsoft\\Windows\\Application Experience\\Microsoft Compatibility Appraiser", "state": "Disabled" },
+        { "type": "scheduledTask", "path": "\\Microsoft\\Windows\\Application Experience\\ProgramDataUpdater", "state": "Disabled" },
+        { "type": "scheduledTask", "path": "\\Microsoft\\Windows\\Customer Experience Improvement Program\\Consolidator", "state": "Disabled" },
+        { "type": "scheduledTask", "path": "\\Microsoft\\Windows\\Customer Experience Improvement Program\\UsbCeip", "state": "Disabled" },
+        { "type": "scheduledTask", "path": "\\Microsoft\\Windows\\Autochk\\Proxy", "state": "Disabled" },
+        { "type": "scheduledTask", "path": "\\Microsoft\\Windows\\DiskDiagnostic\\Microsoft-Windows-DiskDiagnosticDataCollector", "state": "Disabled" },
+        { "type": "scheduledTask", "path": "\\Microsoft\\Windows\\Feedback\\Siuf\\DmClient", "state": "Disabled" },
+        { "type": "scheduledTask", "path": "\\Microsoft\\Windows\\Feedback\\Siuf\\DmClientOnScenarioDownload", "state": "Disabled" }
+      ]
+    },
+    {
+      "id": "privacy.ads-tips",
+      "category": "privacy",
+      "risk": "safe",
+      "name": { "uk": "Вимкнути рекламу, поради та пропозиції", "en": "Disable ads, tips and suggestions" },
+      "description": {
+        "uk": "Рекламний ID, «поради та підказки», пропозиції в меню Пуск і Параметрах, реклама на екрані блокування, нагадування OneDrive у Провіднику.",
+        "en": "Advertising ID, tips, suggestions in Start and Settings, lock screen ads, sync provider notifications in Explorer."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo", "name": "Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\AdvertisingInfo", "name": "DisabledByGroupPolicy", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SystemPaneSuggestionsEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContentEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SoftLandingEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "RotatingLockScreenOverlayEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-338387Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-338388Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-338389Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-338393Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-353694Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-353696Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-353698Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent", "name": "DisableSoftLanding", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ShowSyncProviderNotifications", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "privacy.activity-recall",
+      "category": "privacy",
+      "risk": "safe",
+      "name": { "uk": "Вимкнути журнал дій та Recall", "en": "Disable activity history and Recall" },
+      "description": {
+        "uk": "Історія дій (Timeline) і функція Recall, яка робить знімки екрана для ШІ.",
+        "en": "Activity history (Timeline) and Recall, which takes screen snapshots for AI."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System", "name": "EnableActivityFeed", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System", "name": "PublishUserActivities", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System", "name": "UploadUserActivities", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsAI", "name": "DisableAIDataAnalysis", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\WindowsAI", "name": "DisableAIDataAnalysis", "value": 1, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "privacy.location",
+      "category": "privacy",
+      "risk": "moderate",
+      "name": { "uk": "Вимкнути службу геолокації", "en": "Disable location service" },
+      "description": {
+        "uk": "Застосунки не зможуть визначати місцезнаходження (погода, карти, автоматичний часовий пояс).",
+        "en": "Apps will not be able to get your location (weather, maps, automatic time zone)."
+      },
+      "actions": [
+        { "type": "service", "name": "lfsvc", "startup": "Disabled", "stop": true }
+      ]
+    },
+    {
+      "id": "ui.widgets",
+      "category": "ui",
+      "risk": "safe",
+      "name": { "uk": "Вимкнути віджети / «Новини та інтереси»", "en": "Disable Widgets / News and Interests" },
+      "description": {
+        "uk": "Панель віджетів (Windows 11) або «Новини та інтереси» (Windows 10) постійно працює у фоні.",
+        "en": "The Widgets board (Windows 11) or News and Interests (Windows 10) runs in the background."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Dsh", "name": "AllowNewsAndInterests", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Feeds", "name": "EnableFeeds", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Feeds", "name": "ShellFeedsTaskbarViewMode", "value": 2, "kind": "DWord", "requires": { "os": ["win10"] } }
+      ]
+    },
+    {
+      "id": "ui.search-local",
+      "category": "ui",
+      "risk": "safe",
+      "name": { "uk": "Пошук без Bing, Cortana та веб-результатів", "en": "Local-only search (no Bing, Cortana, web results)" },
+      "description": {
+        "uk": "Пошук у меню Пуск шукає лише на комп'ютері. На панелі завдань — іконка замість довгого поля.",
+        "en": "Start menu search looks only on this PC. Search box on the taskbar becomes an icon."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search", "name": "AllowCortana", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search", "name": "DisableWebSearch", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search", "name": "ConnectedSearchUseWeb", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\Explorer", "name": "DisableSearchBoxSuggestions", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search", "name": "BingSearchEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search", "name": "CortanaConsent", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search", "name": "SearchboxTaskbarMode", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ShowCortanaButton", "value": 0, "kind": "DWord", "requires": { "os": ["win10"] } }
+      ]
+    },
+    {
+      "id": "ui.classic-context-menu",
+      "category": "ui",
+      "risk": "safe",
+      "requires": { "os": ["win11"] },
+      "rebootRequired": true,
+      "name": { "uk": "Класичне контекстне меню", "en": "Classic context menu" },
+      "description": {
+        "uk": "Повне меню правої кнопки миші без «Показати додаткові параметри». Відкривається швидше.",
+        "en": "Full right-click menu without 'Show more options'. Opens faster."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\\InprocServer32", "name": "", "value": "", "kind": "String" }
+      ]
+    },
+    {
+      "id": "ui.start-no-recommended",
+      "category": "ui",
+      "risk": "safe",
+      "requires": { "os": ["win11"] },
+      "name": { "uk": "Меню Пуск без «Рекомендованих»", "en": "Start menu without Recommended" },
+      "description": {
+        "uk": "Прибирає рекомендовані файли й застосунки з меню Пуск і дає більше місця закріпленим.",
+        "en": "Removes recommended files and apps from Start and gives more room to pinned apps."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "Start_Layout", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "Start_IrisRecommendations", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer", "name": "HideRecommendedSection", "value": 1, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "ui.taskbar-left",
+      "category": "ui",
+      "risk": "safe",
+      "requires": { "os": ["win11"] },
+      "name": { "uk": "Панель завдань ліворуч", "en": "Left-aligned taskbar" },
+      "description": {
+        "uk": "Кнопка Пуск і значки ліворуч, як у Windows 10.",
+        "en": "Start button and icons on the left, like Windows 10."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarAl", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "ui.explorer",
+      "category": "ui",
+      "risk": "safe",
+      "name": { "uk": "Провідник: розширення файлів, «Цей ПК»", "en": "Explorer: file extensions, This PC" },
+      "description": {
+        "uk": "Видно розширення файлів (.exe, .pdf…), Провідник відкривається на «Цей ПК», без кнопки «Подання завдань».",
+        "en": "Shows file extensions, opens Explorer to This PC, hides the Task View button."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "HideFileExt", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "LaunchTo", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ShowTaskViewButton", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People", "name": "PeopleBand", "value": 0, "kind": "DWord", "requires": { "os": ["win10"] } }
+      ]
+    },
+    {
+      "id": "perf.background-apps",
+      "category": "performance",
+      "risk": "moderate",
+      "name": { "uk": "Вимкнути фонові застосунки", "en": "Disable background apps" },
+      "description": {
+        "uk": "Застосунки з Microsoft Store не працюватимуть у фоні, коли закриті. Сповіщення від них можуть приходити із запізненням.",
+        "en": "Store apps will not run in the background when closed. Their notifications may be delayed."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications", "name": "GlobalUserDisabled", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search", "name": "BackgroundAppGlobalToggle", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy", "name": "LetAppsRunInBackground", "value": 2, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "perf.visual-effects",
+      "category": "performance",
+      "risk": "safe",
+      "name": { "uk": "Вимкнути анімації та прозорість", "en": "Disable animations and transparency" },
+      "description": {
+        "uk": "Режим «найкраща швидкодія», але шрифти лишаються гладкими, а мініатюри — на місці.",
+        "en": "'Best performance' visual mode, keeping smooth fonts and thumbnails."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects", "name": "VisualFXSetting", "value": 3, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\Control Panel\\Desktop", "name": "UserPreferencesMask", "value": [144, 18, 3, 128, 16, 0, 0, 0], "kind": "Binary" },
+        { "type": "registry", "path": "HKCU:\\Control Panel\\Desktop", "name": "DragFullWindows", "value": "0", "kind": "String" },
+        { "type": "registry", "path": "HKCU:\\Control Panel\\Desktop", "name": "MenuShowDelay", "value": "100", "kind": "String" },
+        { "type": "registry", "path": "HKCU:\\Control Panel\\Desktop", "name": "FontSmoothing", "value": "2", "kind": "String" },
+        { "type": "registry", "path": "HKCU:\\Control Panel\\Desktop\\WindowMetrics", "name": "MinAnimate", "value": "0", "kind": "String" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarAnimations", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ListviewAlphaSelect", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ListviewShadow", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\DWM", "name": "EnableAeroPeek", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "name": "EnableTransparency", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "perf.game-dvr",
+      "category": "performance",
+      "risk": "safe",
+      "name": { "uk": "Вимкнути Game DVR (фоновий запис ігор)", "en": "Disable Game DVR (background recording)" },
+      "description": {
+        "uk": "Фоновий запис знижує FPS. Ігровий режим лишається увімкненим.",
+        "en": "Background recording lowers FPS. Game Mode stays enabled."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\System\\GameConfigStore", "name": "GameDVR_Enabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR", "name": "AllowGameDVR", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR", "name": "AppCaptureEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\GameBar", "name": "AutoGameModeEnabled", "value": 1, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "perf.edge-background",
+      "category": "performance",
+      "risk": "safe",
+      "name": { "uk": "Edge не працює у фоні після закриття", "en": "Stop Edge running in the background" },
+      "description": {
+        "uk": "Вимикає «прискорення запуску», фоновий режим і попереднє завантаження Edge — економія пам'яті.",
+        "en": "Disables Edge startup boost, background mode and preloading to save memory."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge", "name": "StartupBoostEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge", "name": "BackgroundModeEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\MicrosoftEdge\\Main", "name": "AllowPrelaunch", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\MicrosoftEdge\\TabPreloader", "name": "AllowTabPreloading", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "perf.power-high",
+      "category": "performance",
+      "risk": "moderate",
+      "name": { "uk": "Схема живлення «Висока продуктивність»", "en": "High performance power plan" },
+      "description": {
+        "uk": "Процесор не скидає частоту. Ноутбук від батареї розряджатиметься швидше.",
+        "en": "CPU keeps its clock speed. Laptops drain the battery faster."
+      },
+      "conflicts": ["perf.power-ultimate"],
+      "actions": [
+        { "type": "powercfg", "scheme": "high" }
+      ]
+    },
+    {
+      "id": "perf.power-ultimate",
+      "category": "gaming",
+      "risk": "moderate",
+      "requires": { "hardware": { "battery": false } },
+      "name": { "uk": "Схема живлення «Максимальна продуктивність»", "en": "Ultimate performance power plan" },
+      "description": {
+        "uk": "Для настільних ігрових ПК: мінімальні затримки, найбільше енергоспоживання.",
+        "en": "For gaming desktops: lowest latency, highest power use."
+      },
+      "conflicts": ["perf.power-high"],
+      "actions": [
+        { "type": "powercfg", "scheme": "ultimate" }
+      ]
+    },
+    {
+      "id": "perf.startup-delay",
+      "category": "performance",
+      "risk": "safe",
+      "name": { "uk": "Не затримувати запуск програм з автозавантаження", "en": "Remove startup apps delay" },
+      "description": {
+        "uk": "Windows за замовчуванням чекає кілька секунд, перш ніж запускати програми з автозавантаження.",
+        "en": "Windows waits a few seconds before launching startup apps by default."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Serialize", "name": "StartupDelayInMSec", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "perf.disable-search-index",
+      "category": "performance",
+      "risk": "moderate",
+      "requires": { "hardware": { "systemDisk": ["hdd"] } },
+      "name": { "uk": "Вимкнути індексацію пошуку (для HDD)", "en": "Disable search indexing (HDD)" },
+      "description": {
+        "uk": "Індексація постійно навантажує жорсткий диск. Пошук працюватиме, але повільніше.",
+        "en": "Indexing keeps the hard disk busy. Search still works, but slower."
+      },
+      "actions": [
+        { "type": "service", "name": "WSearch", "startup": "Disabled", "stop": true }
+      ]
+    },
+    {
+      "id": "perf.disable-sysmain",
+      "category": "performance",
+      "risk": "moderate",
+      "requires": { "hardware": { "systemDisk": ["hdd"] } },
+      "name": { "uk": "Вимкнути SysMain / Superfetch (для HDD)", "en": "Disable SysMain / Superfetch (HDD)" },
+      "description": {
+        "uk": "Часта причина «диск 100%» на HDD з малим обсягом пам'яті. На SSD шкодить, тому там недоступно.",
+        "en": "Common cause of 100% disk usage on HDD with low RAM. Harmful on SSD, so unavailable there."
+      },
+      "actions": [
+        { "type": "service", "name": "SysMain", "startup": "Disabled", "stop": true }
+      ]
+    },
+    {
+      "id": "perf.disable-services",
+      "category": "performance",
+      "risk": "moderate",
+      "name": { "uk": "Вимкнути зайві служби", "en": "Disable unneeded services" },
+      "description": {
+        "uk": "Звіти про помилки, діагностика, офлайн-карти, факс, демо-режим, віддалений реєстр, мережевий доступ Media Player.",
+        "en": "Error reporting, diagnostics, offline maps, fax, retail demo, remote registry, Media Player network sharing."
+      },
+      "actions": [
+        { "type": "service", "name": "WerSvc", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "DPS", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "WdiServiceHost", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "WdiSystemHost", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "MapsBroker", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "Fax", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "RetailDemo", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "RemoteRegistry", "startup": "Disabled", "stop": true },
+        { "type": "service", "name": "WMPNetworkSvc", "startup": "Disabled", "stop": true }
+      ]
+    },
+    {
+      "id": "perf.delivery-optimization",
+      "category": "performance",
+      "risk": "safe",
+      "name": { "uk": "Не роздавати оновлення іншим комп'ютерам (P2P)", "en": "Disable update sharing (P2P)" },
+      "description": {
+        "uk": "Windows не використовуватиме ваш інтернет і диск, щоб роздавати оновлення іншим.",
+        "en": "Windows will not use your bandwidth and disk to share updates with other PCs."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization", "name": "DODownloadMode", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "perf.enable-trim",
+      "category": "performance",
+      "risk": "safe",
+      "requires": { "hardware": { "systemDisk": ["ssd", "nvme"] } },
+      "name": { "uk": "Увімкнути TRIM для SSD", "en": "Enable SSD TRIM" },
+      "description": {
+        "uk": "Без TRIM SSD поступово сповільнюється і швидше зношується. Зазвичай увімкнено за замовчуванням.",
+        "en": "Without TRIM an SSD slows down over time and wears faster. Usually enabled by default."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem", "name": "DisableDeleteNotification", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "perf.disable-hibernation",
+      "category": "performance",
+      "risk": "moderate",
+      "requires": { "hardware": { "systemDisk": ["ssd", "nvme"] } },
+      "name": { "uk": "Вимкнути гібернацію (для SSD)", "en": "Disable hibernation (SSD)" },
+      "description": {
+        "uk": "Звільняє кілька ГБ на диску C:, але вимикає «швидкий запуск». На HDD запуск стане повільнішим, тому там недоступно.",
+        "en": "Frees several GB on C: but disables Fast Startup. Unavailable on HDD where it would slow down boot."
+      },
+      "actions": [
+        { "type": "powercfg", "hibernate": false }
+      ]
+    },
+    {
+      "id": "perf.disable-memory-integrity",
+      "category": "performance",
+      "risk": "expert",
+      "rebootRequired": true,
+      "name": { "uk": "Вимкнути ізоляцію ядра (Memory Integrity)", "en": "Disable Memory Integrity (HVCI)" },
+      "description": {
+        "uk": "Може дати кілька відсотків продуктивності на старих процесорах, але знижує захист від шкідливих драйверів. Лише якщо розумієте наслідки.",
+        "en": "May gain a few percent on old CPUs but weakens protection against malicious drivers. Only if you understand the trade-off."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity", "name": "Enabled", "value": 0, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "updates.no-wu-drivers",
+      "category": "updates",
+      "risk": "moderate",
+      "name": { "uk": "Не встановлювати драйвери через Windows Update", "en": "Do not install drivers via Windows Update" },
+      "description": {
+        "uk": "Windows не підмінятиме драйвери самостійно (часто старшими або загальними версіями) і не завантажуватиме фірмові застосунки пристроїв. Драйвери ставите ви — з сайту виробника або через вкладку «Драйвери». Оновлення безпеки Windows приходять як і раніше.",
+        "en": "Windows will not replace drivers on its own or download device apps. Install drivers yourself from the manufacturer. Security updates are not affected."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ExcludeWUDriversInQualityUpdate", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DriverSearching", "name": "SearchOrderConfig", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Device Metadata", "name": "PreventDeviceMetadataFromNetwork", "value": 1, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "cleanup.temp",
+      "category": "cleanup",
+      "risk": "safe",
+      "irreversible": true,
+      "name": { "uk": "Видалити тимчасові файли", "en": "Delete temporary files" },
+      "description": {
+        "uk": "Очищує папки TEMP користувача та Windows. Файли, зайняті програмами, пропускаються.",
+        "en": "Cleans user and Windows TEMP folders. Files in use are skipped."
+      },
+      "actions": [
+        {
+          "type": "command",
+          "label": { "uk": "очищення %TEMP% і C:\\Windows\\Temp", "en": "clean %TEMP% and C:\\Windows\\Temp" },
+          "run": "Remove-Item \"$env:TEMP\\*\" -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item \"$env:SystemRoot\\Temp\\*\" -Recurse -Force -ErrorAction SilentlyContinue"
+        }
+      ]
+    },
+    {
+      "id": "cleanup.update-cache",
+      "category": "cleanup",
+      "risk": "safe",
+      "irreversible": true,
+      "name": { "uk": "Очистити кеш Windows Update", "en": "Clear Windows Update cache" },
+      "description": {
+        "uk": "Видаляє вже встановлені завантаження оновлень (SoftwareDistribution\\Download). Windows за потреби завантажить їх знову.",
+        "en": "Deletes already installed update downloads (SoftwareDistribution\\Download). Windows re-downloads them if needed."
+      },
+      "actions": [
+        {
+          "type": "command",
+          "label": { "uk": "очищення SoftwareDistribution\\Download", "en": "clean SoftwareDistribution\\Download" },
+          "run": "Stop-Service wuauserv -Force -ErrorAction SilentlyContinue; Remove-Item \"$env:SystemRoot\\SoftwareDistribution\\Download\\*\" -Recurse -Force -ErrorAction SilentlyContinue; Start-Service wuauserv -ErrorAction SilentlyContinue"
+        }
+      ]
+    },
+    {
+      "id": "cleanup.leftovers",
+      "category": "cleanup",
+      "risk": "safe",
+      "irreversible": true,
+      "name": { "uk": "Видалити дампи збоїв і залишки інсталяторів", "en": "Delete crash dumps and installer leftovers" },
+      "description": {
+        "uk": "Дампи пам'яті, звіти про помилки (WER), розпаковані інсталятори відеодрайверів у C:\\NVIDIA і C:\\AMD.",
+        "en": "Memory dumps, Windows Error Reporting files, extracted GPU driver installers in C:\\NVIDIA and C:\\AMD."
+      },
+      "actions": [
+        {
+          "type": "command",
+          "label": { "uk": "видалення дампів, звітів WER і C:\\NVIDIA, C:\\AMD", "en": "delete dumps, WER reports and C:\\NVIDIA, C:\\AMD" },
+          "run": "$w = $env:SystemRoot; foreach ($p in @(\"$w\\MEMORY.DMP\", \"$w\\Minidump\\*\", \"$w\\LiveKernelReports\\*\", \"$env:LOCALAPPDATA\\CrashDumps\\*\", \"$env:ProgramData\\Microsoft\\Windows\\WER\\ReportArchive\\*\", \"$env:ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\*\", \"$env:SystemDrive\\NVIDIA\", \"$env:SystemDrive\\AMD\")) { Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue }"
+        }
+      ]
+    },
+    {
+      "id": "cleanup.do-cache",
+      "category": "cleanup",
+      "risk": "safe",
+      "irreversible": true,
+      "name": { "uk": "Очистити кеш оптимізації доставки", "en": "Clear Delivery Optimization cache" },
+      "description": {
+        "uk": "Копії оновлень, які Windows тримає для роздачі іншим ПК.",
+        "en": "Update copies Windows keeps to share with other PCs."
+      },
+      "actions": [
+        { "type": "command", "label": { "uk": "Delete-DeliveryOptimizationCache", "en": "Delete-DeliveryOptimizationCache" }, "run": "Delete-DeliveryOptimizationCache -Force -ErrorAction SilentlyContinue" }
+      ]
+    },
+    {
+      "id": "cleanup.storage-sense",
+      "category": "cleanup",
+      "risk": "safe",
+      "name": { "uk": "Увімкнути Контроль пам'яті (Storage Sense)", "en": "Enable Storage Sense" },
+      "description": {
+        "uk": "Windows сама видалятиме тимчасові файли й старий вміст кошика, коли місця мало.",
+        "en": "Windows automatically removes temporary files and old Recycle Bin items when space runs low."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy", "name": "01", "value": 1, "kind": "DWord" }
+      ]
+    },
+    {
+      "id": "perf.reduced-hiberfile",
+      "category": "performance",
+      "risk": "safe",
+      "name": { "uk": "Зменшити файл гібернації", "en": "Reduce hibernation file" },
+      "description": {
+        "uk": "Файл hiberfil.sys стає приблизно вдвічі меншим. Швидкий запуск працює, повна гібернація — ні.",
+        "en": "hiberfil.sys becomes about half the size. Fast Startup keeps working, full hibernation does not."
+      },
+      "actions": [
+        { "type": "command", "label": { "uk": "powercfg /h /type reduced", "en": "powercfg /h /type reduced" }, "run": "powercfg /h /type reduced | Out-Null", "undoRun": "powercfg /h /type full | Out-Null" }
+      ]
+    },
+    {
+      "id": "safety.disable-smb1",
+      "category": "safety",
+      "risk": "safe",
+      "rebootRequired": true,
+      "name": { "uk": "Вимкнути застарілий протокол SMB1", "en": "Disable legacy SMB1 protocol" },
+      "description": {
+        "uk": "SMB1 використовували віруси WannaCry і NotPetya. Сучасним пристроям він не потрібен; лише дуже старі мережеві сховища можуть перестати відкриватися.",
+        "en": "SMB1 was used by WannaCry and NotPetya. Modern devices do not need it; only very old NAS devices may stop working."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\mrxsmb10", "name": "Start", "value": 4, "kind": "DWord", "ifKeyExists": true },
+        { "type": "registry", "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters", "name": "SMB1", "value": 0, "kind": "DWord", "ifKeyExists": true }
+      ]
+    },
+    {
+      "id": "safety.disable-guest",
+      "category": "safety",
+      "risk": "safe",
+      "name": { "uk": "Вимкнути обліковий запис «Гість»", "en": "Disable the Guest account" },
+      "description": {
+        "uk": "Вхід без пароля для будь-кого — зайвий ризик.",
+        "en": "Password-less sign-in for anyone is an unnecessary risk."
+      },
+      "actions": [
+        {
+          "type": "command",
+          "label": { "uk": "Disable-LocalUser (SID *-501)", "en": "Disable-LocalUser (SID *-501)" },
+          "run": "Get-LocalUser | Where-Object { $_.SID -like '*-501' } | Disable-LocalUser",
+          "undoRun": "Get-LocalUser | Where-Object { $_.SID -like '*-501' } | Enable-LocalUser",
+          "test": "-not (Get-LocalUser | Where-Object { $_.SID -like '*-501' -and $_.Enabled })"
+        }
+      ]
+    },
+    {
+      "id": "cleanup.recycle-bin",
+      "category": "cleanup",
+      "risk": "moderate",
+      "irreversible": true,
+      "name": { "uk": "Очистити кошик", "en": "Empty Recycle Bin" },
+      "description": {
+        "uk": "Файли з кошика буде видалено назавжди.",
+        "en": "Files in the Recycle Bin will be permanently deleted."
+      },
+      "actions": [
+        { "type": "command", "label": { "uk": "очищення кошика", "en": "empty Recycle Bin" }, "run": "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" }
+      ]
+    }
+  ]
+}

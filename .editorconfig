@@ -1,0 +1,15 @@
+root = true
+
+[*]
+end_of_line = crlf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+
+# PowerShell 5.1 reads BOM-less files as ANSI and breaks Cyrillic text
+[*.{ps1,psm1,psd1}]
+charset = utf-8-bom
+
+[*.{json,md,xaml}]
+charset = utf-8
+indent_size = 2

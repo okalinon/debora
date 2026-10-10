@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "presets": [
+    {
+      "id": "Minimal",
+      "name": { "uk": "Мінімальний", "en": "Minimal" },
+      "description": { "uk": "Лише безпечні зміни конфіденційності й реклами. Підходить будь-якому ПК.", "en": "Safe privacy and ads changes only. Fits any PC." },
+      "tweaks": [
+        "apps.remove-bloat", "apps.block-autoinstall",
+        "privacy.telemetry", "privacy.ads-tips", "privacy.activity-recall",
+        "ui.widgets", "ui.search-local",
+        "perf.delivery-optimization",
+        "cleanup.temp"
+      ]
+    },
+    {
+      "id": "Standard",
+      "name": { "uk": "Стандартний", "en": "Standard" },
+      "description": { "uk": "Звичайний сучасний ПК з SSD.", "en": "A regular modern PC with an SSD." },
+      "tweaks": [
+        "apps.remove-bloat", "apps.remove-teams-outlook", "apps.disable-copilot", "apps.block-autoinstall",
+        "privacy.telemetry", "privacy.ads-tips", "privacy.activity-recall",
+        "ui.widgets", "ui.search-local", "ui.classic-context-menu", "ui.start-no-recommended", "ui.explorer",
+        "perf.background-apps", "perf.game-dvr", "perf.edge-background", "perf.startup-delay", "perf.delivery-optimization",
+        "cleanup.temp", "cleanup.update-cache"
+      ]
+    },
+    {
+      "id": "WeakPC",
+      "name": { "uk": "Слабкий ПК", "en": "Weak PC" },
+      "description": { "uk": "Старі ноутбуки й ПК: HDD, 4 ГБ RAM, слабкий процесор.", "en": "Old laptops and PCs: HDD, 4 GB RAM, slow CPU." },
+      "tweaks": [
+        "apps.remove-bloat", "apps.remove-teams-outlook", "apps.disable-copilot", "apps.remove-onedrive", "apps.remove-xbox", "apps.block-autoinstall",
+        "privacy.telemetry", "privacy.ads-tips", "privacy.activity-recall",
+        "ui.widgets", "ui.search-local", "ui.classic-context-menu", "ui.start-no-recommended", "ui.explorer",
+        "perf.background-apps", "perf.visual-effects", "perf.game-dvr", "perf.edge-background", "perf.power-high",
+        "perf.startup-delay", "perf.disable-search-index", "perf.disable-sysmain", "perf.disable-services", "perf.delivery-optimization",
+        "cleanup.temp", "cleanup.update-cache"
+      ]
+    },
+    {
+      "id": "Gaming",
+      "name": { "uk": "Ігровий", "en": "Gaming" },
+      "description": { "uk": "Ігрові ПК: менше фонових процесів, Xbox-сервіси лишаються.", "en": "Gaming PCs: fewer background tasks, Xbox services kept." },
+      "tweaks": [
+        "apps.remove-bloat", "apps.remove-teams-outlook", "apps.disable-copilot", "apps.block-autoinstall",
+        "privacy.telemetry", "privacy.ads-tips", "privacy.activity-recall",
+        "ui.widgets", "ui.search-local", "ui.classic-context-menu", "ui.start-no-recommended", "ui.explorer",
+        "perf.background-apps", "perf.game-dvr", "perf.edge-background", "perf.power-ultimate", "perf.startup-delay", "perf.delivery-optimization",
+        "cleanup.temp"
+      ]
+    },
+    {
+      "id": "Maximum",
+      "name": { "uk": "Максимальний", "en": "Maximum" },
+      "description": { "uk": "Усе, крім експертних твіків. Для тих, хто розуміє кожен пункт.", "en": "Everything except expert tweaks. For users who understand each item." },
+      "tweaks": [
+        "apps.remove-bloat", "apps.remove-teams-outlook", "apps.disable-copilot", "apps.remove-onedrive", "apps.remove-xbox", "apps.block-autoinstall",
+        "privacy.telemetry", "privacy.ads-tips", "privacy.activity-recall", "privacy.location",
+        "ui.widgets", "ui.search-local", "ui.classic-context-menu", "ui.start-no-recommended", "ui.explorer",
+        "perf.background-apps", "perf.visual-effects", "perf.game-dvr", "perf.edge-background", "perf.power-high",
+        "perf.startup-delay", "perf.disable-search-index", "perf.disable-sysmain", "perf.disable-services", "perf.delivery-optimization",
+        "perf.disable-hibernation", "updates.no-wu-drivers",
+        "cleanup.temp", "cleanup.update-cache"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "note": "Програми з відомими вразливостями (minVersion — перша безпечна версія) або без підтримки (eol — дата кінця підтримки). ПЕРЕВІРЯТИ ПЕРЕД КОЖНИМ РЕЛІЗОМ за офіційними повідомленнями виробників.",
+  "programs": [
+    { "pattern": "WinRAR*", "minVersion": "7.13", "exploited": true, "url": "https://www.win-rar.com/",
+      "reason": { "uk": "У старих версіях WinRAR є вразливості, які активно використовують у фішингових архівах.", "en": "Older WinRAR versions have actively exploited archive vulnerabilities." } },
+    { "pattern": "7-Zip*", "minVersion": "25.0", "url": "https://www.7-zip.org/",
+      "reason": { "uk": "Старі версії 7-Zip мають вразливості обробки архівів.", "en": "Older 7-Zip versions have archive handling vulnerabilities." } },
+    { "pattern": "VLC media player*", "minVersion": "3.0.21", "url": "https://www.videolan.org/",
+      "reason": { "uk": "Старі версії VLC мають вразливості, що спрацьовують при відкритті медіафайлу.", "en": "Older VLC versions have media-file vulnerabilities." } },
+    { "pattern": "Adobe Flash*", "eol": "2020-12-31",
+      "reason": { "uk": "Flash Player не підтримується з 2021 року й небезпечний. Видаліть його.", "en": "Flash Player is unsupported since 2021. Uninstall it." } },
+    { "pattern": "Microsoft Office*2010*", "eol": "2020-10-13",
+      "reason": { "uk": "Office 2010 не отримує виправлень безпеки.", "en": "Office 2010 receives no security fixes." } },
+    { "pattern": "Microsoft Office*2013*", "eol": "2023-04-11",
+      "reason": { "uk": "Office 2013 не отримує виправлень безпеки.", "en": "Office 2013 receives no security fixes." } },
+    { "pattern": "Microsoft Office*2016*", "eol": "2025-10-14",
+      "reason": { "uk": "Office 2016 не отримує виправлень безпеки — макровіруси та шкідливі документи небезпечніші.", "en": "Office 2016 receives no security fixes." } },
+    { "pattern": "Microsoft Office*2019*", "eol": "2025-10-14",
+      "reason": { "uk": "Office 2019 не отримує виправлень безпеки — макровіруси та шкідливі документи небезпечніші.", "en": "Office 2019 receives no security fixes." } },
+    { "pattern": "Microsoft Office*2021*", "eol": "2026-10-13",
+      "reason": { "uk": "Підтримка Office 2021 закінчується; плануйте перехід на новішу версію.", "en": "Office 2021 support is ending." } },
+    { "pattern": "Python 2.*", "eol": "2020-01-01",
+      "reason": { "uk": "Python 2 не підтримується з 2020 року.", "en": "Python 2 is unsupported since 2020." } },
+    { "pattern": "Java 7*", "eol": "2022-07-19",
+      "reason": { "uk": "Java 7 не отримує оновлень безпеки.", "en": "Java 7 receives no security updates." } },
+    { "pattern": "Skype*7.*", "eol": "2018-11-01",
+      "reason": { "uk": "Класичний Skype 7 давно не підтримується.", "en": "Classic Skype 7 is long unsupported." } }
+  ]
+}

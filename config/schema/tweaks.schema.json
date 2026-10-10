@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/debloater9/debloater9/config/schema/tweaks.schema.json",
+  "title": "Debloater9 tweak catalog",
+  "type": "object",
+  "required": ["schema", "tweaks"],
+  "properties": {
+    "schema": { "const": 1 },
+    "tweaks": { "type": "array", "items": { "$ref": "#/definitions/tweak" } }
+  },
+  "definitions": {
+    "text": {
+      "type": "object",
+      "required": ["uk", "en"],
+      "properties": { "uk": { "type": "string", "minLength": 1 }, "en": { "type": "string", "minLength": 1 } },
+      "additionalProperties": false
+    },
+    "requires": {
+      "type": "object",
+      "properties": {
+        "os": { "type": "array", "items": { "enum": ["win10", "win11"] } },
+        "minBuild": { "type": "integer" },
+        "maxBuild": { "type": "integer" },
+        "hardware": {
+          "type": "object",
+          "properties": {
+            "systemDisk": { "type": "array", "items": { "enum": ["hdd", "ssd", "nvme"] } },
+            "minRamGB": { "type": "number" },
+            "maxRamGB": { "type": "number" },
+            "battery": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "tweak": {
+      "type": "object",
+      "required": ["id", "category", "risk", "name", "description", "actions"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z]+\\.[a-z0-9-]+$" },
+        "category": { "enum": ["privacy", "apps", "ui", "performance", "gaming", "cleanup", "updates", "safety"] },
+        "risk": { "enum": ["safe", "moderate", "expert"] },
+        "name": { "$ref": "#/definitions/text" },
+        "description": { "$ref": "#/definitions/text" },
+        "requires": { "$ref": "#/definitions/requires" },
+        "conflicts": { "type": "array", "items": { "type": "string" } },
+        "rebootRequired": { "type": "boolean" },
+        "irreversible": { "type": "boolean" },
+        "actions": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/action" } }
+      },
+      "additionalProperties": false
+    },
+    "action": {
+      "type": "object",
+      "required": ["type"],
+      "properties": { "requires": { "$ref": "#/definitions/requires" } },
+      "oneOf": [
+        {
+          "properties": {
+            "type": { "const": "registry" },
+            "path": { "type": "string", "pattern": "^(HKLM|HKCU|HKCR|HKU):\\\\" },
+            "name": { "type": "string" },
+            "value": {},
+            "kind": { "enum": ["String", "ExpandString", "Binary", "DWord", "MultiString", "QWord"] },
+            "delete": { "type": "boolean" },
+            "ifKeyExists": { "type": "boolean" }
+          },
+          "required": ["path", "name"]
+        },
+        {
+          "properties": {
+            "type": { "const": "service" },
+            "name": { "type": "string" },
+            "startup": { "enum": ["Disabled", "Manual", "Automatic", "AutomaticDelayed"] },
+            "stop": { "type": "boolean" }
+          },
+          "required": ["name", "startup"]
+        },
+        {
+          "properties": { "type": { "const": "appx" }, "package": { "type": "string" } },
+          "required": ["package"]
+        },
+        {
+          "properties": {
+            "type": { "const": "scheduledTask" },
+            "path": { "type": "string", "pattern": "^\\\\" },
+            "state": { "enum": ["Disabled", "Enabled"] }
+          },
+          "required": ["path", "state"]
+        },
+        {
+          "properties": {
+            "type": { "const": "powercfg" },
+            "scheme": { "type": "string" },
+            "hibernate": { "type": "boolean" }
+          }
+        },
+        {
+          "properties": {
+            "type": { "const": "command" },
+            "run": { "type": "string" },
+            "undoRun": { "type": "string" },
+            "test": { "type": "string" },
+            "label": { "$ref": "#/definitions/text" }
+          },
+          "required": ["run"]
+        }
+      ]
+    }
+  }
+}

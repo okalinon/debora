@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "note": "Де брати драйвери. oem — сторінки виробників ПК (шаблони: {model}, {modelUnderscore}, {serial}); chipVendors — виробники чипів за кодом VEN/VID; acpiVendors — префікси ACPI-ідентифікаторів.",
+  "oem": [
+    { "match": "^Acer", "name": "Acer", "url": "https://www.acer.com/ua-uk/support/product-support/{modelUnderscore}/downloads", "fallback": "https://www.acer.com/ua-uk/support/drivers-and-manuals" },
+    { "match": "^Dell", "name": "Dell", "url": "https://www.dell.com/support/home/uk-ua/product-support/servicetag/{serial}/drivers", "fallback": "https://www.dell.com/support/home/uk-ua" },
+    { "match": "^LENOVO", "name": "Lenovo", "url": "https://pcsupport.lenovo.com/ua/uk/", "note": "Введіть серійний номер {serial} або встановіть Lenovo Vantage" },
+    { "match": "^(HP|Hewlett)", "name": "HP", "url": "https://support.hp.com/ua-uk/drivers", "note": "Введіть серійний номер {serial} або встановіть HP Support Assistant" },
+    { "match": "^ASUS", "name": "ASUS", "url": "https://www.asus.com/ua-ua/support/download-center/", "note": "Знайдіть модель {model} або встановіть MyASUS" },
+    { "match": "^(Micro-Star|MSI)", "name": "MSI", "url": "https://www.msi.com/support/download", "note": "Знайдіть модель {model}" },
+    { "match": "^(Gigabyte|GIGA-BYTE)", "name": "Gigabyte", "url": "https://www.gigabyte.com/Support", "note": "Знайдіть модель {model}" },
+    { "match": "^(Samsung)", "name": "Samsung", "url": "https://www.samsung.com/ua/support/", "note": "Знайдіть модель {model}" },
+    { "match": "^(Huawei|HONOR)", "name": "Huawei / Honor", "url": "https://consumer.huawei.com/ua/support/", "note": "Встановіть PC Manager" },
+    { "match": "^Microsoft", "name": "Microsoft Surface", "url": "https://support.microsoft.com/surface/download-drivers-and-firmware-for-surface-09bb2e09-2a4b-cb69-0951-078a7739e120" }
+  ],
+  "chipVendors": {
+    "8086": { "name": "Intel", "url": "https://www.intel.com/content/www/us/en/support/detect.html", "tool": "Intel Driver & Support Assistant" },
+    "8087": { "name": "Intel", "url": "https://www.intel.com/content/www/us/en/support/detect.html", "tool": "Intel Driver & Support Assistant" },
+    "10DE": { "name": "NVIDIA", "url": "https://www.nvidia.com/Download/index.aspx", "tool": "NVIDIA App" },
+    "1002": { "name": "AMD", "url": "https://www.amd.com/en/support/download/drivers.html", "tool": "AMD Auto-Detect" },
+    "1022": { "name": "AMD", "url": "https://www.amd.com/en/support/download/drivers.html", "tool": "AMD Auto-Detect (чипсет)" },
+    "10EC": { "name": "Realtek", "oemPreferred": true },
+    "0BDA": { "name": "Realtek", "oemPreferred": true },
+    "168C": { "name": "Qualcomm Atheros", "oemPreferred": true },
+    "14E4": { "name": "Broadcom", "oemPreferred": true },
+    "14F1": { "name": "Conexant", "oemPreferred": true },
+    "1814": { "name": "MediaTek (Ralink)", "oemPreferred": true },
+    "14C3": { "name": "MediaTek", "oemPreferred": true },
+    "17CB": { "name": "Qualcomm", "oemPreferred": true },
+    "1B21": { "name": "ASMedia", "oemPreferred": true },
+    "1217": { "name": "O2 Micro", "oemPreferred": true },
+    "1524": { "name": "ENE Technology", "oemPreferred": true }
+  },
+  "acpiVendors": {
+    "ENE": "ENE Technology", "ELAN": "ELAN (тачпад)", "ETD": "ELAN (тачпад)", "SYN": "Synaptics (тачпад)", "SYNA": "Synaptics (тачпад)",
+    "INT": "Intel", "INTC": "Intel", "AMDI": "AMD", "AMD": "AMD", "MSFT": "Microsoft", "ATK": "ASUS", "ASUS": "ASUS",
+    "HPQ": "HP", "LEN": "Lenovo", "DELL": "Dell", "ACPI": "ACPI", "PNP": "стандартний пристрій", "QCOM": "Qualcomm",
+    "BCM": "Broadcom", "ALPS": "ALPS (тачпад)", "FTE": "FocalTech (тачпад)", "GXTP": "Goodix (тачпад)", "SMO": "Sensors", "WCOM": "Wacom", "NVDA": "NVIDIA", "MSHW": "Microsoft Surface", "ACER": "Acer", "SAM": "Samsung", "TOS": "Toshiba", "SNY": "Sony", "FUJ": "Fujitsu", "MSI": "MSI", "IDEA": "Lenovo", "VPC": "Lenovo", "RTK": "Realtek", "10EC": "Realtek", "CPLM": "Compal", "IPS": "Intel", "TXNW": "Texas Instruments", "NXP": "NXP"
+  }
+}

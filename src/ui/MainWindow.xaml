@@ -1,0 +1,419 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Debloater9" Width="1180" Height="780" MinWidth="920" MinHeight="600"
+        WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" FontSize="13"
+        Background="#F4F5F7" Foreground="#1D2330">
+  <Window.Resources>
+    <SolidColorBrush x:Key="Accent" Color="#2563EB"/>
+    <SolidColorBrush x:Key="Muted" Color="#5D6675"/>
+    <SolidColorBrush x:Key="Line" Color="#E1E4EA"/>
+    <Style TargetType="Button">
+      <Setter Property="Padding" Value="14,7"/>
+      <Setter Property="Margin" Value="0,0,8,0"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="#C9CFD8"/>
+      <Setter Property="Foreground" Value="#1D2330"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.85"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.7"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Optional" TargetType="TextBlock">
+      <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{StaticResource Accent}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style x:Key="LinkButton" TargetType="Button">
+      <Setter Property="Margin" Value="0,2,14,0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <TextBlock Text="{TemplateBinding Content}" TextDecorations="Underline" TextWrapping="Wrap"/>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Card" TargetType="Border">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="16"/>
+    </Style>
+    <Style TargetType="TabItem">
+      <Setter Property="Width" Value="200"/>
+            <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TabItem">
+            <Border x:Name="Bd" Padding="16,11" Margin="10,3,10,3" CornerRadius="6" Background="Transparent" Cursor="Hand">
+              <ContentPresenter x:Name="Hd" ContentSource="Header" TextElement.FontSize="14" TextElement.Foreground="#1D2330"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#E9EDF3"/></Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#DCE7FD"/>
+                <Setter TargetName="Hd" Property="TextElement.Foreground" Value="#1D4ED8"/>
+                <Setter TargetName="Hd" Property="TextElement.FontWeight" Value="SemiBold"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="DataGrid">
+      <Setter Property="AutoGenerateColumns" Value="False"/>
+      <Setter Property="CanUserAddRows" Value="False"/>
+      <Setter Property="HeadersVisibility" Value="Column"/>
+      <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+      <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource Line}"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="RowHeaderWidth" Value="0"/>
+      <Setter Property="SelectionMode" Value="Single"/>
+    </Style>
+
+    <!-- Знахідка / пункт: позначка, заголовок, пояснення, посилання -->
+    <DataTemplate x:Key="ItemTemplate">
+      <DockPanel Margin="4,8">
+        <TextBlock DockPanel.Dock="Left" Text="{Binding Badge}" Foreground="{Binding Color}" FontSize="16" FontWeight="Bold" Width="28" VerticalAlignment="Top"/>
+        <StackPanel>
+          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding Detail}" Style="{StaticResource Optional}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+          <ItemsControl ItemsSource="{Binding Links}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate><Button Style="{StaticResource LinkButton}" Content="{Binding Label}" Tag="{Binding Url}" ToolTip="{Binding Url}"/></DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </DockPanel>
+    </DataTemplate>
+  </Window.Resources>
+
+  <DockPanel>
+    <!-- Шапка -->
+    <Border DockPanel.Dock="Top" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="20,12">
+      <DockPanel>
+        <TextBlock x:Name="AdminBadge" DockPanel.Dock="Right" VerticalAlignment="Center" Padding="10,4" FontWeight="SemiBold"/>
+        <StackPanel>
+          <TextBlock x:Name="TitleText" Text="Debloater9" FontSize="20" FontWeight="SemiBold"/>
+          <TextBlock x:Name="SystemLine" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Рядок стану -->
+    <Border DockPanel.Dock="Bottom" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="14,7">
+      <DockPanel>
+        <ProgressBar x:Name="Progress" DockPanel.Dock="Right" Width="240" Height="10" Visibility="Collapsed"/>
+        <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Text="Готово"/>
+      </DockPanel>
+    </Border>
+    <Expander x:Name="LogExpander" DockPanel.Dock="Bottom" Header="Журнал виконання" Background="White" Padding="8,4">
+      <TextBox x:Name="LogBox" Height="150" IsReadOnly="True" FontFamily="Consolas" FontSize="12" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" BorderThickness="0"/>
+    </Expander>
+
+    <TabControl x:Name="Tabs" TabStripPlacement="Left" BorderThickness="1,0,0,0" BorderBrush="#E1E4EA" Background="#FAFBFC" Padding="0" Margin="0,8,0,0">
+
+      <!-- ================= Огляд ================= -->
+      <TabItem Header="Огляд">
+        <Grid Margin="20">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="BtnScan" Style="{StaticResource Primary}" Content="Сканувати комп'ютер"/>
+            <Button x:Name="BtnDeepScan" Content="Глибоке сканування"/>
+            <Button x:Name="BtnOpenReport" Content="Відкрити HTML-звіт" IsEnabled="False"/>
+          </StackPanel>
+          <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,14,0,12">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Left" Width="200" Margin="0,0,20,0">
+                <TextBlock x:Name="ScoreText" Text="—" FontSize="52" FontWeight="Bold"/>
+                <TextBlock x:Name="VerdictText" Text="Ще не скановано" FontSize="15" FontWeight="SemiBold"/>
+                <TextBlock x:Name="CountsText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0"
+                           Text="Натисніть «Сканувати комп'ютер»: перевірка займає від 30 секунд до 3 хвилин."/>
+              </StackPanel>
+              <ItemsControl x:Name="CategoryList">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="0,4,18,6">
+                      <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Title}"/>
+                      </DockPanel>
+                      <ProgressBar Value="{Binding Number}" Maximum="100" Height="6" Margin="0,3,0,0" Foreground="{Binding Color}" Background="#E8EBF0" BorderThickness="0"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </DockPanel>
+          </Border>
+          <ListBox x:Name="FindingsList" Grid.Row="2" ItemTemplate="{StaticResource ItemTemplate}" BorderBrush="{StaticResource Line}"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"/>
+        </Grid>
+      </TabItem>
+
+      <!-- ================= Чекліст ================= -->
+      <TabItem Header="Чекліст">
+        <Grid Margin="20">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="BtnRunAuto" Style="{StaticResource Primary}" Content="Виконати автоматичні кроки"/>
+            <Button x:Name="BtnMarkDone" Content="Позначити вибраний виконаним"/>
+            <Button x:Name="BtnRecheck" Content="Перевірити ще раз"/>
+            <Button x:Name="BtnReboot" Content="Перезавантажити ПК"/>
+          </StackPanel>
+          <TextBlock x:Name="ChecklistSummary" Grid.Row="1" Margin="0,12,0,8" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                     Text="Чекліст з'явиться після сканування."/>
+          <ListBox x:Name="ChecklistList" Grid.Row="2" BorderBrush="{StaticResource Line}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <DockPanel Margin="4,8">
+                  <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Selected, Mode=OneWay}" IsHitTestVisible="False" Focusable="False" Margin="0,2,10,0" VerticalAlignment="Top"/>
+                  <StackPanel>
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" Margin="10,0,0,0"/>
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Detail}" Style="{StaticResource Optional}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                    <TextBlock Text="{Binding Note}" Style="{StaticResource Optional}" Foreground="#B26A00" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                    <ItemsControl ItemsSource="{Binding Links}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate><Button Style="{StaticResource LinkButton}" Content="{Binding Label}" Tag="{Binding Url}" ToolTip="{Binding Url}"/></DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DockPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </TabItem>
+
+      <!-- ================= Налаштування (твіки) ================= -->
+      <TabItem Header="Налаштування">
+        <Grid Margin="20">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <ComboBox x:Name="PresetBox" Width="230" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
+            <Button x:Name="BtnSelectPreset" Content="Вибрати профіль"/>
+            <Button x:Name="BtnSelectNone" Content="Зняти все"/>
+            <Button x:Name="BtnPreview" Content="Що зміниться"/>
+            <Button x:Name="BtnApply" Style="{StaticResource Primary}" Content="Застосувати вибране"/>
+          </StackPanel>
+          <TextBlock x:Name="TweaksSummary" Grid.Row="1" Margin="0,12,0,8" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                     Text="Стан налаштувань завантажується…"/>
+          <DataGrid x:Name="TweakGrid" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" RowHeaderWidth="0" Grid.Row="2">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="" Width="36">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Налаштування" Binding="{Binding Title}" Width="3*" MinWidth="310" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
+              <DataGridTextColumn Header="Категорія" Binding="{Binding Group}" Width="*" MinWidth="70" IsReadOnly="True"/>
+              <DataGridTemplateColumn Header="Ризик" Width="*" MinWidth="70">
+                <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="*" MinWidth="70" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Примітка" Binding="{Binding Note}" Width="2*" MinWidth="220" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#5D6675"/></Style></DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+
+      <!-- ================= Драйвери ================= -->
+      <TabItem Header="Драйвери">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="20">
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="BtnDriverScan" Style="{StaticResource Primary}" Content="Перевірити драйвери"/>
+              <Button x:Name="BtnOemPage" Content="Сторінка драйверів виробника" IsEnabled="False"/>
+            </StackPanel>
+            <TextBlock x:Name="OemText" Margin="0,10,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+            <TextBlock Text="Пристрої без драйвера або з помилкою" FontSize="15" FontWeight="SemiBold" Margin="0,18,0,6"/>
+            <ListBox x:Name="DriverProblemsList" ItemTemplate="{StaticResource ItemTemplate}" BorderBrush="{StaticResource Line}" MinHeight="60" MaxHeight="320"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"/>
+
+            <TextBlock Text="Встановити драйвери з папки" FontSize="15" FontWeight="SemiBold" Margin="0,22,0,4"/>
+            <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="Завантажте драйвери з сайту виробника в папку (архіви .zip теж можна). Програма знайде ті, що підходять до цього ПК, пропустить актуальні й поставить у правильному порядку, зберігши попередні для відкату."/>
+            <DockPanel>
+              <Button x:Name="BtnFindDrivers" DockPanel.Dock="Right" Content="Знайти драйвери в папці" Margin="8,0,0,0"/>
+              <Button x:Name="BtnBrowse" DockPanel.Dock="Right" Content="Огляд…" Margin="8,0,0,0"/>
+              <TextBox x:Name="DriverFolder" VerticalContentAlignment="Center" Padding="6,5"/>
+            </DockPanel>
+            <DataGrid x:Name="DriverPackageGrid" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" RowHeaderWidth="0" Margin="0,10,0,0" MinHeight="60" MaxHeight="300">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Header="" Width="36">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center"/></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True"/>
+                <DataGridTemplateColumn Header="Що робити" Width="*" MinWidth="70">
+                  <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Зараз → у папці" Binding="{Binding Detail}" Width="2*" MinWidth="220" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Файл" Binding="{Binding Note}" Width="*" MinWidth="70" IsReadOnly="True"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+              <Button x:Name="BtnInstallDrivers" Style="{StaticResource Primary}" Content="Встановити вибрані драйвери" IsEnabled="False"/>
+            </StackPanel>
+
+            <TextBlock Text="Встановлені важливі драйвери" FontSize="15" FontWeight="SemiBold" Margin="0,22,0,6"/>
+            <DataGrid x:Name="DriverInstalledGrid" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" RowHeaderWidth="0" MaxHeight="320">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Тип" Binding="{Binding Group}" Width="*" MinWidth="70" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Версія" Binding="{Binding Status}" Width="*" MinWidth="70" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Дата" Binding="{Binding Detail}" Width="*" MinWidth="70" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Постачальник" Binding="{Binding Note}" Width="*" MinWidth="70" IsReadOnly="True"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ================= Автозавантаження ================= -->
+      <TabItem Header="Автозавантаження">
+        <Grid Margin="20">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="BtnStartupApply" Style="{StaticResource Primary}" Content="Застосувати зміни"/>
+            <Button x:Name="BtnStartupRefresh" Content="Оновити список"/>
+          </StackPanel>
+          <TextBlock x:Name="StartupSummary" Grid.Row="1" Margin="0,12,0,8" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                     Text="Зніміть галочку з програм, яким не потрібно стартувати разом із Windows, і натисніть «Застосувати зміни». Програми не видаляються — лише не запускаються самі; усе відкочується."/>
+          <DataGrid x:Name="StartupGrid" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" RowHeaderWidth="0" Grid.Row="2">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="Запускати" Width="80">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Програма" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
+              <DataGridTextColumn Header="Видавець" Binding="{Binding Group}" Width="*" MinWidth="140" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Звідки" Binding="{Binding Note}" Width="*" MinWidth="140" IsReadOnly="True"/>
+              <DataGridTemplateColumn Header="Примітка" Width="*" MinWidth="140">
+                <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding Color}" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+
+      <!-- ================= Обслуговування ================= -->
+      <TabItem Header="Обслуговування">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="20">
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnRestorePoint" DockPanel.Dock="Right" Content="Створити" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Точка відновлення" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Знімок системи, до якого можна повернутися, якщо після змін щось піде не так."/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnCleanNow" DockPanel.Dock="Right" Content="Очистити" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Очищення диска" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Тимчасові файли, кеш оновлень Windows, дампи збоїв і звіти про помилки, залишки інсталяторів драйверів. Кошик не чіпається."/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnRepair" DockPanel.Dock="Right" Content="Перевірити й відновити" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Відновлення системних файлів (DISM + SFC)" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Коли Windows поводиться дивно, оновлення не ставляться або вбудовані програми не відкриваються. Триває 10–40 хвилин, потрібен інтернет."/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnNetReset" DockPanel.Dock="Right" Content="Скинути мережу" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Скидання мережі" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Коли Wi-Fi підключено, а сайти не відкриваються: очищення кешу DNS, скидання Winsock і TCP/IP. Потрібне перезавантаження."/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnWuReset" DockPanel.Dock="Right" Content="Скинути Windows Update" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Скидання Windows Update" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Коли оновлення зависли або постійно падають з помилкою: зупинка служб, новий кеш оновлень, запуск служб."/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                  <ComboBox x:Name="PauseDays" Width="110" Margin="0,0,8,0" SelectedIndex="0" VerticalContentAlignment="Center">
+                    <ComboBoxItem Content="7 днів"/><ComboBoxItem Content="14 днів"/><ComboBoxItem Content="21 день"/><ComboBoxItem Content="35 днів"/>
+                  </ComboBox>
+                  <Button x:Name="BtnPause" Content="Призупинити"/>
+                  <Button x:Name="BtnResume" Content="Відновити"/>
+                </StackPanel>
+                <StackPanel><TextBlock Text="Пауза оновлень Windows" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock x:Name="PauseState" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnWuDrivers" DockPanel.Dock="Right" Content="Вимкнути" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Драйвери з Windows Update" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock x:Name="WuDriversState" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/></StackPanel>
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ================= Журнал ================= -->
+      <TabItem Header="Журнал змін">
+        <Grid Margin="20">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="BtnUndo" Style="{StaticResource Primary}" Content="Відкотити вибрану сесію"/>
+            <Button x:Name="BtnRefreshSessions" Content="Оновити"/>
+            <Button x:Name="BtnSystemRestore" Content="Відновлення системи Windows"/>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Margin="0,12,0,8" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                     Text="Кожне застосування змін — окрема сесія. Відкат повертає саме те, що було до змін; значення, які після цього змінили ви або Windows, не перезаписуються."/>
+          <DataGrid x:Name="SessionGrid" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" RowHeaderWidth="0" Grid.Row="2">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Коли" Binding="{Binding Title}" Width="*" MinWidth="70" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Що застосовано" Binding="{Binding Detail}" Width="3*" MinWidth="310" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Змін" Binding="{Binding Number}" Width="80" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Стан" Binding="{Binding Status}" Width="*" MinWidth="70" IsReadOnly="True"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

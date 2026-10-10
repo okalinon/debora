@@ -1,0 +1,472 @@
+﻿# Проби сканера. Кожна отримує опис перевірки ($Check з checks.json) і контекст ($Ctx)
+# та повертає нуль або більше знахідок (New-D9Finding) або New-D9Skip, якщо перевірити не вдалося.
+# Нуль знахідок = усе гаразд.
+#
+# $Ctx: System, Catalog, Recommendation, Deep, IsAdmin, Now, Lifecycle, KnownBloat
+
+function New-D9Finding {
+    param(
+        [Parameter(Mandatory)]$Check,
+        [Parameter(Mandatory)][ValidateSet('critical', 'warning', 'suggestion', 'info')][string]$Severity,
+        [Parameter(Mandatory)][string]$Title,
+        [string]$Details,
+        $Fix,                # @{ type = 'tweaks'|'maintenance'|'drivers'|'manual'; ... }
+        [object[]]$Links,    # @{ label; url }
+        [string]$Key,        # розрізняє кілька знахідок однієї перевірки (наприклад, пристрій)
+        $Data
+    )
+    [pscustomobject]@{
+        checkId  = $Check.id
+        category = $Check.category
+        severity = $Severity
+        title    = $Title
+        details  = $Details
+        fix      = $Fix
+        links    = @($Links | Where-Object { $_ })
+        key      = if ($Key) { $Key } else { $Check.id }
+        data     = $Data
+    }
+}
+
+function New-D9Skip {
+    param([Parameter(Mandatory)]$Check, [Parameter(Mandatory)][string]$Reason)
+    [pscustomobject]@{ checkId = $Check.id; category = $Check.category; severity = 'skipped'; title = $Reason; key = $Check.id }
+}
+
+function New-D9Link { param([string]$Label, [string]$Url) [pscustomobject]@{ label = $Label; url = $Url } }
+
+function Format-D9Size {
+    param([double]$Bytes)
+    if ($Bytes -ge 1GB) { return "{0:N1} ГБ" -f ($Bytes / 1GB) }
+    if ($Bytes -ge 1MB) { return "{0:N0} МБ" -f ($Bytes / 1MB) }
+    return "{0:N0} КБ" -f ($Bytes / 1KB)
+}
+
+# Розмір папки з обмеженням часу; недоступні підпапки пропускаються
+function Get-D9FolderSize {
+    param([string]$Path, [int]$TimeLimitMs = 4000)
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return 0 }
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $total = [long]0
+    $stack = New-Object System.Collections.Generic.Stack[string]
+    $stack.Push($Path)
+    while ($stack.Count -and $sw.ElapsedMilliseconds -lt $TimeLimitMs) {
+        $dir = $stack.Pop()
+        try {
+            $info = New-Object IO.DirectoryInfo $dir
+            foreach ($f in $info.GetFiles()) { $total += $f.Length }
+            foreach ($d in $info.GetDirectories()) {
+                if (-not ($d.Attributes -band [IO.FileAttributes]::ReparsePoint)) { $stack.Push($d.FullName) }
+            }
+        } catch { }
+    }
+    return $total
+}
+
+# ======================= Безпека =======================
+
+function Test-D9WindowsSupport {
+    param($Check, $Ctx)
+    $rel = $Ctx.Lifecycle.releases | Where-Object { $_.build -eq $Ctx.System.Build } | Select-Object -First 1
+    if (-not $rel) { return New-D9Skip $Check "Збірка $($Ctx.System.Build) відсутня в таблиці підтримки" }
+    $edition = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction SilentlyContinue).EditionID
+    $kind = if ($edition -like 'Enterprise*S*' -or $edition -like 'IoTEnterpriseS*') { 'ltsc' }
+            elseif ($edition -like 'Enterprise*' -or $edition -like 'Education*') { 'enterprise' }
+            else { 'consumer' }
+    $endText = if ($rel.$kind) { $rel.$kind } else { $rel.consumer }
+    $end = [datetime]::ParseExact($endText, 'yyyy-MM-dd', $null)
+    $days = [int]($end - $Ctx.Now.Date).TotalDays
+    $name = "$($Ctx.System.OsName) $($rel.version)"
+    $links = @(New-D9Link 'Терміни підтримки Windows (Microsoft)' ($Ctx.Lifecycle.sources | Select-Object -First 1))
+    $steps = if ($rel.family -eq 'win10') {
+        'Варіанти: перейти на Windows 11 (якщо ПК підтримує або через Rufus на непідтримуваному), продовжити оновлення на рік через ESU (потрібен акаунт Microsoft) або перейти на Linux.'
+    } else {
+        'Встановіть новішу версію Windows 11: Параметри → Windows Update → «Отримати останні оновлення» або через інсталяційну флешку.'
+    }
+    $note = Get-D9Text $rel.note
+    if ($days -lt 0) {
+        return New-D9Finding $Check critical "$name більше не отримує оновлень безпеки (з $($end.ToString('dd.MM.yyyy')))" "$steps $note".Trim() @{ type = 'manual' } $links
+    }
+    if ($days -le $Check.thresholds.warnDays) {
+        return New-D9Finding $Check warning "$name перестане отримувати оновлення безпеки через $days дн. ($($end.ToString('dd.MM.yyyy')))" $steps @{ type = 'manual' } $links
+    }
+}
+
+function Get-D9SecurityProducts {
+    param([string]$Class)
+    try {
+        Get-CimInstance -Namespace 'root\SecurityCenter2' -ClassName $Class -ErrorAction Stop | ForEach-Object {
+            $hex = [Convert]::ToString([int]$_.productState, 16).PadLeft(6, '0')
+            [pscustomobject]@{ Name = $_.displayName; Enabled = ($hex.Substring(2, 2) -in '10', '11'); UpToDate = ($hex.Substring(4, 2) -eq '00') }
+        }
+    } catch { @() }
+}
+
+function Test-D9Antivirus {
+    param($Check, $Ctx)
+    $products = @(Get-D9SecurityProducts 'AntiVirusProduct')
+    $enabled  = @($products | Where-Object Enabled)
+    $settings = New-D9Link 'Відкрити «Безпека Windows»' 'windowsdefender:'
+    if ($products.Count -and -not $enabled.Count) {
+        return New-D9Finding $Check critical 'Антивірусний захист вимкнено' 'Жоден антивірус не працює. Увімкніть Захисник Windows: Безпека Windows → Захист від вірусів і загроз.' @{ type = 'manual' } @($settings)
+    }
+    if ($enabled.Count -gt 1) {
+        New-D9Finding $Check warning "Працюють кілька антивірусів одночасно: $($enabled.Name -join ', ')" 'Два антивіруси конфліктують і сильно гальмують ПК. Залиште один (для більшості достатньо Захисника Windows).' @{ type = 'manual' } @((New-D9Link 'Програми та компоненти' 'ms-settings:appsfeatures'))
+    }
+    $defenderActive = -not $enabled.Count -or ($enabled | Where-Object { $_.Name -like '*Defender*' -or $_.Name -like '*Microsoft*' })
+    if ($defenderActive) {
+        $mp = try { Get-MpComputerStatus -ErrorAction Stop } catch { $null }
+        if ($mp) {
+            if (-not $mp.RealTimeProtectionEnabled) {
+                New-D9Finding $Check critical 'Захист у реальному часі вимкнено' 'Захисник Windows не перевіряє файли під час відкриття. Увімкніть «Захист у реальному часі».' @{ type = 'manual' } @($settings)
+            }
+            if ($mp.AntivirusSignatureAge -gt $Check.thresholds.signatureAgeDays) {
+                New-D9Finding $Check warning "Антивірусні бази застаріли ($($mp.AntivirusSignatureAge) дн.)" 'Підключіться до інтернету й оновіть бази: Безпека Windows → Захист від вірусів і загроз → Оновлення захисту.' @{ type = 'manual' } @($settings)
+            }
+        }
+    }
+}
+
+function Test-D9Firewall {
+    param($Check, $Ctx)
+    $profiles = try { @(Get-NetFirewallProfile -ErrorAction Stop) } catch { return New-D9Skip $Check 'Не вдалося прочитати стан брандмауера' }
+    $off = @($profiles | Where-Object { -not $_.Enabled })
+    if (-not $off.Count) { return }
+    if (@(Get-D9SecurityProducts 'FirewallProduct' | Where-Object Enabled).Count) { return }   # працює сторонній брандмауер
+    New-D9Finding $Check critical "Брандмауер вимкнено для мереж: $($off.Name -join ', ')" 'Увімкніть брандмауер: Безпека Windows → Брандмауер і захист мережі.' @{ type = 'manual' } @((New-D9Link 'Брандмауер і захист мережі' 'windowsdefender://network'))
+}
+
+function Test-D9Uac {
+    param($Check, $Ctx)
+    $p = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue
+    if ($p.EnableLUA -eq 0) {
+        return New-D9Finding $Check critical 'Контроль облікових записів (UAC) вимкнено' 'Будь-яка програма може непомітно отримати права адміністратора. Увімкніть UAC і перезавантажте ПК.' @{ type = 'manual' } @((New-D9Link 'Параметри UAC' 'UserAccountControlSettings.exe'))
+    }
+    if ($p.ConsentPromptBehaviorAdmin -eq 0) {
+        return New-D9Finding $Check warning 'UAC не питає підтвердження для адміністратора' 'Підвищення прав відбувається без запиту. Поверніть рівень «Повідомляти лише коли програми намагаються внести зміни».' @{ type = 'manual' } @((New-D9Link 'Параметри UAC' 'UserAccountControlSettings.exe'))
+    }
+}
+
+function Test-D9SecureBoot {
+    param($Check, $Ctx)
+    if ($Ctx.System.Firmware -ne 'UEFI') {
+        return New-D9Finding $Check info 'Комп''ютер завантажується в режимі Legacy BIOS' 'Безпечне завантаження недоступне. Для Windows 11 і кращого захисту бажано перейти на UEFI (потрібне перевстановлення або MBR2GPT).'
+    }
+    $state = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\State' -ErrorAction SilentlyContinue).UEFISecureBootEnabled
+    if ($state -eq 0) {
+        New-D9Finding $Check suggestion 'Безпечне завантаження (Secure Boot) вимкнено' 'Увімкніть Secure Boot у налаштуваннях UEFI/BIOS (вкладка Boot або Security). Захищає від шкідливих програм, що запускаються до Windows.' @{ type = 'manual' }
+    }
+}
+
+# ======================= Оновлення =======================
+
+function Test-D9LastUpdate {
+    param($Check, $Ctx)
+    $last = Get-HotFix -ErrorAction SilentlyContinue | Where-Object InstalledOn | Sort-Object InstalledOn -Descending | Select-Object -First 1
+    if (-not $last) { return New-D9Skip $Check 'Історія оновлень недоступна' }
+    $days = [int]($Ctx.Now - $last.InstalledOn).TotalDays
+    if ($days -gt $Check.thresholds.warnDays) {
+        New-D9Finding $Check warning "Windows не оновлювалась $days дн. (останнє: $($last.HotFixID), $($last.InstalledOn.ToString('dd.MM.yyyy')))" 'Встановіть накопичувальні оновлення безпеки: Параметри → Windows Update → Перевірити наявність оновлень. Драйвери звідти можна не ставити.' @{ type = 'manual' } @((New-D9Link 'Windows Update' 'ms-settings:windowsupdate'))
+    }
+}
+
+function Test-D9PendingReboot {
+    param($Check, $Ctx)
+    $keys = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired',
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending'
+    )
+    if ($keys | Where-Object { Test-Path $_ }) {
+        New-D9Finding $Check warning 'Windows чекає перезавантаження, щоб завершити оновлення' 'Поки ПК не перезавантажено, частина оновлень не діє, а нові можуть не встановлюватись.' @{ type = 'maintenance'; action = 'reboot' }
+    }
+}
+
+$script:D9DeviceErrors = @{
+    1 = 'не налаштовано'; 3 = 'драйвер пошкоджено або бракує пам''яті'; 10 = 'пристрій не може запуститися'
+    12 = 'бракує ресурсів'; 14 = 'потрібне перезавантаження'; 18 = 'драйвер треба перевстановити'
+    19 = 'пошкоджено реєстр'; 21 = 'видаляється'; 24 = 'пристрій відсутній або не працює'
+    28 = 'драйвер не встановлено'; 31 = 'драйвер не завантажився'; 32 = 'службу драйвера вимкнено'
+    37 = 'драйвер повернув помилку'; 39 = 'драйвер пошкоджено або відсутній'; 43 = 'Windows зупинила пристрій (збій)'
+    48 = 'драйвер заблоковано'; 52 = 'драйвер без дійсного цифрового підпису'
+}
+
+function Test-D9ProblemDevices {
+    param($Check, $Ctx)
+    $devices = @(Get-CimInstance Win32_PnPEntity -Filter 'ConfigManagerErrorCode <> 0' -ErrorAction SilentlyContinue |
+        Where-Object { $_.ConfigManagerErrorCode -notin 22, 45 })   # 22 — вимкнено користувачем, 45 — не під'єднано
+    $oem = if ($devices) { Get-D9OemSupport $Ctx.System } else { $null }
+    foreach ($d in $devices) {
+        $hwid = @($d.HardwareID) | Select-Object -First 1
+        $info = Resolve-D9Device @($d.HardwareID)
+        $name = Get-D9DeviceDisplayName $info $d.Name
+        $reason = $script:D9DeviceErrors[[int]$d.ConfigManagerErrorCode]
+        if (-not $reason) { $reason = "код помилки $($d.ConfigManagerErrorCode)" }
+        $links = @(Get-D9DriverLinks $info $oem) + @(New-D9Link 'Диспетчер пристроїв' 'devmgmt.msc')
+        $details = "ID обладнання: $hwid."
+        if ($oem) { $details += " Найкраще — драйвер з сайту $($oem.Name) для вашої моделі; завантажте в папку «Драйвери» й виберіть у меню «Встановити драйвери з папки»." }
+        New-D9Finding $Check warning "$name — $reason" $details @{ type = 'drivers' } $links -Key "$($Check.id):$($d.PNPDeviceID)" -Data ([pscustomobject]@{
+            name = $name; hwid = $hwid; class = $d.PNPClass; code = [int]$d.ConfigManagerErrorCode; deviceId = $d.PNPDeviceID
+        })
+    }
+}
+
+function Test-D9AppUpdates {
+    param($Check, $Ctx)
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { return New-D9Skip $Check 'winget не встановлено' }
+    $output = & winget upgrade --accept-source-agreements --disable-interactivity 2>$null | Out-String
+    $lines  = $output -split "`r?`n"
+    $start  = [array]::FindIndex([string[]]$lines, [Predicate[string]]{ param($l) $l -match '^-{10,}' })
+    if ($start -lt 0) { return }
+    $apps = @($lines[($start + 1)..($lines.Count - 1)] | Where-Object { $_ -match '\S+\s+\d[\w.\-]*\s+\d[\w.\-]*\s+\S+\s*$' })
+    if ($apps.Count) {
+        $names = ($apps | Select-Object -First 8 | ForEach-Object { ($_ -split '\s{2,}')[0] }) -join ', '
+        New-D9Finding $Check suggestion "Для $($apps.Count) програм є оновлення" "Наприклад: $names" @{ type = 'maintenance'; action = 'wingetUpgrade' }
+    }
+}
+
+# ======================= Диск =======================
+
+function Get-D9SystemPhysicalDisk {
+    $ns = 'root\Microsoft\Windows\Storage'
+    $letter = [char]$env:SystemDrive.TrimEnd(':')
+    $partition = Get-CimInstance -Namespace $ns -ClassName MSFT_Partition -Filter "DriveLetter = '$letter'" -ErrorAction Stop | Select-Object -First 1
+    Get-CimInstance -Namespace $ns -ClassName MSFT_PhysicalDisk -Filter "DeviceId = '$($partition.DiskNumber)'" -ErrorAction Stop
+}
+
+function Test-D9DiskHealth {
+    param($Check, $Ctx)
+    $disk = try { Get-D9SystemPhysicalDisk } catch { $null }
+    if (-not $disk) { return New-D9Skip $Check 'Не вдалося визначити системний диск' }
+    $backup = 'Негайно скопіюйте важливі файли на інший диск або в хмару. Диск варто замінити.'
+    switch ([int]$disk.HealthStatus) {
+        2 { return New-D9Finding $Check critical "Диск $($disk.FriendlyName) несправний (Windows: Unhealthy)" $backup @{ type = 'manual' } }
+        1 { New-D9Finding $Check warning "Диск $($disk.FriendlyName) має попередження про стан" $backup @{ type = 'manual' } }
+    }
+    if (-not $Ctx.IsAdmin) { return }
+    $rel = try { $disk | Get-CimAssociatedInstance -ResultClassName MSFT_StorageReliabilityCounter -ErrorAction Stop } catch { $null }
+    if (-not $rel) { return }
+    if ($rel.ReadErrorsUncorrected -gt 0) {
+        New-D9Finding $Check critical "Диск має $($rel.ReadErrorsUncorrected) невиправних помилок читання" $backup @{ type = 'manual' }
+    }
+    if ($rel.Wear -ge $Check.thresholds.wearPercent) {
+        New-D9Finding $Check warning "SSD зношений на $($rel.Wear)%" 'Ресурс записів майже вичерпано. Плануйте заміну і робіть резервні копії.' @{ type = 'manual' }
+    }
+    if ($rel.Temperature -ge $Check.thresholds.tempC) {
+        New-D9Finding $Check warning "Диск нагрівається до $($rel.Temperature) °C" 'Перевірте охолодження: чистка від пилу, вентиляція корпусу.' @{ type = 'manual' }
+    }
+}
+
+function Test-D9FreeSpace {
+    param($Check, $Ctx)
+    $c = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID = '$env:SystemDrive'" -ErrorAction SilentlyContinue
+    if (-not $c -or -not $c.Size) { return New-D9Skip $Check 'Не вдалося прочитати диск C:' }
+    $freeGB = [math]::Round($c.FreeSpace / 1GB, 1)
+    $percent = [math]::Round($c.FreeSpace * 100 / $c.Size)
+    $t = $Check.thresholds
+    $title = "На диску C: вільно лише {0:N1} ГБ ({1}%)" -f $freeGB, $percent
+    $details = 'Коли місця мало, Windows гальмує й не може встановити оновлення. Дивіться пункти очищення нижче, перенесіть фото й відео на інший диск.'
+    $fix = @{ type = 'tweaks'; ids = @('cleanup.temp', 'cleanup.update-cache') }
+    if ($percent -lt $t.criticalPercent -or $freeGB -lt $t.criticalGB) { return New-D9Finding $Check critical $title $details $fix }
+    if ($percent -lt $t.warningPercent -or $freeGB -lt $t.warningGB) { return New-D9Finding $Check warning $title $details $fix }
+}
+
+function Test-D9Trim {
+    param($Check, $Ctx)
+    if ($Ctx.System.SystemDisk -notin 'ssd', 'nvme') { return }
+    $v = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name DisableDeleteNotification -ErrorAction SilentlyContinue).DisableDeleteNotification
+    if ($v -eq 1) {
+        New-D9Finding $Check warning 'TRIM для SSD вимкнено' 'Без TRIM SSD поступово сповільнюється і швидше зношується.' @{ type = 'tweaks'; ids = @('perf.enable-trim') }
+    }
+}
+
+# ======================= Швидкодія =======================
+
+function Test-D9Startup {
+    param($Check, $Ctx)
+    $system  = @('SecurityHealth', 'Windows Defender', 'WindowsDefender')   # значок «Безпека Windows» — не чіпаємо
+    $enabled = @(Get-D9StartupItems | Where-Object { $_.Kind -eq 'reg' -and $_.Enabled -and $system -notcontains $_.Name })
+    $t = $Check.thresholds
+    $weak = $Ctx.Recommendation.Preset -eq 'WeakPC'
+    $limit = if ($weak) { $t.weakPcSuggestion } else { $t.suggestion }
+    if ($enabled.Count -le $limit) { return }
+    $severity = if ($enabled.Count -gt $t.warning -or ($weak -and $enabled.Count -gt $t.suggestion)) { 'warning' } else { 'suggestion' }
+    New-D9Finding $Check $severity "$($enabled.Count) програм запускаються разом із Windows" ("Вимкніть непотрібні: вкладка «Автозавантаження» в Debloater9 (з можливістю відкату) або Диспетчер завдань. Зараз: " + ($enabled.Name -join ', ')) @{ type = 'manual' } @((New-D9Link 'Програми автозавантаження' 'ms-settings:startupapps'))
+}
+
+function Test-D9Memory {
+    param($Check, $Ctx)
+    $os = Get-CimInstance Win32_OperatingSystem
+    $used = [math]::Round(100 - $os.FreePhysicalMemory * 100 / $os.TotalVisibleMemorySize)
+    if ($used -lt $Check.thresholds.warningPercent) { return }
+    $top = Get-Process | Group-Object ProcessName | ForEach-Object {
+        [pscustomobject]@{ Name = $_.Name; Bytes = ($_.Group | Measure-Object WorkingSet64 -Sum).Sum }
+    } | Sort-Object Bytes -Descending | Select-Object -First 5
+    $list = ($top | ForEach-Object { "$($_.Name) $(Format-D9Size $_.Bytes)" }) -join ', '
+    New-D9Finding $Check warning "Зайнято $used% оперативної пам'яті" "Найбільше займають: $list. Закрийте зайві програми й вкладки браузера." @{ type = 'manual' }
+}
+
+function Test-D9HardwareFit {
+    param($Check, $Ctx)
+    $sys = $Ctx.System
+    if ($sys.SystemDisk -eq 'hdd') {
+        foreach ($pair in @(@('perf.disable-sysmain', 'SysMain (Superfetch) постійно навантажує жорсткий диск'), @('perf.disable-search-index', 'Індексація пошуку постійно навантажує жорсткий диск'))) {
+            $tweak = Get-D9Tweak $Ctx.Catalog $pair[0]
+            if ($tweak -and (Get-D9TweakState $tweak $sys) -in 'notApplied', 'partial') {
+                New-D9Finding $Check warning $pair[1] (Get-D9Text $tweak.description) @{ type = 'tweaks'; ids = @($pair[0]) } -Key "$($Check.id):$($pair[0])"
+            }
+        }
+    }
+    if ($sys.SystemDisk -in 'ssd', 'nvme') {
+        $svc = Get-D9ServiceState ([pscustomobject]@{ name = 'SysMain' })
+        if ($svc.exists -and $svc.startup -eq 'Disabled') {
+            New-D9Finding $Check suggestion 'SysMain вимкнено, хоча диск — SSD' 'На SSD служба SysMain пришвидшує запуск програм. Якщо її вимкнув Debloater9 — відкотіть сесію; інакше увімкніть службу (тип запуску «Автоматично»).' @{ type = 'manual' } -Key "$($Check.id):sysmain-ssd"
+        }
+    }
+    $active = Get-D9ActivePowerScheme
+    if ($active -eq $script:D9PowerSchemes.saver -and -not $sys.HasBattery) {
+        New-D9Finding $Check warning 'Увімкнено схему живлення «Економія енергії» на ПК без батареї' 'Процесор працює на зниженій частоті без потреби.' @{ type = 'tweaks'; ids = @('perf.power-high') } -Key "$($Check.id):power"
+    }
+}
+
+function Test-D9Uptime {
+    param($Check, $Ctx)
+    $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+    $days = [int]($Ctx.Now - $boot).TotalDays
+    if ($days -gt $Check.thresholds.days) {
+        New-D9Finding $Check suggestion "Комп'ютер не перезавантажувався $days дн." 'Через «швидкий запуск» вимкнення не очищує пам''ять. Перезавантаження («Пуск → Перезавантажити») звільняє ресурси й завершує оновлення.' @{ type = 'maintenance'; action = 'reboot' }
+    }
+}
+
+function Test-D9KnownBloat {
+    param($Check, $Ctx)
+    $paths = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    $installed = Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -and $_.SystemComponent -ne 1 }
+    $found = foreach ($rule in $Ctx.KnownBloat.programs) {
+        $installed | Where-Object DisplayName -like $rule.pattern | ForEach-Object {
+            [pscustomobject]@{ Name = $_.DisplayName; Reason = Get-D9Text $rule.reason }
+        }
+    }
+    $found = @($found | Sort-Object Name -Unique)
+    if (-not $found.Count) { return }
+    $details = ($found | ForEach-Object { "$($_.Name) — $($_.Reason)" }) -join '; '
+    New-D9Finding $Check warning "Знайдено небажані програми: $($found.Count)" "Видаліть через Параметри → Програми: $details" @{ type = 'manual' } @((New-D9Link 'Встановлені програми' 'ms-settings:appsfeatures')) -Data ([pscustomobject]@{ programs = @($found.Name) })
+}
+
+# Твіки рекомендованого профілю з указаних категорій, які ще не застосовано
+function Test-D9ProfileTweaks {
+    param($Check, $Ctx)
+    $preset = Get-D9Preset $Ctx.Catalog $Ctx.Recommendation.Preset
+    $skip = @('perf.disable-sysmain', 'perf.disable-search-index')   # їх показує perf.hardware-fit
+    $pending = foreach ($id in $preset.tweaks) {
+        if ($skip -contains $id) { continue }
+        $t = Get-D9Tweak $Ctx.Catalog $id
+        if ($t.category -notin $Check.params.categories -or $t.irreversible) { continue }
+        if ((Get-D9TweakState $t $Ctx.System) -in 'notApplied', 'partial') { $t }
+    }
+    $pending = @($pending)
+    if (-not $pending.Count) { return }
+    $presetName = Get-D9Text $preset.name
+    $names = ($pending | ForEach-Object { Get-D9Text $_.name }) -join '; '
+    New-D9Finding $Check suggestion "Не застосовано налаштувань профілю «$presetName»: $($pending.Count)" $names @{ type = 'tweaks'; ids = @($pending.id) }
+}
+
+function Test-D9BloatApps {
+    param($Check, $Ctx)
+    $preset = Get-D9Preset $Ctx.Catalog $Ctx.Recommendation.Preset
+    $pending = @($preset.tweaks | ForEach-Object { Get-D9Tweak $Ctx.Catalog $_ } |
+        Where-Object { $_.category -eq 'apps' -and (Get-D9TweakState $_ $Ctx.System) -in 'notApplied', 'partial' })
+    if (-not $pending.Count) { return }
+    $apps = @(foreach ($t in $pending) {
+        foreach ($a in (Get-D9ApplicableActions $t $Ctx.System | Where-Object type -eq 'appx')) {
+            (Get-D9AppxInstalled $a.package).Name
+        }
+    }) | Where-Object { $_ } | Sort-Object -Unique
+    $title = if ($apps.Count) { "Встановлено рекламних і непотрібних застосунків: $($apps.Count)" } else { 'Не вимкнено автоустановку рекламних застосунків' }
+    $details = (($pending | ForEach-Object { Get-D9Text $_.name }) -join '; ')
+    if ($apps.Count) { $details += ". Знайдено: " + (($apps | Select-Object -First 12) -join ', ') }
+    New-D9Finding $Check suggestion $title $details @{ type = 'tweaks'; ids = @($pending.id) }
+}
+
+# ======================= Стабільність =======================
+
+function Get-D9EventCount {
+    param([hashtable]$Filter)
+    try { @(Get-WinEvent -FilterHashtable $Filter -ErrorAction Stop) } catch { @() }
+}
+
+function Test-D9Crashes {
+    param($Check, $Ctx)
+    $since = $Ctx.Now.AddDays(-$Check.thresholds.days)
+    $bsod  = Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-WER-SystemErrorReporting'; Id = 1001; StartTime = $since }
+    $power = Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 41; StartTime = $since }
+    $advice = 'Можливі причини: драйвер (оновіть відео, чипсет, мережу), перегрів (чистка від пилу), оперативна пам''ять (перевірка: mdsched.exe), блок живлення.'
+    $links = @((New-D9Link 'Перевірка пам''яті Windows' 'mdsched.exe'))
+    if ($bsod.Count) {
+        $severity = if ($bsod.Count -ge $Check.thresholds.critical) { 'critical' } else { 'warning' }
+        return New-D9Finding $Check $severity "Сині екрани за $($Check.thresholds.days) днів: $($bsod.Count)" $advice @{ type = 'manual' } $links
+    }
+    if ($power.Count -ge 3) {
+        New-D9Finding $Check warning "Аварійні вимкнення за $($Check.thresholds.days) днів: $($power.Count)" "Комп'ютер вимикався без завершення роботи (зависання, живлення, перегрів). $advice" @{ type = 'manual' } $links
+    }
+}
+
+function Test-D9DiskErrors {
+    param($Check, $Ctx)
+    $days = $Check.thresholds.days
+    $since = $Ctx.Now.AddDays(-$days)
+    # Лише помилки й попередження: Ntfs 98 з рівнем «Відомості» означає «том справний»
+    $events = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = @('disk', 'Ntfs', 'Microsoft-Windows-Ntfs'); Id = @(7, 51, 55, 98, 153); Level = @(1, 2, 3); StartTime = $since })
+    if (-not $events.Count) { return }
+    $systemDisk = try {
+        (Get-CimInstance -Namespace 'root\Microsoft\Windows\Storage' -ClassName MSFT_Partition -Filter "DriveLetter = '$([char]$env:SystemDrive.TrimEnd(':'))'" -ErrorAction Stop | Select-Object -First 1).DiskNumber
+    } catch { $null }
+    # Події диска (disk) містять \Device\HarddiskN — відділяємо системний диск від флешок і зовнішніх
+    $onSystem = @($events | Where-Object {
+        $_.ProviderName -ne 'disk' -or $null -eq $systemDisk -or ($_.Message -match 'Harddisk(\d+)' -and [int]$Matches[1] -eq $systemDisk)
+    })
+    $other = $events.Count - $onSystem.Count
+    $bad = @($onSystem | Where-Object { $_.Id -in 7, 55, 98 })
+    $last = ($onSystem | Sort-Object TimeCreated -Descending | Select-Object -First 1).TimeCreated
+    $details = 'Зробіть резервну копію важливих файлів. Перевірте диск: командний рядок від адміністратора → chkdsk C: /scan. Для перевірки SMART запустіть сканування від адміністратора.'
+    if ($bad.Count) {
+        $severity = if ($bad.Count -ge 3) { 'critical' } else { 'warning' }
+        return New-D9Finding $Check $severity "Пошкоджені сектори або помилки файлової системи на системному диску: $($bad.Count) за $days днів (остання $($last.ToString('dd.MM.yyyy')))" $details @{ type = 'manual' }
+    }
+    if ($onSystem.Count) {
+        return New-D9Finding $Check warning "Помилки звернення до системного диска: $($onSystem.Count) за $days днів" "Можливо, поганий кабель, перегрів або початок проблем з диском. $details" @{ type = 'manual' }
+    }
+    if ($other) {
+        New-D9Finding $Check info "Помилки на інших дисках (флешки, зовнішні): $other за $days днів" 'Системного диска не стосується. Якщо на тих дисках важливі дані — перевірте їх.'
+    }
+}
+
+function Test-D9SystemFiles {
+    param($Check, $Ctx)
+    $r = try { Repair-WindowsImage -Online -CheckHealth -ErrorAction Stop } catch { return New-D9Skip $Check "Не вдалося перевірити: $($_.Exception.Message)" }
+    switch ([string]$r.ImageHealthState) {
+        'Repairable'    { New-D9Finding $Check warning 'Системні файли Windows пошкоджено (можна відновити)' 'Відновлення: DISM /RestoreHealth, потім sfc /scannow (10–30 хв, потрібен інтернет).' @{ type = 'maintenance'; action = 'repairSystem' } }
+        'NonRepairable' { New-D9Finding $Check critical 'Системні файли Windows пошкоджено безповоротно' 'Рекомендується перевстановлення Windows зі збереженням файлів (оновлення поверх інсталяційною флешкою).' @{ type = 'manual' } }
+    }
+}
+
+# ======================= Батарея =======================
+
+function Test-D9BatteryWear {
+    param($Check, $Ctx)
+    if (-not $Ctx.System.HasBattery) { return New-D9Skip $Check 'Батареї немає' }
+    try {
+        $full   = (Get-CimInstance -Namespace root\wmi -ClassName BatteryFullChargedCapacity -ErrorAction Stop | Select-Object -First 1).FullChargedCapacity
+        $design = (Get-CimInstance -Namespace root\wmi -ClassName BatteryStaticData -ErrorAction Stop | Select-Object -First 1).DesignedCapacity
+    } catch { return New-D9Skip $Check 'Дані батареї недоступні (потрібні права адміністратора)' }
+    if (-not $full -or -not $design) { return New-D9Skip $Check 'Дані батареї недоступні' }
+    $health = [math]::Round($full * 100 / $design)
+    $t = $Check.thresholds
+    $title = "Батарея зберігає $health% початкової ємності"
+    $details = 'Час роботи від батареї помітно скоротився. Батарею можна замінити в сервісі.'
+    if ($health -lt $t.criticalPercent) { return New-D9Finding $Check critical $title $details @{ type = 'manual' } }
+    if ($health -lt $t.warningPercent) { return New-D9Finding $Check warning $title $details @{ type = 'manual' } }
+}

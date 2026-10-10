@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "note": "Дати кінця підтримки (оновлень безпеки). Перевіряти з офіційними сторінками перед кожним релізом.",
+  "sources": [
+    "https://learn.microsoft.com/lifecycle/products/windows-10-home-and-pro",
+    "https://learn.microsoft.com/lifecycle/products/windows-11-home-and-pro",
+    "https://learn.microsoft.com/lifecycle/products/windows-11-enterprise-and-education"
+  ],
+  "releases": [
+    { "build": 19045, "family": "win10", "version": "22H2", "consumer": "2025-10-14", "enterprise": "2025-10-14",
+      "note": { "uk": "Для Windows 10 можна безкоштовно або платно продовжити оновлення безпеки на рік (ESU) — потрібен акаунт Microsoft.", "en": "Windows 10 security updates can be extended for one year (ESU) with a Microsoft account." } },
+    { "build": 19044, "family": "win10", "version": "21H2", "consumer": "2023-06-13", "enterprise": "2024-06-11", "ltsc": "2027-01-12" },
+    { "build": 17763, "family": "win10", "version": "1809", "consumer": "2020-11-10", "enterprise": "2021-05-11", "ltsc": "2029-01-09" },
+    { "build": 22000, "family": "win11", "version": "21H2", "consumer": "2023-10-10", "enterprise": "2024-10-08" },
+    { "build": 22621, "family": "win11", "version": "22H2", "consumer": "2024-10-08", "enterprise": "2025-10-14" },
+    { "build": 22631, "family": "win11", "version": "23H2", "consumer": "2025-11-11", "enterprise": "2026-11-10" },
+    { "build": 26100, "family": "win11", "version": "24H2", "consumer": "2026-10-13", "enterprise": "2027-10-12" },
+    { "build": 26200, "family": "win11", "version": "25H2", "consumer": "2027-10-12", "enterprise": "2028-10-10" }
+  ]
+}

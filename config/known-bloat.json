@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "note": "Сторонні програми, що зазвичай шкодять або не потрібні. Збіг — за DisplayName з розділу Uninstall реєстру (шаблон -like).",
+  "programs": [
+    { "pattern": "McAfee*", "reason": { "uk": "часто передвстановлена пробна версія; разом із Захисником Windows лише гальмує", "en": "often a preinstalled trial; slows the PC alongside Microsoft Defender" } },
+    { "pattern": "Norton*", "reason": { "uk": "часто передвстановлена пробна версія; разом із Захисником Windows лише гальмує", "en": "often a preinstalled trial" } },
+    { "pattern": "WildTangent*", "reason": { "uk": "рекламні ігри від виробника ПК", "en": "OEM ad-supported games" } },
+    { "pattern": "*Driver Booster*", "reason": { "uk": "«оновлювач драйверів» сторонніх джерел — ризик невідповідних драйверів", "en": "third-party driver updater" } },
+    { "pattern": "*DriverPack*", "reason": { "uk": "збірка драйверів з неофіційних джерел, часто з рекламою", "en": "unofficial driver pack with ads" } },
+    { "pattern": "*Driver Easy*", "reason": { "uk": "сторонній «оновлювач драйверів»", "en": "third-party driver updater" } },
+    { "pattern": "*Advanced SystemCare*", "reason": { "uk": "«оптимізатор», що сам працює у фоні й показує рекламу", "en": "background 'optimizer' with ads" } },
+    { "pattern": "*Reimage*", "reason": { "uk": "відома «лякалка»-оптимізатор", "en": "known scareware optimizer" } },
+    { "pattern": "*Restoro*", "reason": { "uk": "відома «лякалка»-оптимізатор", "en": "known scareware optimizer" } },
+    { "pattern": "*Outbyte*", "reason": { "uk": "«оптимізатор» з нав'язливою рекламою", "en": "pushy 'optimizer'" } },
+    { "pattern": "*PC Accelerate*", "reason": { "uk": "потенційно небажана програма", "en": "potentially unwanted program" } },
+    { "pattern": "*Segurazo*", "reason": { "uk": "потенційно небажаний «антивірус»", "en": "potentially unwanted 'antivirus'" } },
+    { "pattern": "*ByteFence*", "reason": { "uk": "потенційно небажана програма", "en": "potentially unwanted program" } },
+    { "pattern": "*Toolbar*", "reason": { "uk": "панель для браузера — зазвичай реклама й відстеження", "en": "browser toolbar, usually ads and tracking" } },
+    { "pattern": "Booking.com*", "reason": { "uk": "рекламна закладка від виробника ПК", "en": "OEM promotional shortcut" } },
+    { "pattern": "*Web Companion*", "reason": { "uk": "потенційно небажаний «захисник браузера»", "en": "potentially unwanted browser 'protector'" } }
+  ]
+}

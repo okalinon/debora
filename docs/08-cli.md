@@ -1,0 +1,55 @@
+# 8. CLI та автоматизація
+
+Той самий `Debloater9.ps1` без інтерфейсу — для сервісних центрів і масового налаштування.
+
+## Параметри
+
+```powershell
+.\Debloater9.ps1                                  # звичайний запуск з інтерфейсом
+.\Debloater9.ps1 -Preset WeakPC -Yes              # застосувати профіль без питань
+.\Debloater9.ps1 -Preset Recommended -WhatIf      # показати план для профілю під це залізо
+.\Debloater9.ps1 -Profile .\office.json -Yes      # власний набір твіків
+.\Debloater9.ps1 -ListTweaks -Format Json         # каталог із поточним станом
+.\Debloater9.ps1 -ListSessions
+.\Debloater9.ps1 -Undo 2026-10-10T14-32-05-a1b2 -Yes
+.\Debloater9.ps1 -Preset Standard -NoRestorePoint -LogPath C:\logs\d9.log
+```
+
+| Параметр | Опис |
+|---|---|
+| `-Preset` | `Minimal`, `Standard`, `WeakPC`, `Gaming`, `Maximum`, `Recommended` (вибір за залізом) |
+| `-Profile` | Шлях до JSON-профілю (формат нижче) |
+| `-WhatIf` | Лише план і попередній перегляд, без змін |
+| `-Yes` | Не питати підтвердження (обов'язковий для змін без інтерфейсу) |
+| `-NoRestorePoint` | Не створювати точку відновлення |
+| `-Undo <id>` | Відкотити сесію |
+| `-LogPath` | Додатковий журнал у файл |
+| `-Language` | `uk` / `en` |
+
+## Формат профілю
+
+Профіль зберігається з інтерфейсу («Експорт вибору») або пишеться вручну:
+
+```json
+{
+  "name": "Офісні ноутбуки",
+  "schema": 1,
+  "tweaks": ["privacy.telemetry", "privacy.ads-tips", "apps.remove-bloat", "ui.search-local"],
+  "appx": { "remove": ["Microsoft.BingNews", "Clipchamp.Clipchamp"] },
+  "install": ["Mozilla.Firefox", "VideoLAN.VLC", "7zip.7zip"],
+  "options": { "restorePoint": true, "skipNotApplicable": true }
+}
+```
+
+Твіки, що не підходять до ОС чи заліза, пропускаються і позначаються в звіті (не помилка).
+
+## Коди завершення
+
+| Код | Значення |
+|---|---|
+| 0 | Усе застосовано |
+| 1 | Частина дій завершилась помилкою (див. журнал) |
+| 2 | Помилка параметрів або профілю |
+| 3 | Немає прав адміністратора |
+| 4 | Користувач скасував / немає `-Yes` |
+| 10 | Потрібне перезавантаження (усе інше успішно) |

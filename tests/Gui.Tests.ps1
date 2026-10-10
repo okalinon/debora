@@ -20,21 +20,40 @@ Describe 'Вікно' {
         $r.Preset | Should -Be 'Стандартний'
     }
 
-    It 'вкладка «Програми»: каталог, пошук, позначка встановлених' {
+    It 'вкладка «Програми»: категорії, пошук, набори, лічильник, оновлення' {
         $r = Invoke-InGui {
-            $all = @($ui.AppGrid.ItemsSource).Count
-            $ui.AppSearch.Text = 'браузер'
-            $found = @($ui.AppGrid.ItemsSource | ForEach-Object Title)
+            $popular = @($ui.AppCards.ItemsSource).Count
+            $state.AppFilter = 'all'; & $showApps
+            $all = @($ui.AppCards.ItemsSource).Count
+            $ui.AppSearch.Text = 'pdf'
+            $found = @($ui.AppCards.ItemsSource | ForEach-Object Title)
+            $hint = [string]$ui.AppSearchHint.Visibility
             $ui.AppSearch.Text = ''
+            # набір «Базовий» вибирає свої програми й показує «Вибрані»
+            $basic = @($ui.AppBundles.Children)[0]
+            $basic.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
+            $selected = @($ui.AppCards.ItemsSource).Count
+            $selText = $ui.AppSelectedText.Text
+            # встановлена програма з оновленням лишається доступною для вибору
             $chrome = $state.AppRows | Where-Object Id -eq 'Google.Chrome'
+            $state.AppUpgrades['Google.Chrome'] = [pscustomobject]@{ Version = '1.0'; Available = '2.0' }
             & $markApp $chrome $true
-            @{ All = $all; Found = $found; Status = $chrome.Status; Enabled = $chrome.Enabled }
+            $vlc = $state.AppRows | Where-Object Id -eq 'VideoLAN.VLC'
+            & $markApp $vlc $true
+            @{ Popular = $popular; All = $all; Found = $found; Hint = $hint; Selected = $selected; SelText = $selText; Chrome = $chrome.Status; ChromeOn = $chrome.Enabled; Vlc = $vlc.Status; VlcOn = $vlc.Enabled; Cats = @($ui.AppCategoryList.ItemsSource).Count }
         }
-        $r.All | Should -Be @((Import-D9AppCatalog).apps).Count
-        $r.Found | Should -Contain 'Google Chrome'
-        $r.Found | Should -Not -Contain '7-Zip'
-        $r.Status | Should -Be 'встановлено'
-        $r.Enabled | Should -BeFalse
+        $cat = Import-D9AppCatalog
+        $r.All | Should -Be @($cat.apps).Count
+        $r.Popular | Should -Be @($cat.apps | Where-Object popular).Count
+        $r.Found | Should -Contain 'SumatraPDF'
+        $r.Hint | Should -Be 'Collapsed'
+        $r.Selected | Should -Be @($cat.bundles[0].apps).Count
+        $r.SelText | Should -Match "Вибрано: $(@($cat.bundles[0].apps).Count)"
+        $r.Chrome | Should -Be 'є оновлення: 1.0 → 2.0'
+        $r.ChromeOn | Should -BeTrue
+        $r.Vlc | Should -Be 'встановлено'
+        $r.VlcOn | Should -BeFalse
+        $r.Cats | Should -Be (5 + @($cat.categories).Count)
     }
 
     It 'вкладка «Огляд» показує оцінку, категорії й знахідки' {

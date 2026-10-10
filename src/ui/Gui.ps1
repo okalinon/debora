@@ -176,7 +176,7 @@ function Show-D9Gui {
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
                    'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
-                   'AppSearch', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore', 'AppGrid',
+                   'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'StartupSummary', 'StartupGrid',
@@ -225,6 +225,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if (-not $busy) {
             $ui.BtnInstallDrivers.IsEnabled = [bool]$state.Packages
             $ui.BtnDriverOnlineInstall.IsEnabled = [bool]$state.OnlineCands
+            if ($updateAppSelection) { & $updateAppSelection }
             $ui.BtnOpenReport.IsEnabled = [bool]$state.ReportPath
         }
     }
@@ -788,61 +789,144 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
 
     # ---------- Програми (winget) ----------
+    $hasWinget = [bool](Get-D9WingetPath)
     $appCatalog = Import-D9AppCatalog
-    $appCats = @{}
+    $appCats = [ordered]@{}
     foreach ($c in $appCatalog.categories) { $appCats[[string]$c.id] = Get-D9Text $c.name }
+    $state.AppUpgrades = @{}
+    $state.AppFilter = 'popular'
     $state.AppRows = @($appCatalog.apps | ForEach-Object {
         New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#5D6675'; Tag = $_ }
     })
+    $appStatus = { param($row) if ($row.Status -like 'є оновлення*') { 'update' } elseif ($row.Status -eq 'встановлено') { 'installed' } else { 'none' } }
+    # Категорії ліворуч: службові + з каталогу, з кількістю
+    $fillAppCategories = {
+        $rows = $state.AppRows
+        $list = @(
+            @{ Id = 'popular'; Title = '★ Популярне'; N = @($rows | Where-Object { $_.Tag.popular }).Count }
+            @{ Id = 'all'; Title = 'Усі програми'; N = $rows.Count }
+            @{ Id = 'selected'; Title = '✓ Вибрані'; N = @($rows | Where-Object Selected).Count }
+            @{ Id = 'installed'; Title = 'Встановлені'; N = @($rows | Where-Object { (& $appStatus $_) -ne 'none' }).Count }
+            @{ Id = 'update'; Title = 'Є оновлення'; N = @($rows | Where-Object { (& $appStatus $_) -eq 'update' }).Count }
+        ) + @($appCats.Keys | ForEach-Object { $id = $_; @{ Id = "cat:$id"; Title = $appCats[$id]; N = @($rows | Where-Object { $_.Tag.category -eq $id }).Count } })
+        $state.AppCategoryRows = @($list | ForEach-Object { New-D9Row @{ Id = $_.Id; Title = $_.Title; Status = $(if ($_.N) { "$($_.N)" } else { '' }) } })
+        $state.AppCategoryUpdating = $true
+        Set-D9Items $ui.AppCategoryList $state.AppCategoryRows
+        $ui.AppCategoryList.SelectedIndex = [math]::Max(0, [array]::IndexOf(@($state.AppCategoryRows.Id), $state.AppFilter))
+        $state.AppCategoryUpdating = $false
+    }
     $showApps = {
         $q = $ui.AppSearch.Text.Trim()
-        $shown = if ($q) { @($state.AppRows | Where-Object { $_.Title -like "*$q*" -or $_.Group -like "*$q*" -or $_.Note -like "*$q*" -or $_.Id -like "*$q*" }) } else { $state.AppRows }
-        Set-D9Items $ui.AppGrid $shown
+        $f = $state.AppFilter
+        $shown = @($state.AppRows | Where-Object {
+            $row = $_   # усередині switch $_ — це значення фільтра
+            # Пошук — по всьому каталогу, незалежно від категорії
+            if ($q) { return ($row.Title -like "*$q*" -or $row.Note -like "*$q*" -or $row.Group -like "*$q*" -or $row.Id -like "*$q*") }
+            switch -Wildcard ($f) {
+                'popular'   { [bool]$row.Tag.popular }
+                'all'       { $true }
+                'selected'  { [bool]$row.Selected }
+                'installed' { (& $appStatus $row) -ne 'none' }
+                'update'    { (& $appStatus $row) -eq 'update' }
+                'cat:*'     { $row.Tag.category -eq $f.Substring(4) }
+            }
+        })
+        Set-D9Items $ui.AppCards $shown
     }
+    $updateAppSelection = {
+        $sel = @($state.AppRows | Where-Object Selected)
+        $upd = @($sel | Where-Object { (& $appStatus $_) -eq 'update' }).Count
+        $ui.AppSelectedText.Text = if ($sel) { "Вибрано: $($sel.Count)$(if ($upd) { " (з них оновити: $upd)" }) — $(($sel | Select-Object -First 6 | ForEach-Object Title) -join ', ')$(if ($sel.Count -gt 6) { '…' })" } else { 'Нічого не вибрано. Клацніть по картці програми, щоб вибрати.' }
+        $ui.BtnAppsInstall.Content = if ($sel) { "Встановити вибрані ($($sel.Count))" } else { 'Встановити вибрані' }
+        $ui.BtnAppsInstall.IsEnabled = [bool]$sel -and $hasWinget -and -not $state.Job
+        $c = $state.AppCategoryRows | Where-Object Id -eq 'selected' | Select-Object -First 1
+        if ($c) { $c.Status = $(if ($sel) { "$($sel.Count)" } else { '' }) }
+    }
+    & $fillAppCategories
     & $showApps
-    $ui.AppSearch.Add_TextChanged({ & $showApps })
-    $hasWinget = [bool](Get-D9WingetPath)
+    & $updateAppSelection
+    $ui.AppCategoryList.Add_SelectionChanged({
+        if ($state.AppCategoryUpdating -or -not $ui.AppCategoryList.SelectedItem) { return }
+        $state.AppFilter = $ui.AppCategoryList.SelectedItem.Id
+        if ($ui.AppSearch.Text) { $ui.AppSearch.Text = '' } else { & $showApps }
+    })
+    $ui.AppSearch.Add_TextChanged({
+        $ui.AppSearchHint.Visibility = if ($ui.AppSearch.Text) { 'Collapsed' } else { 'Visible' }
+        & $showApps
+    })
+    # Клік по галочці в будь-якій картці (подія Click спливає від CheckBox до списку)
+    $ui.AppCards.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateAppSelection })
+    foreach ($b in @($appCatalog.bundles)) {
+        $btn = New-Object Windows.Controls.Button
+        $btn.Content = Get-D9Text $b.name; $btn.ToolTip = Get-D9Text $b.description; $btn.Tag = @($b.apps); $btn.Margin = '0,0,6,4'
+        $btn.Add_Click({
+            param($sender, $e)
+            $ids = @($sender.Tag)
+            foreach ($r in $state.AppRows) { if ($ids -contains $r.Id -and $r.Enabled) { $r.Selected = $true } }
+            $state.AppFilter = 'selected'
+            & $fillAppCategories; & $showApps; & $updateAppSelection
+        })
+        [void]$ui.AppBundles.Children.Add($btn)
+    }
+    $ui.BtnAppsClear.Add_Click({ foreach ($r in $state.AppRows) { $r.Selected = $false }; if ($state.AppFilter -eq 'selected') { & $showApps }; & $updateAppSelection })
+
     if (-not $hasWinget) {
         $ui.AppsSummary.Text = 'winget не знайдено — без нього програми не встановлюються. Встановіть «Інсталятор застосунків» з Microsoft Store і перезапустіть Debloater9.'
         $ui.BtnWingetStore.Visibility = 'Visible'
     }
     $ui.BtnWingetStore.Add_Click({ Start-Process 'ms-windows-store://pdp/?productid=9NBLGGH4NNS1' })
     $noWinget = { [void][Windows.MessageBox]::Show($win, 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store (посилання на вкладці).', 'Debloater9', 'OK', 'Warning') }
+    # Стан картки: встановлено / є оновлення (можна вибрати й оновити) / не встановлено
     $markApp = {
         param($row, [bool]$installed)
-        if ($installed) { $row.Status = 'встановлено'; $row.Color = '#2E7D32'; $row.Selected = $false; $row.Enabled = $false }
+        $up = $state.AppUpgrades[[string]$row.Id]
+        if ($installed -and $up) { $row.Status = "є оновлення: $($up.Version) → $($up.Available)"; $row.Color = '#2563EB'; $row.Enabled = $true }
+        elseif ($installed) { $row.Status = 'встановлено'; $row.Color = '#2E7D32'; $row.Selected = $false; $row.Enabled = $false }
         else { $row.Status = 'не встановлено'; $row.Color = '#5D6675'; $row.Enabled = $true }
     }
     $loadApps = {
         if (-not $hasWinget) { return }
-        & $startJob 'Перевірка встановлених програм' { $s = Get-D9InstalledAppIds; [string[]]@($s) } $null {
-            param($ids)
-            $ids = @($ids)
-            foreach ($r in $state.AppRows) { & $markApp $r ($ids -contains $r.Id) }
+        & $startJob 'Перевірка встановлених програм' { $s = Get-D9InstalledAppIds; @{ Ids = [string[]]@($s); Up = @(Get-D9AppUpgrades) } } $null {
+            param($r)
+            $state.AppUpgrades = @{}
+            foreach ($u in @($r.Up)) { if ($u.Id) { $state.AppUpgrades[[string]$u.Id] = $u } }
+            $ids = @($r.Ids)
+            foreach ($row in $state.AppRows) { & $markApp $row ($ids -contains $row.Id -or $state.AppUpgrades.ContainsKey([string]$row.Id)) }
             $state.AppsLoaded = $true
-            $n = @($state.AppRows | Where-Object { $_.Status -eq 'встановлено' }).Count
-            $ui.AppsSummary.Text = "Програм у каталозі: $(@($state.AppRows).Count), з них уже встановлено: $n. Позначте потрібні й натисніть «Встановити вибрані» — офіційні інсталятори через winget, без реклами й «довантажувачів»."
+            & $fillAppCategories; & $showApps; & $updateAppSelection
+            $inst = @($state.AppRows | Where-Object { (& $appStatus $_) -ne 'none' }).Count
+            $ui.AppsSummary.Text = "У каталозі $(@($state.AppRows).Count) програм, з них у вас встановлено $inst, мають оновлення $(@($r.Up).Count) (усього на ПК). Клацніть по картці, щоб вибрати, або скористайтеся готовим набором."
         }
     }
     $ui.BtnAppsRefresh.Add_Click({ if ($hasWinget) { & $loadApps } else { & $noWinget } })
     $ui.BtnAppsInstall.Add_Click({
         if (-not $hasWinget) { & $noWinget; return }
         $sel = @($state.AppRows | Where-Object Selected)
-        if (-not $sel) { [void][Windows.MessageBox]::Show($win, 'Позначте програми галочками.', 'Debloater9'); return }
-        $names = ($sel | ForEach-Object { "• $($_.Title)" }) -join "`n"
-        if ([Windows.MessageBox]::Show($win, "Встановити програми ($($sel.Count))?`n`n$names`n`nВстановлення йде у фоні; деякі інсталятори можуть показати власне вікно.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        if (-not $sel) { return }
+        $toUpdate = @($sel | Where-Object { (& $appStatus $_) -eq 'update' })
+        $toInstall = @($sel | Where-Object { (& $appStatus $_) -ne 'update' })
+        $text = @()
+        if ($toInstall) { $text += "Встановити ($($toInstall.Count)):"; $text += @($toInstall | ForEach-Object { "  • $($_.Title)" }) }
+        if ($toUpdate) { $text += "Оновити ($($toUpdate.Count)):"; $text += @($toUpdate | ForEach-Object { "  • $($_.Title)" }) }
+        if (-not (Show-D9TextDialog $win 'Програми' "Встановлення йде у фоні; деякі інсталятори можуть показати власне вікно." ($text -join "`r`n") 'Встановити')) { return }
         $ui.LogExpander.IsExpanded = $true
-        & $startJob 'Встановлення програм' { param($a) Install-D9Apps -Apps $a.Apps } @{ Apps = @($sel | ForEach-Object Tag) } {
+        & $startJob 'Встановлення програм' {
+            param($a)
+            @(if ($a.Install) { Install-D9Apps -Apps $a.Install }) + @(if ($a.Update) { Update-D9Apps -Ids $a.Update })
+        } @{ Install = @($toInstall | ForEach-Object Tag); Update = @($toUpdate | ForEach-Object Id) } {
             param($res)
             $res = @($res | Where-Object { $_ })
             foreach ($r in $res) {
                 $row = $state.AppRows | Where-Object Id -eq $r.id | Select-Object -First 1
                 if (-not $row) { continue }
-                if ($r.result -in 'failed', 'notFound') { $row.Status = 'помилка'; $row.Color = '#C62828' } else { & $markApp $row $true }
+                if ($r.result -in 'failed', 'notFound') { $row.Status = 'помилка — див. журнал'; $row.Color = '#C62828' }
+                else { $state.AppUpgrades.Remove([string]$row.Id); & $markApp $row $true }
             }
+            & $fillAppCategories; & $showApps; & $updateAppSelection
             $bad = @($res | Where-Object { $_.result -in 'failed', 'notFound' })
-            $msg = "Встановлено: $($res.Count - $bad.Count) з $($res.Count)."
-            if ($bad) { $msg += "`nНе вдалося: $(($bad | ForEach-Object name) -join ', '). Подробиці — у журналі виконання внизу." }
+            $names = @{}; foreach ($r in $state.AppRows) { $names[[string]$r.Id] = $r.Title }
+            $msg = "Готово: $($res.Count - $bad.Count) з $($res.Count)."
+            if ($bad) { $msg += "`nНе вдалося: $(($bad | ForEach-Object { $names[[string]$_.id] }) -join ', '). Подробиці — у журналі виконання внизу." }
             if (@($res | Where-Object result -eq 'reboot')) { $msg += "`nДеякі програми запрацюють після перезавантаження." }
             [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'OK', $(if ($bad) { 'Warning' } else { 'Information' }))
         }
@@ -854,16 +938,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $up = @($up | Where-Object { $_ })
             if (-not $up) { [void][Windows.MessageBox]::Show($win, 'Усі програми актуальні.', 'Debloater9'); return }
             $text = ($up | ForEach-Object { "$($_.Name)    $($_.Version) → $($_.Available)" }) -join "`r`n"
-            if (-not (Show-D9TextDialog $win 'Оновити програми' "Оновлення є для $($up.Count) програм. Відкриті програми краще закрити — їх не вдасться оновити." $text)) { return }
+            if (-not (Show-D9TextDialog $win 'Оновити програми' "Оновлення є для $($up.Count) програм (усі, не лише з каталогу). Відкриті програми краще закрити — їх не вдасться оновити." $text)) { return }
             $ui.LogExpander.IsExpanded = $true
             & $startJob 'Оновлення програм' { Invoke-D9AppUpgradeAll } $null {
                 param($r)
                 $ok = $r.Result -in 'installed', 'upToDate'
                 [void][Windows.MessageBox]::Show($win, $(if ($ok) { 'Програми оновлено.' } else { 'Оновлення завершено, але частину програм (наприклад, відкритих зараз) оновити не вдалося. Подробиці — у журналі виконання внизу.' }), 'Debloater9', 'OK', $(if ($ok) { 'Information' } else { 'Warning' }))
+                & $loadApps
             }
         }
     })
-
     # ---------- Автоматичне обслуговування ----------
     $dayNames = [ordered]@{ Monday = 'понеділок'; Tuesday = 'вівторок'; Wednesday = 'середа'; Thursday = 'четвер'; Friday = 'п''ятниця'; Saturday = 'субота'; Sunday = 'неділя' }
     foreach ($d in $dayNames.Values) { [void]$ui.MtDay.Items.Add($d) }

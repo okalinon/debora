@@ -2,105 +2,1558 @@
   "schema": 1,
   "note": "Каталог програм для встановлення через winget. id — точний ідентифікатор пакета (winget show --id <id> -e); source — winget (типово) або msstore. Перевірка ID: build\\Test-AppCatalog.ps1.",
   "categories": [
-    { "id": "browsers",   "name": { "uk": "Браузери",               "en": "Browsers" } },
-    { "id": "messengers", "name": { "uk": "Зв'язок",                "en": "Communication" } },
-    { "id": "media",      "name": { "uk": "Мультимедіа",            "en": "Media" } },
-    { "id": "office",     "name": { "uk": "Документи",              "en": "Documents" } },
-    { "id": "tools",      "name": { "uk": "Утиліти",                "en": "Utilities" } },
-    { "id": "security",   "name": { "uk": "Безпека й паролі",       "en": "Security & passwords" } },
-    { "id": "diagnostic", "name": { "uk": "Діагностика заліза",     "en": "Hardware diagnostics" } },
-    { "id": "games",      "name": { "uk": "Ігри",                   "en": "Games" } },
-    { "id": "cloud",      "name": { "uk": "Хмара й віддалений доступ", "en": "Cloud & remote access" } },
-    { "id": "dev",        "name": { "uk": "Розробка",               "en": "Development" } },
-    { "id": "drivers",    "name": { "uk": "Драйвери (утиліти виробників)", "en": "Driver tools" } },
-    { "id": "runtimes",   "name": { "uk": "Системні компоненти",    "en": "Runtimes" } },
-    { "id": "windows",    "name": { "uk": "Застосунки Windows (повернути)", "en": "Windows apps (restore)" } }
+    {
+      "id": "browsers",
+      "name": {
+        "uk": "Браузери",
+        "en": "Browsers"
+      }
+    },
+    {
+      "id": "messengers",
+      "name": {
+        "uk": "Зв'язок",
+        "en": "Communication"
+      }
+    },
+    {
+      "id": "media",
+      "name": {
+        "uk": "Мультимедіа",
+        "en": "Media"
+      }
+    },
+    {
+      "id": "office",
+      "name": {
+        "uk": "Документи",
+        "en": "Documents"
+      }
+    },
+    {
+      "id": "tools",
+      "name": {
+        "uk": "Утиліти",
+        "en": "Utilities"
+      }
+    },
+    {
+      "id": "security",
+      "name": {
+        "uk": "Безпека й паролі",
+        "en": "Security & passwords"
+      }
+    },
+    {
+      "id": "diagnostic",
+      "name": {
+        "uk": "Діагностика заліза",
+        "en": "Hardware diagnostics"
+      }
+    },
+    {
+      "id": "games",
+      "name": {
+        "uk": "Ігри",
+        "en": "Games"
+      }
+    },
+    {
+      "id": "cloud",
+      "name": {
+        "uk": "Хмара й віддалений доступ",
+        "en": "Cloud & remote access"
+      }
+    },
+    {
+      "id": "dev",
+      "name": {
+        "uk": "Розробка",
+        "en": "Development"
+      }
+    },
+    {
+      "id": "drivers",
+      "name": {
+        "uk": "Драйвери (утиліти виробників)",
+        "en": "Driver tools"
+      }
+    },
+    {
+      "id": "runtimes",
+      "name": {
+        "uk": "Системні компоненти",
+        "en": "Runtimes"
+      }
+    },
+    {
+      "id": "windows",
+      "name": {
+        "uk": "Застосунки Windows (повернути)",
+        "en": "Windows apps (restore)"
+      }
+    }
   ],
   "apps": [
-    { "id": "Google.Chrome",            "category": "browsers", "name": "Google Chrome",   "description": { "uk": "Найпоширеніший браузер.", "en": "The most popular browser." } },
-    { "id": "Mozilla.Firefox",          "category": "browsers", "name": "Mozilla Firefox", "description": { "uk": "Відкритий браузер, бережливий до приватності.", "en": "Open-source, privacy-friendly browser." } },
-    { "id": "Brave.Brave",              "category": "browsers", "name": "Brave",           "description": { "uk": "Браузер на основі Chromium із вбудованим блокуванням реклами.", "en": "Chromium-based browser with built-in ad blocking." } },
-    { "id": "Opera.Opera",              "category": "browsers", "name": "Opera",           "description": { "uk": "Браузер із вбудованим VPN і месенджерами на бічній панелі.", "en": "Browser with built-in VPN and sidebar messengers." } },
-    { "id": "Vivaldi.Vivaldi",          "category": "browsers", "name": "Vivaldi",         "description": { "uk": "Гнучко налаштовуваний браузер.", "en": "Highly customizable browser." } },
-
-    { "id": "Telegram.TelegramDesktop", "category": "messengers", "name": "Telegram",  "description": { "uk": "Месенджер.", "en": "Messenger." } },
-    { "id": "Rakuten.Viber",            "category": "messengers", "name": "Viber",     "description": { "uk": "Месенджер і дзвінки.", "en": "Messenger and calls." } },
-    { "id": "9NKSQGP7F2NH", "source": "msstore", "category": "messengers", "name": "WhatsApp", "description": { "uk": "Месенджер (з Microsoft Store).", "en": "Messenger (from Microsoft Store)." } },
-    { "id": "OpenWhisperSystems.Signal", "category": "messengers", "name": "Signal",  "description": { "uk": "Захищений месенджер.", "en": "Secure messenger." } },
-    { "id": "Discord.Discord",          "category": "messengers", "name": "Discord",   "description": { "uk": "Голосові й текстові спільноти.", "en": "Voice and text communities." } },
-    { "id": "Zoom.Zoom",                "category": "messengers", "name": "Zoom",      "description": { "uk": "Відеоконференції.", "en": "Video meetings." } },
-
-    { "id": "VideoLAN.VLC",             "category": "media", "name": "VLC",            "description": { "uk": "Відтворює майже будь-яке відео й аудіо.", "en": "Plays almost any video and audio." } },
-    { "id": "clsid2.mpc-hc",            "category": "media", "name": "MPC-HC",         "description": { "uk": "Легкий відеоплеєр — добре для слабких ПК.", "en": "Lightweight video player, good for weak PCs." } },
-    { "id": "Spotify.Spotify",          "category": "media", "name": "Spotify",        "description": { "uk": "Музика.", "en": "Music streaming." } },
-    { "id": "Audacity.Audacity",        "category": "media", "name": "Audacity",       "description": { "uk": "Редактор аудіо.", "en": "Audio editor." } },
-    { "id": "OBSProject.OBSStudio",     "category": "media", "name": "OBS Studio",     "description": { "uk": "Запис екрана й трансляції.", "en": "Screen recording and streaming." } },
-    { "id": "HandBrake.HandBrake",      "category": "media", "name": "HandBrake",      "description": { "uk": "Стиснення й конвертування відео.", "en": "Video compression and conversion." } },
-    { "id": "KDE.Krita",                "category": "media", "name": "Krita",          "description": { "uk": "Цифрове малювання.", "en": "Digital painting." } },
-    { "id": "Inkscape.Inkscape",        "category": "media", "name": "Inkscape",       "description": { "uk": "Векторна графіка.", "en": "Vector graphics." } },
-    { "id": "IrfanSkiljan.IrfanView",   "category": "media", "name": "IrfanView",      "description": { "uk": "Швидкий переглядач зображень.", "en": "Fast image viewer." } },
-
-    { "id": "TheDocumentFoundation.LibreOffice", "category": "office", "name": "LibreOffice", "description": { "uk": "Безкоштовний офісний пакет (тексти, таблиці, презентації).", "en": "Free office suite." } },
-    { "id": "ONLYOFFICE.DesktopEditors", "category": "office", "name": "ONLYOFFICE",  "description": { "uk": "Офісний пакет із форматами Microsoft Office.", "en": "Office suite compatible with Microsoft Office formats." } },
-    { "id": "SumatraPDF.SumatraPDF",    "category": "office", "name": "SumatraPDF",   "description": { "uk": "Дуже легкий переглядач PDF, EPUB, DjVu.", "en": "Very light PDF, EPUB and DjVu viewer." } },
-    { "id": "Adobe.Acrobat.Reader.64-bit", "category": "office", "name": "Adobe Acrobat Reader", "description": { "uk": "Переглядач PDF із заповненням форм і підписом.", "en": "PDF reader with forms and signing." } },
-    { "id": "Notepad++.Notepad++",      "category": "office", "name": "Notepad++",    "description": { "uk": "Текстовий редактор.", "en": "Text editor." } },
-    { "id": "Obsidian.Obsidian",        "category": "office", "name": "Obsidian",     "description": { "uk": "Нотатки в Markdown.", "en": "Markdown notes." } },
-
-    { "id": "7zip.7zip",                "category": "tools", "name": "7-Zip",          "description": { "uk": "Архіватор (zip, 7z, rar).", "en": "Archiver (zip, 7z, rar)." } },
-    { "id": "voidtools.Everything",     "category": "tools", "name": "Everything",     "description": { "uk": "Миттєвий пошук файлів за назвою.", "en": "Instant file search by name." } },
-    { "id": "ShareX.ShareX",            "category": "tools", "name": "ShareX",         "description": { "uk": "Знімки й запис екрана.", "en": "Screenshots and screen recording." } },
-    { "id": "Microsoft.PowerToys",      "category": "tools", "name": "PowerToys",      "description": { "uk": "Корисні інструменти від Microsoft.", "en": "Handy tools from Microsoft." } },
-    { "id": "AntibodySoftware.WizTree", "category": "tools", "name": "WizTree",        "description": { "uk": "Що займає місце на диску.", "en": "What takes up disk space." } },
-    { "id": "BleachBit.BleachBit",      "category": "tools", "name": "BleachBit",      "description": { "uk": "Очищення залишків програм і браузерів.", "en": "Cleans program and browser leftovers." } },
-    { "id": "qBittorrent.qBittorrent",  "category": "tools", "name": "qBittorrent",    "description": { "uk": "Торент-клієнт без реклами.", "en": "Ad-free torrent client." } },
-    { "id": "Rufus.Rufus",              "category": "tools", "name": "Rufus",          "description": { "uk": "Створення завантажувальних флешок.", "en": "Create bootable USB drives." } },
-    { "id": "Ventoy.Ventoy",            "category": "tools", "name": "Ventoy",         "description": { "uk": "Флешка з кількома образами ISO.", "en": "USB drive with multiple ISO images." } },
-
-    { "id": "KeePassXCTeam.KeePassXC",  "category": "security", "name": "KeePassXC",   "description": { "uk": "Менеджер паролів (локальна база).", "en": "Password manager (local database)." } },
-    { "id": "Bitwarden.Bitwarden",      "category": "security", "name": "Bitwarden",   "description": { "uk": "Менеджер паролів із синхронізацією.", "en": "Password manager with sync." } },
-    { "id": "Malwarebytes.Malwarebytes", "category": "security", "name": "Malwarebytes", "description": { "uk": "Друга думка щодо шкідливих програм.", "en": "Second-opinion malware scanner." } },
-
-    { "id": "CrystalDewWorld.CrystalDiskInfo", "category": "diagnostic", "name": "CrystalDiskInfo", "description": { "uk": "Стан диска (SMART), температура.", "en": "Disk health (SMART) and temperature." } },
-    { "id": "CrystalDewWorld.CrystalDiskMark", "category": "diagnostic", "name": "CrystalDiskMark", "description": { "uk": "Тест швидкості диска.", "en": "Disk speed benchmark." } },
-    { "id": "CPUID.CPU-Z",              "category": "diagnostic", "name": "CPU-Z",          "description": { "uk": "Відомості про процесор і пам'ять.", "en": "CPU and memory details." } },
-    { "id": "TechPowerUp.GPU-Z",        "category": "diagnostic", "name": "GPU-Z",          "description": { "uk": "Відомості про відеокарту.", "en": "Graphics card details." } },
-    { "id": "REALiX.HWiNFO",            "category": "diagnostic", "name": "HWiNFO",         "description": { "uk": "Датчики й повні відомості про залізо.", "en": "Sensors and full hardware details." } },
-
-    { "id": "Valve.Steam",              "category": "games", "name": "Steam",           "description": { "uk": "Магазин і бібліотека ігор.", "en": "Game store and library." } },
-    { "id": "EpicGames.EpicGamesLauncher", "category": "games", "name": "Epic Games Launcher", "description": { "uk": "Магазин Epic, щотижневі безкоштовні ігри.", "en": "Epic store, weekly free games." } },
-    { "id": "GOG.Galaxy",               "category": "games", "name": "GOG Galaxy",      "description": { "uk": "Ігри без DRM.", "en": "DRM-free games." } },
-
-    { "id": "Google.GoogleDrive",       "category": "cloud", "name": "Google Drive",    "description": { "uk": "Синхронізація файлів із Google Диском.", "en": "Sync files with Google Drive." } },
-    { "id": "Dropbox.Dropbox",          "category": "cloud", "name": "Dropbox",         "description": { "uk": "Хмарне сховище.", "en": "Cloud storage." } },
-    { "id": "AnyDesk.AnyDesk",          "category": "cloud", "name": "AnyDesk",         "description": { "uk": "Віддалений доступ. Не давайте доступ незнайомим «техпідтримкам»!", "en": "Remote access. Never let unknown \"support\" connect!" } },
-
-    { "id": "Microsoft.VisualStudioCode", "category": "dev", "name": "Visual Studio Code", "description": { "uk": "Редактор коду.", "en": "Code editor." } },
-    { "id": "Git.Git",                  "category": "dev", "name": "Git",               "description": { "uk": "Система контролю версій.", "en": "Version control." } },
-    { "id": "Python.Python.3.13",       "category": "dev", "name": "Python 3.13",       "description": { "uk": "Мова програмування Python.", "en": "Python programming language." } },
-    { "id": "OpenJS.NodeJS.LTS",        "category": "dev", "name": "Node.js LTS",       "description": { "uk": "JavaScript поза браузером.", "en": "JavaScript runtime." } },
-    { "id": "Microsoft.WindowsTerminal", "category": "dev", "name": "Windows Terminal", "description": { "uk": "Сучасний термінал.", "en": "Modern terminal." } },
-    { "id": "WinSCP.WinSCP",            "category": "dev", "name": "WinSCP",            "description": { "uk": "SFTP/FTP-клієнт.", "en": "SFTP/FTP client." } },
-    { "id": "PuTTY.PuTTY",              "category": "dev", "name": "PuTTY",             "description": { "uk": "SSH-клієнт.", "en": "SSH client." } },
-
-    { "id": "Intel.IntelDriverAndSupportAssistant", "category": "drivers", "name": "Intel Driver & Support Assistant", "description": { "uk": "Найсвіжіші драйвери Intel (відео, Wi-Fi, Bluetooth).", "en": "Latest Intel drivers (graphics, Wi-Fi, Bluetooth)." } },
-    { "id": "Dell.CommandUpdate",       "category": "drivers", "name": "Dell Command | Update", "description": { "uk": "Драйвери й BIOS для ПК Dell.", "en": "Drivers and BIOS for Dell PCs." } },
-    { "id": "Lenovo.SystemUpdate",      "category": "drivers", "name": "Lenovo System Update", "description": { "uk": "Драйвери й BIOS для ПК Lenovo.", "en": "Drivers and BIOS for Lenovo PCs." } },
-    { "id": "HP.SupportAssistant",      "category": "drivers", "name": "HP Support Assistant", "description": { "uk": "Драйвери й BIOS для ПК HP.", "en": "Drivers and BIOS for HP PCs." } },
-
-    { "id": "Microsoft.VCRedist.2015+.x64", "category": "runtimes", "name": "Visual C++ 2015–2022 (x64)", "description": { "uk": "Потрібна багатьом програмам та іграм.", "en": "Required by many apps and games." } },
-    { "id": "Microsoft.VCRedist.2015+.x86", "category": "runtimes", "name": "Visual C++ 2015–2022 (x86)", "description": { "uk": "32-бітна версія для старих програм.", "en": "32-bit version for older apps." } },
-    { "id": "Microsoft.DotNet.DesktopRuntime.8", "category": "runtimes", "name": ".NET Desktop Runtime 8", "description": { "uk": "Потрібна програмам на .NET.", "en": "Required by .NET apps." } },
-    { "id": "Microsoft.EdgeWebView2Runtime", "category": "runtimes", "name": "WebView2", "description": { "uk": "Компонент, без якого не працюють Teams, Outlook і багато програм.", "en": "Required by Teams, Outlook and many apps." } },
-    { "id": "Microsoft.DirectX",        "category": "runtimes", "name": "DirectX (старі бібліотеки)", "description": { "uk": "Для старих ігор, що просять d3dx9_xx.dll.", "en": "For older games asking for d3dx9_xx.dll." } },
-
-    { "id": "9WZDNCRFHVN5", "source": "msstore", "category": "windows", "name": "Калькулятор",     "description": { "uk": "Повернути, якщо видалено.", "en": "Restore if removed." } },
-    { "id": "9WZDNCRFJBH4", "source": "msstore", "category": "windows", "name": "Фотографії",      "description": { "uk": "Повернути, якщо видалено.", "en": "Restore if removed." } },
-    { "id": "9MZ95KL8MR0L", "source": "msstore", "category": "windows", "name": "Ножиці",          "description": { "uk": "Знімки екрана (Win+Shift+S).", "en": "Screenshots (Win+Shift+S)." } },
-    { "id": "9PCFS5B6T72H", "source": "msstore", "category": "windows", "name": "Paint",           "description": { "uk": "Повернути, якщо видалено.", "en": "Restore if removed." } },
-    { "id": "9MSMLRH6LZF3", "source": "msstore", "category": "windows", "name": "Блокнот",         "description": { "uk": "Повернути, якщо видалено.", "en": "Restore if removed." } },
-    { "id": "9WZDNCRFJBBG", "source": "msstore", "category": "windows", "name": "Камера",          "description": { "uk": "Повернути, якщо видалено.", "en": "Restore if removed." } },
-    { "id": "9MV0B5HZVK9Z", "source": "msstore", "category": "windows", "name": "Xbox",            "description": { "uk": "Повернути, якщо видалено (Game Pass).", "en": "Restore if removed (Game Pass)." } },
-    { "id": "9NBLGGH4NNS1", "source": "msstore", "category": "windows", "name": "Інсталятор застосунків (winget)", "description": { "uk": "Оновити або повернути сам winget.", "en": "Update or restore winget itself." } }
+    {
+      "id": "Google.Chrome",
+      "category": "browsers",
+      "name": "Google Chrome",
+      "description": {
+        "uk": "Найпоширеніший браузер.",
+        "en": "The most popular browser."
+      },
+      "popular": true
+    },
+    {
+      "id": "Mozilla.Firefox",
+      "category": "browsers",
+      "name": "Mozilla Firefox",
+      "description": {
+        "uk": "Відкритий браузер, бережливий до приватності.",
+        "en": "Open-source, privacy-friendly browser."
+      },
+      "popular": true
+    },
+    {
+      "id": "Brave.Brave",
+      "category": "browsers",
+      "name": "Brave",
+      "description": {
+        "uk": "Браузер на основі Chromium із вбудованим блокуванням реклами.",
+        "en": "Chromium-based browser with built-in ad blocking."
+      }
+    },
+    {
+      "id": "Opera.Opera",
+      "category": "browsers",
+      "name": "Opera",
+      "description": {
+        "uk": "Браузер із вбудованим VPN і месенджерами на бічній панелі.",
+        "en": "Browser with built-in VPN and sidebar messengers."
+      }
+    },
+    {
+      "id": "Vivaldi.Vivaldi",
+      "category": "browsers",
+      "name": "Vivaldi",
+      "description": {
+        "uk": "Гнучко налаштовуваний браузер.",
+        "en": "Highly customizable browser."
+      }
+    },
+    {
+      "id": "TorProject.TorBrowser",
+      "category": "browsers",
+      "name": "Tor Browser",
+      "description": {
+        "uk": "Анонімний браузер через мережу Tor.",
+        "en": "Anonymous browser over Tor."
+      }
+    },
+    {
+      "id": "Hibbiki.Chromium",
+      "category": "browsers",
+      "name": "Chromium",
+      "description": {
+        "uk": "Відкрита основа Chrome без сервісів Google.",
+        "en": "Open-source base of Chrome without Google services."
+      }
+    },
+    {
+      "id": "LibreWolf.LibreWolf",
+      "category": "browsers",
+      "name": "LibreWolf",
+      "description": {
+        "uk": "Firefox, налаштований на максимальну приватність.",
+        "en": "Firefox tuned for privacy."
+      }
+    },
+    {
+      "id": "Telegram.TelegramDesktop",
+      "category": "messengers",
+      "name": "Telegram",
+      "description": {
+        "uk": "Месенджер.",
+        "en": "Messenger."
+      },
+      "popular": true
+    },
+    {
+      "id": "Rakuten.Viber",
+      "category": "messengers",
+      "name": "Viber",
+      "description": {
+        "uk": "Месенджер і дзвінки.",
+        "en": "Messenger and calls."
+      },
+      "popular": true
+    },
+    {
+      "id": "9NKSQGP7F2NH",
+      "source": "msstore",
+      "category": "messengers",
+      "name": "WhatsApp",
+      "description": {
+        "uk": "Месенджер (з Microsoft Store).",
+        "en": "Messenger (from Microsoft Store)."
+      }
+    },
+    {
+      "id": "OpenWhisperSystems.Signal",
+      "category": "messengers",
+      "name": "Signal",
+      "description": {
+        "uk": "Захищений месенджер.",
+        "en": "Secure messenger."
+      }
+    },
+    {
+      "id": "Discord.Discord",
+      "category": "messengers",
+      "name": "Discord",
+      "description": {
+        "uk": "Голосові й текстові спільноти.",
+        "en": "Voice and text communities."
+      },
+      "popular": true
+    },
+    {
+      "id": "Zoom.Zoom",
+      "category": "messengers",
+      "name": "Zoom",
+      "description": {
+        "uk": "Відеоконференції.",
+        "en": "Video meetings."
+      },
+      "popular": true
+    },
+    {
+      "id": "Mozilla.Thunderbird",
+      "category": "messengers",
+      "name": "Thunderbird",
+      "description": {
+        "uk": "Поштовий клієнт для кількох скриньок.",
+        "en": "Email client for multiple accounts."
+      }
+    },
+    {
+      "id": "Element.Element",
+      "category": "messengers",
+      "name": "Element",
+      "description": {
+        "uk": "Захищений месенджер (Matrix).",
+        "en": "Secure messenger (Matrix)."
+      }
+    },
+    {
+      "id": "TeamSpeakSystems.TeamSpeakClient",
+      "category": "messengers",
+      "name": "TeamSpeak",
+      "description": {
+        "uk": "Голосовий зв'язок для ігор.",
+        "en": "Voice chat for gaming."
+      }
+    },
+    {
+      "id": "SlackTechnologies.Slack",
+      "category": "messengers",
+      "name": "Slack",
+      "description": {
+        "uk": "Робочий месенджер.",
+        "en": "Work messenger."
+      }
+    },
+    {
+      "id": "VideoLAN.VLC",
+      "category": "media",
+      "name": "VLC",
+      "description": {
+        "uk": "Відтворює майже будь-яке відео й аудіо.",
+        "en": "Plays almost any video and audio."
+      },
+      "popular": true
+    },
+    {
+      "id": "clsid2.mpc-hc",
+      "category": "media",
+      "name": "MPC-HC",
+      "description": {
+        "uk": "Легкий відеоплеєр — добре для слабких ПК.",
+        "en": "Lightweight video player, good for weak PCs."
+      }
+    },
+    {
+      "id": "Spotify.Spotify",
+      "category": "media",
+      "name": "Spotify",
+      "description": {
+        "uk": "Музика.",
+        "en": "Music streaming."
+      },
+      "popular": true
+    },
+    {
+      "id": "Audacity.Audacity",
+      "category": "media",
+      "name": "Audacity",
+      "description": {
+        "uk": "Редактор аудіо.",
+        "en": "Audio editor."
+      }
+    },
+    {
+      "id": "OBSProject.OBSStudio",
+      "category": "media",
+      "name": "OBS Studio",
+      "description": {
+        "uk": "Запис екрана й трансляції.",
+        "en": "Screen recording and streaming."
+      }
+    },
+    {
+      "id": "HandBrake.HandBrake",
+      "category": "media",
+      "name": "HandBrake",
+      "description": {
+        "uk": "Стиснення й конвертування відео.",
+        "en": "Video compression and conversion."
+      }
+    },
+    {
+      "id": "KDE.Krita",
+      "category": "media",
+      "name": "Krita",
+      "description": {
+        "uk": "Цифрове малювання.",
+        "en": "Digital painting."
+      }
+    },
+    {
+      "id": "Inkscape.Inkscape",
+      "category": "media",
+      "name": "Inkscape",
+      "description": {
+        "uk": "Векторна графіка.",
+        "en": "Vector graphics."
+      }
+    },
+    {
+      "id": "IrfanSkiljan.IrfanView",
+      "category": "media",
+      "name": "IrfanView",
+      "description": {
+        "uk": "Швидкий переглядач зображень.",
+        "en": "Fast image viewer."
+      }
+    },
+    {
+      "id": "Daum.PotPlayer",
+      "category": "media",
+      "name": "PotPlayer",
+      "description": {
+        "uk": "Відеоплеєр з широкими налаштуваннями.",
+        "en": "Feature-rich video player."
+      }
+    },
+    {
+      "id": "CodecGuide.K-LiteCodecPack.Standard",
+      "category": "media",
+      "name": "K-Lite Codec Pack",
+      "description": {
+        "uk": "Кодеки для відтворення будь-яких відео.",
+        "en": "Codecs to play any video."
+      }
+    },
+    {
+      "id": "AIMP.AIMP",
+      "category": "media",
+      "name": "AIMP",
+      "description": {
+        "uk": "Легкий аудіоплеєр.",
+        "en": "Lightweight audio player."
+      }
+    },
+    {
+      "id": "PeterPawlowski.foobar2000",
+      "category": "media",
+      "name": "foobar2000",
+      "description": {
+        "uk": "Аудіоплеєр для меломанів.",
+        "en": "Audio player for enthusiasts."
+      }
+    },
+    {
+      "id": "dotPDN.PaintDotNet",
+      "category": "media",
+      "name": "Paint.NET",
+      "description": {
+        "uk": "Простий редактор зображень.",
+        "en": "Simple image editor."
+      }
+    },
+    {
+      "id": "GIMP.GIMP.3",
+      "category": "media",
+      "name": "GIMP",
+      "description": {
+        "uk": "Потужний безкоштовний редактор фото.",
+        "en": "Powerful free photo editor."
+      }
+    },
+    {
+      "id": "BlenderFoundation.Blender",
+      "category": "media",
+      "name": "Blender",
+      "description": {
+        "uk": "3D-моделювання й анімація.",
+        "en": "3D modeling and animation."
+      }
+    },
+    {
+      "id": "KDE.Kdenlive",
+      "category": "media",
+      "name": "Kdenlive",
+      "description": {
+        "uk": "Відеоредактор.",
+        "en": "Video editor."
+      }
+    },
+    {
+      "id": "Meltytech.Shotcut",
+      "category": "media",
+      "name": "Shotcut",
+      "description": {
+        "uk": "Простий відеоредактор.",
+        "en": "Simple video editor."
+      }
+    },
+    {
+      "id": "XnSoft.XnViewMP",
+      "category": "media",
+      "name": "XnView MP",
+      "description": {
+        "uk": "Переглядач і конвертер фото.",
+        "en": "Photo viewer and converter."
+      }
+    },
+    {
+      "id": "DuongDieuPhap.ImageGlass",
+      "category": "media",
+      "name": "ImageGlass",
+      "description": {
+        "uk": "Швидкий переглядач зображень.",
+        "en": "Fast image viewer."
+      }
+    },
+    {
+      "id": "calibre.calibre",
+      "category": "media",
+      "name": "Calibre",
+      "description": {
+        "uk": "Бібліотека й конвертер електронних книжок.",
+        "en": "E-book library and converter."
+      }
+    },
+    {
+      "id": "TheDocumentFoundation.LibreOffice",
+      "category": "office",
+      "name": "LibreOffice",
+      "description": {
+        "uk": "Безкоштовний офісний пакет (тексти, таблиці, презентації).",
+        "en": "Free office suite."
+      },
+      "popular": true
+    },
+    {
+      "id": "ONLYOFFICE.DesktopEditors",
+      "category": "office",
+      "name": "ONLYOFFICE",
+      "description": {
+        "uk": "Офісний пакет із форматами Microsoft Office.",
+        "en": "Office suite compatible with Microsoft Office formats."
+      }
+    },
+    {
+      "id": "SumatraPDF.SumatraPDF",
+      "category": "office",
+      "name": "SumatraPDF",
+      "description": {
+        "uk": "Дуже легкий переглядач PDF, EPUB, DjVu.",
+        "en": "Very light PDF, EPUB and DjVu viewer."
+      },
+      "popular": true
+    },
+    {
+      "id": "Adobe.Acrobat.Reader.64-bit",
+      "category": "office",
+      "name": "Adobe Acrobat Reader",
+      "description": {
+        "uk": "Переглядач PDF із заповненням форм і підписом.",
+        "en": "PDF reader with forms and signing."
+      },
+      "popular": true
+    },
+    {
+      "id": "Notepad++.Notepad++",
+      "category": "office",
+      "name": "Notepad++",
+      "description": {
+        "uk": "Текстовий редактор.",
+        "en": "Text editor."
+      },
+      "popular": true
+    },
+    {
+      "id": "Obsidian.Obsidian",
+      "category": "office",
+      "name": "Obsidian",
+      "description": {
+        "uk": "Нотатки в Markdown.",
+        "en": "Markdown notes."
+      }
+    },
+    {
+      "id": "Kingsoft.WPSOffice",
+      "category": "office",
+      "name": "WPS Office",
+      "description": {
+        "uk": "Офісний пакет, схожий на Microsoft Office.",
+        "en": "Office suite similar to Microsoft Office."
+      }
+    },
+    {
+      "id": "Joplin.Joplin",
+      "category": "office",
+      "name": "Joplin",
+      "description": {
+        "uk": "Нотатки з синхронізацією.",
+        "en": "Notes with sync."
+      }
+    },
+    {
+      "id": "Notion.Notion",
+      "category": "office",
+      "name": "Notion",
+      "description": {
+        "uk": "Нотатки, задачі, бази знань.",
+        "en": "Notes, tasks, wikis."
+      }
+    },
+    {
+      "id": "geeksoftwareGmbH.PDF24Creator",
+      "category": "office",
+      "name": "PDF24",
+      "description": {
+        "uk": "Усе для PDF: об'єднати, стиснути, перетворити.",
+        "en": "All-in-one PDF tools."
+      }
+    },
+    {
+      "id": "Cyanfish.NAPS2",
+      "category": "office",
+      "name": "NAPS2",
+      "description": {
+        "uk": "Сканування документів у PDF.",
+        "en": "Scan documents to PDF."
+      }
+    },
+    {
+      "id": "JGraph.Draw",
+      "category": "office",
+      "name": "draw.io",
+      "description": {
+        "uk": "Схеми й діаграми.",
+        "en": "Diagrams and charts."
+      }
+    },
+    {
+      "id": "7zip.7zip",
+      "category": "tools",
+      "name": "7-Zip",
+      "description": {
+        "uk": "Архіватор (zip, 7z, rar).",
+        "en": "Archiver (zip, 7z, rar)."
+      },
+      "popular": true
+    },
+    {
+      "id": "voidtools.Everything",
+      "category": "tools",
+      "name": "Everything",
+      "description": {
+        "uk": "Миттєвий пошук файлів за назвою.",
+        "en": "Instant file search by name."
+      }
+    },
+    {
+      "id": "ShareX.ShareX",
+      "category": "tools",
+      "name": "ShareX",
+      "description": {
+        "uk": "Знімки й запис екрана.",
+        "en": "Screenshots and screen recording."
+      },
+      "popular": true
+    },
+    {
+      "id": "Microsoft.PowerToys",
+      "category": "tools",
+      "name": "PowerToys",
+      "description": {
+        "uk": "Корисні інструменти від Microsoft.",
+        "en": "Handy tools from Microsoft."
+      },
+      "popular": true
+    },
+    {
+      "id": "AntibodySoftware.WizTree",
+      "category": "tools",
+      "name": "WizTree",
+      "description": {
+        "uk": "Що займає місце на диску.",
+        "en": "What takes up disk space."
+      }
+    },
+    {
+      "id": "BleachBit.BleachBit",
+      "category": "tools",
+      "name": "BleachBit",
+      "description": {
+        "uk": "Очищення залишків програм і браузерів.",
+        "en": "Cleans program and browser leftovers."
+      }
+    },
+    {
+      "id": "qBittorrent.qBittorrent",
+      "category": "tools",
+      "name": "qBittorrent",
+      "description": {
+        "uk": "Торент-клієнт без реклами.",
+        "en": "Ad-free torrent client."
+      },
+      "popular": true
+    },
+    {
+      "id": "Rufus.Rufus",
+      "category": "tools",
+      "name": "Rufus",
+      "description": {
+        "uk": "Створення завантажувальних флешок.",
+        "en": "Create bootable USB drives."
+      }
+    },
+    {
+      "id": "Ventoy.Ventoy",
+      "category": "tools",
+      "name": "Ventoy",
+      "description": {
+        "uk": "Флешка з кількома образами ISO.",
+        "en": "USB drive with multiple ISO images."
+      }
+    },
+    {
+      "id": "Klocman.BulkCrapUninstaller",
+      "category": "tools",
+      "name": "BCUninstaller",
+      "description": {
+        "uk": "Видалення програм разом із залишками.",
+        "en": "Uninstall programs with leftovers."
+      }
+    },
+    {
+      "id": "RevoUninstaller.RevoUninstaller",
+      "category": "tools",
+      "name": "Revo Uninstaller",
+      "description": {
+        "uk": "Видалення програм із чисткою слідів.",
+        "en": "Uninstaller with leftover cleanup."
+      }
+    },
+    {
+      "id": "M2Team.NanaZip",
+      "category": "tools",
+      "name": "NanaZip",
+      "description": {
+        "uk": "Сучасний 7-Zip для Windows 11.",
+        "en": "Modern 7-Zip for Windows 11."
+      }
+    },
+    {
+      "id": "Giorgiotani.Peazip",
+      "category": "tools",
+      "name": "PeaZip",
+      "description": {
+        "uk": "Архіватор з підтримкою 200+ форматів.",
+        "en": "Archiver for 200+ formats."
+      }
+    },
+    {
+      "id": "CodeSector.TeraCopy",
+      "category": "tools",
+      "name": "TeraCopy",
+      "description": {
+        "uk": "Швидке й надійне копіювання файлів.",
+        "en": "Fast, reliable file copying."
+      }
+    },
+    {
+      "id": "Ditto.Ditto",
+      "category": "tools",
+      "name": "Ditto",
+      "description": {
+        "uk": "Історія буфера обміну.",
+        "en": "Clipboard history."
+      }
+    },
+    {
+      "id": "Flow-Launcher.Flow-Launcher",
+      "category": "tools",
+      "name": "Flow Launcher",
+      "description": {
+        "uk": "Швидкий запуск програм і пошук.",
+        "en": "Quick launcher and search."
+      }
+    },
+    {
+      "id": "AutoHotkey.AutoHotkey",
+      "category": "tools",
+      "name": "AutoHotkey",
+      "description": {
+        "uk": "Свої гарячі клавіші й автоматизація.",
+        "en": "Custom hotkeys and automation."
+      }
+    },
+    {
+      "id": "Greenshot.Greenshot",
+      "category": "tools",
+      "name": "Greenshot",
+      "description": {
+        "uk": "Знімки екрана з позначками.",
+        "en": "Screenshots with annotations."
+      }
+    },
+    {
+      "id": "LocalSend.LocalSend",
+      "category": "tools",
+      "name": "LocalSend",
+      "description": {
+        "uk": "Передача файлів між пристроями в мережі.",
+        "en": "Share files across devices on your network."
+      }
+    },
+    {
+      "id": "SoftDeluxe.FreeDownloadManager",
+      "category": "tools",
+      "name": "Free Download Manager",
+      "description": {
+        "uk": "Менеджер завантажень.",
+        "en": "Download manager."
+      }
+    },
+    {
+      "id": "xanderfrangos.twinkletray",
+      "category": "tools",
+      "name": "Twinkle Tray",
+      "description": {
+        "uk": "Яскравість зовнішніх моніторів.",
+        "en": "Brightness for external monitors."
+      }
+    },
+    {
+      "id": "File-New-Project.EarTrumpet",
+      "category": "tools",
+      "name": "EarTrumpet",
+      "description": {
+        "uk": "Гучність для кожної програми окремо.",
+        "en": "Per-app volume control."
+      }
+    },
+    {
+      "id": "WinMerge.WinMerge",
+      "category": "tools",
+      "name": "WinMerge",
+      "description": {
+        "uk": "Порівняння файлів і папок.",
+        "en": "Compare files and folders."
+      }
+    },
+    {
+      "id": "JAMSoftware.TreeSize.Free",
+      "category": "tools",
+      "name": "TreeSize Free",
+      "description": {
+        "uk": "Що займає місце на диску.",
+        "en": "What uses disk space."
+      }
+    },
+    {
+      "id": "Famatech.AdvancedIPScanner",
+      "category": "tools",
+      "name": "Advanced IP Scanner",
+      "description": {
+        "uk": "Пристрої в локальній мережі.",
+        "en": "Devices on your local network."
+      }
+    },
+    {
+      "id": "KeePassXCTeam.KeePassXC",
+      "category": "security",
+      "name": "KeePassXC",
+      "description": {
+        "uk": "Менеджер паролів (локальна база).",
+        "en": "Password manager (local database)."
+      }
+    },
+    {
+      "id": "Bitwarden.Bitwarden",
+      "category": "security",
+      "name": "Bitwarden",
+      "description": {
+        "uk": "Менеджер паролів із синхронізацією.",
+        "en": "Password manager with sync."
+      }
+    },
+    {
+      "id": "Malwarebytes.Malwarebytes",
+      "category": "security",
+      "name": "Malwarebytes",
+      "description": {
+        "uk": "Друга думка щодо шкідливих програм.",
+        "en": "Second-opinion malware scanner."
+      }
+    },
+    {
+      "id": "Proton.ProtonVPN",
+      "category": "security",
+      "name": "Proton VPN",
+      "description": {
+        "uk": "VPN із безкоштовним тарифом.",
+        "en": "VPN with a free plan."
+      }
+    },
+    {
+      "id": "WireGuard.WireGuard",
+      "category": "security",
+      "name": "WireGuard",
+      "description": {
+        "uk": "Швидкий VPN-клієнт.",
+        "en": "Fast VPN client."
+      }
+    },
+    {
+      "id": "OpenVPNTechnologies.OpenVPN",
+      "category": "security",
+      "name": "OpenVPN",
+      "description": {
+        "uk": "VPN-клієнт для робочих мереж.",
+        "en": "VPN client for work networks."
+      }
+    },
+    {
+      "id": "IDRIX.VeraCrypt",
+      "category": "security",
+      "name": "VeraCrypt",
+      "description": {
+        "uk": "Шифрування дисків і контейнерів.",
+        "en": "Disk and container encryption."
+      }
+    },
+    {
+      "id": "Cryptomator.Cryptomator",
+      "category": "security",
+      "name": "Cryptomator",
+      "description": {
+        "uk": "Шифрування файлів у хмарі.",
+        "en": "Encrypt files in the cloud."
+      }
+    },
+    {
+      "id": "Proton.ProtonPass",
+      "category": "security",
+      "name": "Proton Pass",
+      "description": {
+        "uk": "Менеджер паролів.",
+        "en": "Password manager."
+      }
+    },
+    {
+      "id": "CrystalDewWorld.CrystalDiskInfo",
+      "category": "diagnostic",
+      "name": "CrystalDiskInfo",
+      "description": {
+        "uk": "Стан диска (SMART), температура.",
+        "en": "Disk health (SMART) and temperature."
+      },
+      "popular": true
+    },
+    {
+      "id": "CrystalDewWorld.CrystalDiskMark",
+      "category": "diagnostic",
+      "name": "CrystalDiskMark",
+      "description": {
+        "uk": "Тест швидкості диска.",
+        "en": "Disk speed benchmark."
+      }
+    },
+    {
+      "id": "CPUID.CPU-Z",
+      "category": "diagnostic",
+      "name": "CPU-Z",
+      "description": {
+        "uk": "Відомості про процесор і пам'ять.",
+        "en": "CPU and memory details."
+      }
+    },
+    {
+      "id": "TechPowerUp.GPU-Z",
+      "category": "diagnostic",
+      "name": "GPU-Z",
+      "description": {
+        "uk": "Відомості про відеокарту.",
+        "en": "Graphics card details."
+      }
+    },
+    {
+      "id": "REALiX.HWiNFO",
+      "category": "diagnostic",
+      "name": "HWiNFO",
+      "description": {
+        "uk": "Датчики й повні відомості про залізо.",
+        "en": "Sensors and full hardware details."
+      }
+    },
+    {
+      "id": "CPUID.HWMonitor",
+      "category": "diagnostic",
+      "name": "HWMonitor",
+      "description": {
+        "uk": "Температури й напруги.",
+        "en": "Temperatures and voltages."
+      }
+    },
+    {
+      "id": "Piriform.Speccy",
+      "category": "diagnostic",
+      "name": "Speccy",
+      "description": {
+        "uk": "Коротко про все залізо ПК.",
+        "en": "Hardware summary."
+      }
+    },
+    {
+      "id": "Guru3D.Afterburner",
+      "category": "diagnostic",
+      "name": "MSI Afterburner",
+      "description": {
+        "uk": "Моніторинг і налаштування відеокарти.",
+        "en": "GPU monitoring and tuning."
+      }
+    },
+    {
+      "id": "Wagnardsoft.DisplayDriverUninstaller",
+      "category": "diagnostic",
+      "name": "Display Driver Uninstaller",
+      "description": {
+        "uk": "Повне видалення відеодрайвера перед переустановленням.",
+        "en": "Fully remove a graphics driver before reinstalling."
+      }
+    },
+    {
+      "id": "Valve.Steam",
+      "category": "games",
+      "name": "Steam",
+      "description": {
+        "uk": "Магазин і бібліотека ігор.",
+        "en": "Game store and library."
+      },
+      "popular": true
+    },
+    {
+      "id": "EpicGames.EpicGamesLauncher",
+      "category": "games",
+      "name": "Epic Games Launcher",
+      "description": {
+        "uk": "Магазин Epic, щотижневі безкоштовні ігри.",
+        "en": "Epic store, weekly free games."
+      }
+    },
+    {
+      "id": "GOG.Galaxy",
+      "category": "games",
+      "name": "GOG Galaxy",
+      "description": {
+        "uk": "Ігри без DRM.",
+        "en": "DRM-free games."
+      }
+    },
+    {
+      "id": "Ubisoft.Connect",
+      "category": "games",
+      "name": "Ubisoft Connect",
+      "description": {
+        "uk": "Ігри Ubisoft.",
+        "en": "Ubisoft games."
+      }
+    },
+    {
+      "id": "ElectronicArts.EADesktop",
+      "category": "games",
+      "name": "EA app",
+      "description": {
+        "uk": "Ігри EA.",
+        "en": "EA games."
+      }
+    },
+    {
+      "id": "Blizzard.BattleNet",
+      "category": "games",
+      "name": "Battle.net",
+      "description": {
+        "uk": "Ігри Blizzard.",
+        "en": "Blizzard games."
+      }
+    },
+    {
+      "id": "Playnite.Playnite",
+      "category": "games",
+      "name": "Playnite",
+      "description": {
+        "uk": "Усі ігрові бібліотеки в одному місці.",
+        "en": "All game libraries in one place."
+      }
+    },
+    {
+      "id": "PrismLauncher.PrismLauncher",
+      "category": "games",
+      "name": "Prism Launcher",
+      "description": {
+        "uk": "Лаунчер Minecraft з модами.",
+        "en": "Minecraft launcher with mods."
+      }
+    },
+    {
+      "id": "HeroicGamesLauncher.HeroicGamesLauncher",
+      "category": "games",
+      "name": "Heroic",
+      "description": {
+        "uk": "Відкритий лаунчер для Epic і GOG.",
+        "en": "Open launcher for Epic and GOG."
+      }
+    },
+    {
+      "id": "Google.GoogleDrive",
+      "category": "cloud",
+      "name": "Google Drive",
+      "description": {
+        "uk": "Синхронізація файлів із Google Диском.",
+        "en": "Sync files with Google Drive."
+      }
+    },
+    {
+      "id": "Dropbox.Dropbox",
+      "category": "cloud",
+      "name": "Dropbox",
+      "description": {
+        "uk": "Хмарне сховище.",
+        "en": "Cloud storage."
+      }
+    },
+    {
+      "id": "AnyDesk.AnyDesk",
+      "category": "cloud",
+      "name": "AnyDesk",
+      "description": {
+        "uk": "Віддалений доступ. Не давайте доступ незнайомим «техпідтримкам»!",
+        "en": "Remote access. Never let unknown \"support\" connect!"
+      },
+      "popular": true
+    },
+    {
+      "id": "Microsoft.OneDrive",
+      "category": "cloud",
+      "name": "OneDrive",
+      "description": {
+        "uk": "Хмара Microsoft (повернути, якщо видалено).",
+        "en": "Microsoft cloud (restore if removed)."
+      }
+    },
+    {
+      "id": "Mega.MEGASync",
+      "category": "cloud",
+      "name": "MEGA",
+      "description": {
+        "uk": "Хмара з 20 ГБ безкоштовно.",
+        "en": "Cloud with 20 GB free."
+      }
+    },
+    {
+      "id": "TeamViewer.TeamViewer",
+      "category": "cloud",
+      "name": "TeamViewer",
+      "description": {
+        "uk": "Віддалений доступ. Не давайте доступ незнайомим «техпідтримкам»!",
+        "en": "Remote access. Never let unknown \"support\" connect!"
+      }
+    },
+    {
+      "id": "Nextcloud.NextcloudDesktop",
+      "category": "cloud",
+      "name": "Nextcloud",
+      "description": {
+        "uk": "Клієнт власної хмари.",
+        "en": "Self-hosted cloud client."
+      }
+    },
+    {
+      "id": "Microsoft.VisualStudioCode",
+      "category": "dev",
+      "name": "Visual Studio Code",
+      "description": {
+        "uk": "Редактор коду.",
+        "en": "Code editor."
+      }
+    },
+    {
+      "id": "Git.Git",
+      "category": "dev",
+      "name": "Git",
+      "description": {
+        "uk": "Система контролю версій.",
+        "en": "Version control."
+      }
+    },
+    {
+      "id": "Python.Python.3.13",
+      "category": "dev",
+      "name": "Python 3.13",
+      "description": {
+        "uk": "Мова програмування Python.",
+        "en": "Python programming language."
+      }
+    },
+    {
+      "id": "OpenJS.NodeJS.LTS",
+      "category": "dev",
+      "name": "Node.js LTS",
+      "description": {
+        "uk": "JavaScript поза браузером.",
+        "en": "JavaScript runtime."
+      }
+    },
+    {
+      "id": "Microsoft.WindowsTerminal",
+      "category": "dev",
+      "name": "Windows Terminal",
+      "description": {
+        "uk": "Сучасний термінал.",
+        "en": "Modern terminal."
+      }
+    },
+    {
+      "id": "WinSCP.WinSCP",
+      "category": "dev",
+      "name": "WinSCP",
+      "description": {
+        "uk": "SFTP/FTP-клієнт.",
+        "en": "SFTP/FTP client."
+      }
+    },
+    {
+      "id": "PuTTY.PuTTY",
+      "category": "dev",
+      "name": "PuTTY",
+      "description": {
+        "uk": "SSH-клієнт.",
+        "en": "SSH client."
+      }
+    },
+    {
+      "id": "JetBrains.Toolbox",
+      "category": "dev",
+      "name": "JetBrains Toolbox",
+      "description": {
+        "uk": "Встановлення IDE JetBrains.",
+        "en": "Install JetBrains IDEs."
+      }
+    },
+    {
+      "id": "Microsoft.VisualStudio.2022.Community",
+      "category": "dev",
+      "name": "Visual Studio 2022 Community",
+      "description": {
+        "uk": "Повне середовище розробки.",
+        "en": "Full IDE."
+      }
+    },
+    {
+      "id": "Docker.DockerDesktop",
+      "category": "dev",
+      "name": "Docker Desktop",
+      "description": {
+        "uk": "Контейнери.",
+        "en": "Containers."
+      }
+    },
+    {
+      "id": "Postman.Postman",
+      "category": "dev",
+      "name": "Postman",
+      "description": {
+        "uk": "Робота з API.",
+        "en": "API client."
+      }
+    },
+    {
+      "id": "GitHub.GitHubDesktop",
+      "category": "dev",
+      "name": "GitHub Desktop",
+      "description": {
+        "uk": "Git без командного рядка.",
+        "en": "Git without the command line."
+      }
+    },
+    {
+      "id": "Microsoft.PowerShell",
+      "category": "dev",
+      "name": "PowerShell 7",
+      "description": {
+        "uk": "Нова версія PowerShell.",
+        "en": "Latest PowerShell."
+      }
+    },
+    {
+      "id": "SublimeHQ.SublimeText.4",
+      "category": "dev",
+      "name": "Sublime Text",
+      "description": {
+        "uk": "Швидкий редактор коду.",
+        "en": "Fast code editor."
+      }
+    },
+    {
+      "id": "EclipseAdoptium.Temurin.21.JDK",
+      "category": "dev",
+      "name": "Java 21 (Temurin JDK)",
+      "description": {
+        "uk": "Java для розробки.",
+        "en": "Java for development."
+      }
+    },
+    {
+      "id": "GoLang.Go",
+      "category": "dev",
+      "name": "Go",
+      "description": {
+        "uk": "Мова програмування Go.",
+        "en": "Go language."
+      }
+    },
+    {
+      "id": "Rustlang.Rustup",
+      "category": "dev",
+      "name": "Rust (rustup)",
+      "description": {
+        "uk": "Мова програмування Rust.",
+        "en": "Rust language."
+      }
+    },
+    {
+      "id": "Intel.IntelDriverAndSupportAssistant",
+      "category": "drivers",
+      "name": "Intel Driver & Support Assistant",
+      "description": {
+        "uk": "Найсвіжіші драйвери Intel (відео, Wi-Fi, Bluetooth).",
+        "en": "Latest Intel drivers (graphics, Wi-Fi, Bluetooth)."
+      }
+    },
+    {
+      "id": "Dell.CommandUpdate",
+      "category": "drivers",
+      "name": "Dell Command | Update",
+      "description": {
+        "uk": "Драйвери й BIOS для ПК Dell.",
+        "en": "Drivers and BIOS for Dell PCs."
+      }
+    },
+    {
+      "id": "Lenovo.SystemUpdate",
+      "category": "drivers",
+      "name": "Lenovo System Update",
+      "description": {
+        "uk": "Драйвери й BIOS для ПК Lenovo.",
+        "en": "Drivers and BIOS for Lenovo PCs."
+      }
+    },
+    {
+      "id": "HP.SupportAssistant",
+      "category": "drivers",
+      "name": "HP Support Assistant",
+      "description": {
+        "uk": "Драйвери й BIOS для ПК HP.",
+        "en": "Drivers and BIOS for HP PCs."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2015+.x64",
+      "category": "runtimes",
+      "name": "Visual C++ 2015–2022 (x64)",
+      "description": {
+        "uk": "Потрібна багатьом програмам та іграм.",
+        "en": "Required by many apps and games."
+      },
+      "popular": true
+    },
+    {
+      "id": "Microsoft.VCRedist.2015+.x86",
+      "category": "runtimes",
+      "name": "Visual C++ 2015–2022 (x86)",
+      "description": {
+        "uk": "32-бітна версія для старих програм.",
+        "en": "32-bit version for older apps."
+      }
+    },
+    {
+      "id": "Microsoft.DotNet.DesktopRuntime.8",
+      "category": "runtimes",
+      "name": ".NET Desktop Runtime 8",
+      "description": {
+        "uk": "Потрібна програмам на .NET.",
+        "en": "Required by .NET apps."
+      }
+    },
+    {
+      "id": "Microsoft.EdgeWebView2Runtime",
+      "category": "runtimes",
+      "name": "WebView2",
+      "description": {
+        "uk": "Компонент, без якого не працюють Teams, Outlook і багато програм.",
+        "en": "Required by Teams, Outlook and many apps."
+      }
+    },
+    {
+      "id": "Microsoft.DirectX",
+      "category": "runtimes",
+      "name": "DirectX (старі бібліотеки)",
+      "description": {
+        "uk": "Для старих ігор, що просять d3dx9_xx.dll.",
+        "en": "For older games asking for d3dx9_xx.dll."
+      }
+    },
+    {
+      "id": "Microsoft.DotNet.DesktopRuntime.9",
+      "category": "runtimes",
+      "name": ".NET Desktop Runtime 9",
+      "description": {
+        "uk": "Потрібна новим програмам на .NET.",
+        "en": "Required by newer .NET apps."
+      }
+    },
+    {
+      "id": "Microsoft.VCRedist.2013.x64",
+      "category": "runtimes",
+      "name": "Visual C++ 2013 (x64)",
+      "description": {
+        "uk": "Для старіших програм та ігор.",
+        "en": "For older apps and games."
+      }
+    },
+    {
+      "id": "EclipseAdoptium.Temurin.21.JRE",
+      "category": "runtimes",
+      "name": "Java 21 (Temurin JRE)",
+      "description": {
+        "uk": "Для програм на Java (наприклад, Minecraft-сервери).",
+        "en": "For Java programs."
+      }
+    },
+    {
+      "id": "Microsoft.XNARedist",
+      "category": "runtimes",
+      "name": "XNA Framework",
+      "description": {
+        "uk": "Для старих інді-ігор.",
+        "en": "For older indie games."
+      }
+    },
+    {
+      "id": "9WZDNCRFHVN5",
+      "source": "msstore",
+      "category": "windows",
+      "name": "Калькулятор",
+      "description": {
+        "uk": "Повернути, якщо видалено.",
+        "en": "Restore if removed."
+      }
+    },
+    {
+      "id": "9WZDNCRFJBH4",
+      "source": "msstore",
+      "category": "windows",
+      "name": "Фотографії",
+      "description": {
+        "uk": "Повернути, якщо видалено.",
+        "en": "Restore if removed."
+      }
+    },
+    {
+      "id": "9MZ95KL8MR0L",
+      "source": "msstore",
+      "category": "windows",
+      "name": "Ножиці",
+      "description": {
+        "uk": "Знімки екрана (Win+Shift+S).",
+        "en": "Screenshots (Win+Shift+S)."
+      }
+    },
+    {
+      "id": "9PCFS5B6T72H",
+      "source": "msstore",
+      "category": "windows",
+      "name": "Paint",
+      "description": {
+        "uk": "Повернути, якщо видалено.",
+        "en": "Restore if removed."
+      }
+    },
+    {
+      "id": "9MSMLRH6LZF3",
+      "source": "msstore",
+      "category": "windows",
+      "name": "Блокнот",
+      "description": {
+        "uk": "Повернути, якщо видалено.",
+        "en": "Restore if removed."
+      }
+    },
+    {
+      "id": "9WZDNCRFJBBG",
+      "source": "msstore",
+      "category": "windows",
+      "name": "Камера",
+      "description": {
+        "uk": "Повернути, якщо видалено.",
+        "en": "Restore if removed."
+      }
+    },
+    {
+      "id": "9MV0B5HZVK9Z",
+      "source": "msstore",
+      "category": "windows",
+      "name": "Xbox",
+      "description": {
+        "uk": "Повернути, якщо видалено (Game Pass).",
+        "en": "Restore if removed (Game Pass)."
+      }
+    },
+    {
+      "id": "9NBLGGH4NNS1",
+      "source": "msstore",
+      "category": "windows",
+      "name": "Інсталятор застосунків (winget)",
+      "description": {
+        "uk": "Оновити або повернути сам winget.",
+        "en": "Update or restore winget itself."
+      }
+    }
+  ],
+  "bundles": [
+    {
+      "id": "basic",
+      "name": {
+        "uk": "Базовий набір",
+        "en": "Essentials"
+      },
+      "description": {
+        "uk": "Браузер, архіватор, відео, PDF, месенджер — те, що потрібно на кожному ПК.",
+        "en": "Browser, archiver, video, PDF, messenger."
+      },
+      "apps": [
+        "Google.Chrome",
+        "7zip.7zip",
+        "VideoLAN.VLC",
+        "SumatraPDF.SumatraPDF",
+        "Telegram.TelegramDesktop",
+        "Microsoft.VCRedist.2015+.x64",
+        "Microsoft.VCRedist.2015+.x86"
+      ]
+    },
+    {
+      "id": "work",
+      "name": {
+        "uk": "Навчання й робота",
+        "en": "Study & work"
+      },
+      "description": {
+        "uk": "Офіс, PDF, відеозв'язок, нотатки, хмара.",
+        "en": "Office, PDF, video calls, notes, cloud."
+      },
+      "apps": [
+        "TheDocumentFoundation.LibreOffice",
+        "geeksoftwareGmbH.PDF24Creator",
+        "Zoom.Zoom",
+        "Obsidian.Obsidian",
+        "Google.GoogleDrive",
+        "Mozilla.Thunderbird"
+      ]
+    },
+    {
+      "id": "games",
+      "name": {
+        "uk": "Ігри",
+        "en": "Gaming"
+      },
+      "description": {
+        "uk": "Ігрові магазини, Discord і компоненти, без яких ігри не запускаються.",
+        "en": "Game stores, Discord and runtimes games need."
+      },
+      "apps": [
+        "Valve.Steam",
+        "EpicGames.EpicGamesLauncher",
+        "Discord.Discord",
+        "Microsoft.VCRedist.2015+.x64",
+        "Microsoft.VCRedist.2015+.x86",
+        "Microsoft.DirectX",
+        "Microsoft.DotNet.DesktopRuntime.8"
+      ]
+    },
+    {
+      "id": "creative",
+      "name": {
+        "uk": "Творчість",
+        "en": "Creative"
+      },
+      "description": {
+        "uk": "Фото, малювання, відео, звук, запис екрана.",
+        "en": "Photo, drawing, video, audio, screen recording."
+      },
+      "apps": [
+        "GIMP.GIMP.3",
+        "KDE.Krita",
+        "Meltytech.Shotcut",
+        "Audacity.Audacity",
+        "OBSProject.OBSStudio",
+        "dotPDN.PaintDotNet"
+      ]
+    },
+    {
+      "id": "dev",
+      "name": {
+        "uk": "Розробка",
+        "en": "Development"
+      },
+      "description": {
+        "uk": "Редактор коду, Git, Python, Node.js, термінал.",
+        "en": "Code editor, Git, Python, Node.js, terminal."
+      },
+      "apps": [
+        "Microsoft.VisualStudioCode",
+        "Git.Git",
+        "Python.Python.3.13",
+        "OpenJS.NodeJS.LTS",
+        "Microsoft.WindowsTerminal",
+        "Microsoft.PowerShell"
+      ]
+    }
   ]
 }

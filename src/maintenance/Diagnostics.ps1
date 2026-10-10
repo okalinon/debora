@@ -62,6 +62,7 @@ function New-D9DiagnosticsBundle {
             if (-not $plan) { $plan = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes' -ErrorAction SilentlyContinue).ActivePowerScheme }
             "Схема живлення: $plan"
         }
+        Add-D9DiagSection $work 'disks.txt' { Format-D9DiskHealthReport }
         Add-D9DiagSection $work 'devices.txt' {
             '=== Пристрої з помилками (ConfigManagerErrorCode ≠ 0) ==='
             Get-CimInstance Win32_PnPEntity | Where-Object { $_.ConfigManagerErrorCode -ne 0 } |

@@ -245,33 +245,25 @@ function Test-D9AppUpdates {
 
 # ======================= Диск =======================
 
-function Get-D9SystemPhysicalDisk {
-    $ns = 'root\Microsoft\Windows\Storage'
-    $letter = [char]$env:SystemDrive.TrimEnd(':')
-    $partition = Get-CimInstance -Namespace $ns -ClassName MSFT_Partition -Filter "DriveLetter = '$letter'" -ErrorAction Stop | Select-Object -First 1
-    Get-CimInstance -Namespace $ns -ClassName MSFT_PhysicalDisk -Filter "DeviceId = '$($partition.DiskNumber)'" -ErrorAction Stop
-}
-
 function Test-D9DiskHealth {
     param($Check, $Ctx)
-    $disk = try { Get-D9SystemPhysicalDisk } catch { $null }
-    if (-not $disk) { return New-D9Skip $Check 'Не вдалося визначити системний диск' }
+    $disks = @(try { Get-D9DiskHealth } catch { })
+    if (-not $disks) { return New-D9Skip $Check 'Не вдалося прочитати стан дисків' }
     $backup = 'Негайно скопіюйте важливі файли на інший диск або в хмару. Диск варто замінити.'
-    switch (Get-D9CimInt $disk HealthStatus) {
-        2 { return New-D9Finding $Check critical "Диск $($disk.FriendlyName) несправний (Windows: Unhealthy)" $backup @{ type = 'manual' } }
-        1 { New-D9Finding $Check warning "Диск $($disk.FriendlyName) має попередження про стан" $backup @{ type = 'manual' } }
-    }
-    if (-not $Ctx.IsAdmin) { return }
-    $rel = try { $disk | Get-CimAssociatedInstance -ResultClassName MSFT_StorageReliabilityCounter -ErrorAction Stop } catch { $null }
-    if (-not $rel) { return }
-    if ($rel.ReadErrorsUncorrected -gt 0) {
-        New-D9Finding $Check critical "Диск має $($rel.ReadErrorsUncorrected) невиправних помилок читання" $backup @{ type = 'manual' }
-    }
-    if ($rel.Wear -ge $Check.thresholds.wearPercent) {
-        New-D9Finding $Check warning "SSD зношений на $($rel.Wear)%" 'Ресурс записів майже вичерпано. Плануйте заміну і робіть резервні копії.' @{ type = 'manual' }
-    }
-    if ($rel.Temperature -ge $Check.thresholds.tempC) {
-        New-D9Finding $Check warning "Диск нагрівається до $($rel.Temperature) °C" 'Перевірте охолодження: чистка від пилу, вентиляція корпусу.' @{ type = 'manual' }
+    # Флешки й карти пам'яті не оцінюємо: програму часто запускають саме з флешки
+    foreach ($d in @($disks | Where-Object { -not $_.Removable })) {
+        $v = Get-D9DiskVerdict $d -WearPercent $Check.thresholds.wearPercent -TempC $Check.thresholds.tempC
+        if ($v.Level -notin 'bad', 'warn') { continue }
+        $name = "Диск $($d.Model)$(if ($d.Letters) { ' (' + ($d.Letters -join ', ') + ')' })"
+        $problems = $v.Problems -join '; '
+        $info = "$(Format-D9DiskDetails $d). Подробиці — вкладка «Обслуговування» → «Стан дисків»."
+        if ($v.Level -eq 'bad') {
+            New-D9Finding $Check critical "${name}: $problems" "$backup $info" @{ type = 'manual' } -Key "$($Check.id):$($d.Number)"
+        } elseif ($d.Temperature -ge $Check.thresholds.tempC -and $v.Problems.Count -eq 1) {
+            New-D9Finding $Check warning "${name}: $problems" "Перевірте охолодження: чистка від пилу, вентиляція корпусу; для M.2 SSD — радіатор. $info" @{ type = 'manual' } -Key "$($Check.id):$($d.Number)"
+        } else {
+            New-D9Finding $Check warning "${name}: $problems" "Робіть резервні копії й плануйте заміну диска. $info" @{ type = 'manual' } -Key "$($Check.id):$($d.Number)"
+        }
     }
 }
 
@@ -492,7 +484,7 @@ function Test-D9DiskErrors {
     $bad = @($onSystem | Where-Object { $_.Id -in 7, 55, 98 })
     $last = ($onSystem | Sort-Object TimeCreated -Descending | Select-Object -First 1).TimeCreated
     $details = 'Зробіть резервну копію важливих файлів. Перевірте диск: командний рядок від адміністратора → chkdsk C: /scan.'
-    $details += if ($Ctx.IsAdmin) { ' Стан SMART покаже, наприклад, CrystalDiskInfo.' } else { ' Для перевірки SMART запустіть сканування від адміністратора.' }
+    $details += if ($Ctx.IsAdmin) { ' Стан SMART (температура, знос, помилки) — вкладка «Обслуговування» → «Стан дисків».' } else { ' Для перевірки SMART запустіть сканування від адміністратора.' }
     if ($bad.Count) {
         $severity = if ($bad.Count -ge 3) { 'critical' } else { 'warning' }
         return New-D9Finding $Check $severity "Пошкоджені сектори або помилки файлової системи на системному диску: $($bad.Count) за $days днів (остання $($last.ToString('dd.MM.yyyy')))" "$details Debloater9 перевірить файлову систему (chkdsk) і, якщо треба, виправить її під час перезавантаження." @{ type = 'maintenance'; action = 'chkdskScan' }

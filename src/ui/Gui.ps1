@@ -180,7 +180,8 @@ function Show-D9Gui {
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
-                   'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState') {
+                   'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
+                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnIconCache') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
@@ -188,7 +189,8 @@ function Show-D9Gui {
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
     $actionButtons = @('BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
                        'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
-                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'BtnUninstRefresh', 'BtnUninstall')
+                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'BtnUninstRefresh', 'BtnUninstall',
+                       'BtnDisksRefresh', 'BtnIconCache')
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -751,6 +753,34 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
 
     # ---------- кнопки: Обслуговування ----------
+    $diskColors = @{ ok = '#2E7D32'; warn = '#B26A00'; bad = '#C62828'; unknown = '#5D6675' }
+    $loadDisks = {
+        & $startJob 'Перевірка стану дисків' { @(Get-D9DiskHealth) } $null {
+            param($r)
+            $disks = @($r | Where-Object { $_ })
+            $rows = foreach ($d in $disks) {
+                $v = Get-D9DiskVerdict $d
+                $row = New-Object D9Row
+                $row.Title = Format-D9DiskTitle $d
+                $row.Status = $script:D9DiskLevelText[$v.Level]
+                $row.Color = $diskColors[$v.Level]
+                $row.Note = if ($v.Problems) { ($v.Problems -join '; ') + $(if ($v.Level -eq 'bad') { '. Негайно скопіюйте важливі файли й замініть диск.' }) } else { '' }
+                $row.Detail = Format-D9DiskDetails $d
+                $row
+            }
+            $state.DisksLoaded = $true
+            Set-D9Items $ui.DisksList @($rows)
+            $bad = @($disks | Where-Object { -not $_.Removable -and (Get-D9DiskVerdict $_).Level -eq 'bad' })
+            $ui.DisksState.Text = if ($bad) { "Несправних дисків: $($bad.Count). Збережіть дані на інший диск або в хмару." }
+                                  elseif (-not $isAdmin) { 'Без прав адміністратора Windows показує лише загальний стан; температура, знос і помилки — після запуску через run.bat.' }
+                                  else { "Перевірено $(Get-Date -Format 'HH:mm'). Температура, знос SSD, години роботи й помилки (SMART)." }
+        }
+    }
+    $ui.BtnDisksRefresh.Add_Click($loadDisks)
+    $ui.BtnIconCache.Add_Click({
+        if ([Windows.MessageBox]::Show($win, "Скинути кеш значків і ескізів?`nПровідник перезапуститься: панель задач на мить зникне, відкриті вікна папок закриються. Файли не зачіпаються.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        & $startJob 'Скидання кешу значків' { Reset-D9IconCache } $null { param($r) [void][Windows.MessageBox]::Show($win, "Готово: видалено файлів кешу — $($r.Removed). Значки з'являться заново за хвилину.", 'Debloater9') }
+    })
     $refreshMaintenance = {
         $ux = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings' -ErrorAction SilentlyContinue
         $until = $null
@@ -1194,6 +1224,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($ui.Tabs.SelectedItem.Header -eq 'Програми' -and -not $state.AppsLoaded -and -not $state.Job) { & $loadApps }
         if ($ui.Tabs.SelectedItem.Header -eq 'Видалення' -and $null -eq $state.UninstRows -and -not $state.Job) { & $loadUninst }
         if ($ui.Tabs.SelectedItem.Header -eq 'Перевстановлення' -and $null -eq $state.UsbMedia) { & $fillUsb }
+        if ($ui.Tabs.SelectedItem.Header -eq 'Обслуговування' -and -not $state.DisksLoaded -and -not $state.Job) { & $loadDisks }
     })
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job) {

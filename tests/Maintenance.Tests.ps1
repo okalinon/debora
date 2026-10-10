@@ -100,11 +100,91 @@ Describe 'Пакет діагностики' {
         $zip | Should -BeLike '*.zip'
     }
     It 'містить основні розділи і файли програми' {
-        foreach ($name in 'system.txt', 'devices.txt', 'drivers.txt', 'events-system.txt', 'README.txt', 'sessions/test-session.json') {
+        foreach ($name in 'system.txt', 'disks.txt', 'devices.txt', 'drivers.txt', 'events-system.txt', 'README.txt', 'sessions/test-session.json') {
             $entries | Should -Contain $name
         }
     }
     It 'не лишає тимчасової папки' {
         @(Get-ChildItem ([IO.Path]::GetTempPath()) -Directory -Filter 'd9diag-*' | Where-Object LastWriteTime -gt (Get-Date).AddMinutes(-5)).Count | Should -Be 0
+    }
+}
+
+Describe 'Стан дисків' {
+    BeforeAll {
+        function New-TestDisk {
+            param([hashtable]$Set = @{})
+            $d = [pscustomobject]@{
+                Number = 0; Model = 'Test SSD'; Media = 'SSD'; Bus = 'NVMe'; Removable = $false; SizeBytes = 512GB; Letters = @('C:'); IsSystem = $true
+                Firmware = '1.0'; HealthStatus = 0; HasCounters = $true; Temperature = 40; TemperatureMax = 70; Wear = 3; PowerOnHours = 8760
+                ReadErrorsUncorrected = 0; WriteErrorsUncorrected = 0; StartStopCycles = 500; PredictFailure = $false; CountersAvailable = $true
+            }
+            foreach ($k in $Set.Keys) { $d.$k = $Set[$k] }
+            $d
+        }
+    }
+    It 'справний диск — ok без проблем' {
+        $v = Get-D9DiskVerdict (New-TestDisk)
+        $v.Level | Should -Be 'ok'
+        $v.Problems.Count | Should -Be 0
+    }
+    It '<name> → <level>' -TestCases @(
+        @{ name = 'Windows: несправний'; set = @{ HealthStatus = 2 }; level = 'bad' }
+        @{ name = 'прогноз відмови SMART'; set = @{ PredictFailure = $true }; level = 'bad' }
+        @{ name = 'невиправні помилки читання'; set = @{ ReadErrorsUncorrected = 3 }; level = 'bad' }
+        @{ name = 'ресурс вичерпано'; set = @{ Wear = 100 }; level = 'bad' }
+        @{ name = 'знос 85%'; set = @{ Wear = 85 }; level = 'warn' }
+        @{ name = 'гарячий'; set = @{ Temperature = 65 }; level = 'warn' }
+        @{ name = 'Windows: попередження'; set = @{ HealthStatus = 1 }; level = 'warn' }
+        @{ name = 'без лічильників і стану'; set = @{ HealthStatus = 5; HasCounters = $false; Temperature = $null; Wear = $null }; level = 'unknown' }
+    ) {
+        param($name, $set, $level)
+        (Get-D9DiskVerdict (New-TestDisk $set)).Level | Should -Be $level
+    }
+    It 'заголовок і подробиці читабельні' {
+        $d = New-TestDisk
+        Format-D9DiskTitle $d | Should -Be "Диск 0 · Test SSD · NVMe SSD · $(Format-D9Size 512GB) · C: (системний)"
+        $t = Format-D9DiskDetails $d
+        $t | Should -Match 'температура 40 °C \(макс. 70 °C\)'
+        $t | Should -Match 'знос 3%'
+        $t | Should -Match 'напрацювання 8760 год'
+    }
+    It 'без прав адміністратора підказує, як побачити SMART' {
+        Format-D9DiskDetails (New-TestDisk @{ HasCounters = $false; CountersAvailable = $false; Temperature = $null; Wear = $null; PowerOnHours = $null }) | Should -Match 'від адміністратора'
+    }
+    It 'читає диски цього ПК' {
+        $disks = @(Get-D9DiskHealth)
+        $disks.Count | Should -BeGreaterThan 0
+        @($disks | Where-Object IsSystem).Count | Should -Be 1
+        foreach ($d in $disks) { (Get-D9DiskVerdict $d).Level | Should -BeIn 'ok', 'warn', 'bad', 'unknown' }
+    }
+    It 'сканер: несправний внутрішній диск — критично, флешку не оцінює' {
+        Mock Get-D9DiskHealth { @(
+            (New-TestDisk @{ HealthStatus = 2 })
+            (New-TestDisk @{ Number = 1; Model = 'Flash'; Removable = $true; HealthStatus = 2; Letters = @('G:'); IsSystem = $false })
+        ) }
+        $check = [pscustomobject]@{ id = 'disk.health'; thresholds = [pscustomobject]@{ wearPercent = 80; tempC = 60 } }
+        $f = @(Test-D9DiskHealth $check @{ IsAdmin = $true })
+        $f.Count | Should -Be 1
+        $f[0].severity | Should -Be 'critical'
+        $f[0].title | Should -Match 'Test SSD'
+    }
+    It 'сканер: перегрів — попередження з порадою про охолодження' {
+        Mock Get-D9DiskHealth { @(New-TestDisk @{ Temperature = 70 }) }
+        $check = [pscustomobject]@{ id = 'disk.health'; thresholds = [pscustomobject]@{ wearPercent = 80; tempC = 60 } }
+        $f = @(Test-D9DiskHealth $check @{ IsAdmin = $true })
+        $f[0].severity | Should -Be 'warning'
+        $f[0].details | Should -Match 'охолодження'
+    }
+}
+
+Describe 'Кеш значків' {
+    It 'знаходить лише файли кешу Провідника' {
+        $root = Join-Path $TestDrive 'local'
+        $exp = Join-Path $root 'Microsoft\Windows\Explorer'
+        New-Item -ItemType Directory -Path $exp -Force | Out-Null
+        foreach ($n in 'iconcache_32.db', 'thumbcache_256.db', 'ExplorerStartupLog.etl', 'other.db') { Set-Content (Join-Path $exp $n) 'x' }
+        Set-Content (Join-Path $root 'IconCache.db') 'x'
+        $names = @(Get-D9IconCacheFiles -LocalAppData $root | ForEach-Object Name | Sort-Object)
+        $names | Should -Be @('IconCache.db', 'iconcache_32.db', 'thumbcache_256.db')
     }
 }

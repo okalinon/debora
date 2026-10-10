@@ -102,7 +102,7 @@
 ### Диск
 | Перевірка | Джерело | Рівень |
 |---|---|---|
-| Здоров'я диска: SMART, перепризначені сектори, знос SSD, температура | `MSFT_PhysicalDisk.HealthStatus`, `Get-StorageReliabilityCounter` | ✖ |
+| Здоров'я дисків (усіх внутрішніх, флешки не оцінюються): стан Windows, прогноз відмови SMART, невиправні помилки, знос SSD, температура | `Get-D9DiskHealth`: `MSFT_PhysicalDisk.HealthStatus`, `MSFT_StorageReliabilityCounter`, `MSStorageDriver_FailurePredictStatus` | ✖ |
 | Вільне місце на C: < 10% або < 15 ГБ | `Win32_LogicalDisk` | ✖ / ⚠ |
 | Що можна звільнити: TEMP, кеш оновлень, кошик, `Windows.old`, кеш браузерів, дампи пам'яті | розміри папок | ⚠ якщо > 2 ГБ |
 | Фрагментація HDD > 10% | `Optimize-Volume -Analyze` (глибоке) | 💡 |

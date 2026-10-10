@@ -1,4 +1,4 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Debloater9" Width="1180" Height="780" MinWidth="920" MinHeight="600"
         WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" FontSize="13"
@@ -470,6 +470,31 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="20">
             <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <StackPanel>
+                <DockPanel>
+                  <Button x:Name="BtnDisksRefresh" DockPanel.Dock="Right" Content="Перевірити" VerticalAlignment="Center"/>
+                  <StackPanel><TextBlock Text="Стан дисків" FontWeight="SemiBold" FontSize="14"/>
+                    <TextBlock x:Name="DisksState" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Температура, знос SSD, години роботи й помилки (SMART) для кожного диска."/></StackPanel>
+                </DockPanel>
+                <ItemsControl x:Name="DisksList" Margin="0,8,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="0,6,0,0">
+                        <DockPanel>
+                          <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="{Binding Color}" FontWeight="SemiBold" Margin="12,0,0,0"/>
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        </DockPanel>
+                        <TextBlock Text="{Binding Note}" Foreground="{Binding Color}" TextWrapping="Wrap">
+                          <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
               <DockPanel>
                 <Button x:Name="BtnRestorePoint" DockPanel.Dock="Right" Content="Створити" VerticalAlignment="Center"/>
                 <StackPanel><TextBlock Text="Точка відновлення" FontWeight="SemiBold" FontSize="14"/>
@@ -488,6 +513,13 @@
                 <Button x:Name="BtnRepair" DockPanel.Dock="Right" Content="Перевірити й відновити" VerticalAlignment="Center"/>
                 <StackPanel><TextBlock Text="Відновлення системних файлів (DISM + SFC)" FontWeight="SemiBold" FontSize="14"/>
                   <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Коли Windows поводиться дивно, оновлення не ставляться або вбудовані програми не відкриваються. Триває 10–40 хвилин, потрібен інтернет."/></StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnIconCache" DockPanel.Dock="Right" Content="Скинути кеш" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Кеш значків і ескізів" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Коли замість значків білі аркуші, значки переплутані або ескізи фото застарілі. Провідник перезапуститься (відкриті вікна папок закриються)."/></StackPanel>
               </DockPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,0,12">

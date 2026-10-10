@@ -255,7 +255,7 @@
         "title": {"uk": "Вимкнено службу встановлення Microsoft Store"}, "details": {"uk": "Застосунки з Microsoft Store (і частина вбудованих) не оновлюватимуться й не встановлюватимуться."},
         "fix": {"type": "actions", "actions": [{"type": "service", "name": "InstallService", "startup": "Manual"}]} } },
 
-    { "id": "disk.health", "category": "disk", "probe": "Test-D9DiskHealth", "name": { "uk": "Стан системного диска", "en": "System disk health" }, "thresholds": { "wearPercent": 80, "tempC": 60 } },
+    { "id": "disk.health", "category": "disk", "probe": "Test-D9DiskHealth", "name": { "uk": "Стан дисків (SMART)", "en": "Disk health (SMART)" }, "thresholds": { "wearPercent": 80, "tempC": 60 } },
     { "id": "disk.free-space", "category": "disk", "probe": "Test-D9FreeSpace", "name": { "uk": "Вільне місце на C:", "en": "Free space on C:" }, "thresholds": { "criticalPercent": 10, "criticalGB": 10, "warningPercent": 15, "warningGB": 20 } },
     { "id": "disk.trim", "category": "disk", "probe": "Test-D9Trim", "name": { "uk": "TRIM для SSD", "en": "SSD TRIM" } },
     { "id": "disk.layout", "category": "disk", "probe": "Test-D9DiskLayout", "name": { "uk": "Розміщення Windows і вирівнювання SSD", "en": "Windows placement and SSD alignment" } },

@@ -52,6 +52,8 @@
 .EXAMPLE
     .\Debloater9.ps1 -UpgradeApps -Yes            # оновити всі програми (winget upgrade --all)
 .EXAMPLE
+    .\Debloater9.ps1 -Disks                       # стан дисків: температура, знос, помилки (SMART)
+.EXAMPLE
     .\Debloater9.ps1 -Diagnostics                 # зібрати zip для розбору проблеми (у папку «Звіти»)
 #>
 [CmdletBinding(DefaultParameterSetName = 'Info')]
@@ -141,6 +143,9 @@ param(
     [Parameter(ParameterSetName = 'Diagnostics', Mandatory)]
     [switch]$Diagnostics,
 
+    [Parameter(ParameterSetName = 'Disks', Mandatory)]
+    [switch]$Disks,
+
     # Куди покласти zip діагностики (типово — папка «Звіти» поруч із програмою)
     [Parameter(ParameterSetName = 'Diagnostics')]
     [string]$OutDir,
@@ -227,7 +232,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.15.0-dev'
+$script:D9Version  = '0.16.0-dev'
 $script:D9Language = $Language
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
@@ -386,6 +391,7 @@ switch ($PSCmdlet.ParameterSetName) {
             Write-Host " 11. Знайти й встановити нові драйвери з інтернету (автоматично)"
             Write-Host "  9. Зібрати діагностику (zip для розбору проблеми)"
             Write-Host " 10. Оновити всі програми (winget)"
+            Write-Host " 12. Стан дисків (температура, знос, помилки)"
             Write-Host "  0. Вихід"
             $choice = Read-Host "Ваш вибір"
             switch ($choice) {
@@ -437,6 +443,7 @@ switch ($PSCmdlet.ParameterSetName) {
                 }
                 '10' { & $runSelf @('-UpgradeApps') }
                 '11' { & $runSelf @('-DriverUpdate') }
+                '12' { & $runSelf @('-Disks') }
                 '0' { exit $ExitCodes.Ok }
                 default { Write-Host "Введіть номер пункту." -ForegroundColor Yellow }
             }
@@ -569,6 +576,23 @@ switch ($PSCmdlet.ParameterSetName) {
         if (-not (Confirm-D9 'Оновити всі? Відкриті програми краще закрити.')) { exit $ExitCodes.Cancelled }
         $r = Invoke-D9AppUpgradeAll
         exit $(if ($r.Result -in 'installed', 'upToDate') { $ExitCodes.Ok } else { $ExitCodes.Partial })
+    }
+
+    'Disks' {
+        Write-Host ""
+        Write-Host "Стан дисків: $($sys.Manufacturer) $($sys.Model)" -ForegroundColor Cyan
+        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Без прав адміністратора Windows не віддає температуру, знос і лічильники помилок.' Warn }
+        $all = @(Get-D9DiskHealth)
+        foreach ($d in $all) {
+            $v = Get-D9DiskVerdict $d
+            $color = @{ ok = 'Green'; warn = 'Yellow'; bad = 'Red'; unknown = 'DarkGray' }[$v.Level]
+            Write-Host ("  [{0}] {1}" -f $script:D9DiskLevelText[$v.Level], (Format-D9DiskTitle $d)) -ForegroundColor $color
+            if ($v.Problems) { Write-Host "      Проблеми: $($v.Problems -join '; ')" -ForegroundColor $color }
+            Write-Host "      $(Format-D9DiskDetails $d)" -ForegroundColor DarkGray
+        }
+        $worst = @($all | Where-Object { -not $_.Removable } | ForEach-Object { (Get-D9DiskVerdict $_).Level })
+        if ($worst -contains 'bad') { Write-D9Log 'Є несправний диск: негайно скопіюйте важливі файли й замініть диск.' Error; exit $ExitCodes.Partial }
+        exit $ExitCodes.Ok
     }
 
     'Diagnostics' {
@@ -720,6 +744,7 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host "Що далі:"
         Write-Host "  -Scan                           перевірити стан Windows і отримати чекліст"
         Write-Host "  -Diagnostics                    зібрати zip для розбору проблеми"
+        Write-Host "  -Disks                          стан дисків: температура, знос, помилки (SMART)"
         Write-Host "  -Apps / -InstallApp / -UpgradeApps   програми через winget"
         Write-Host "  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити"
         Write-Host "  -PrepareUsb E: -UserName Ім'я   флешка для перевстановлення Windows без запитань і з драйверами"

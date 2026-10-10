@@ -148,8 +148,9 @@ function New-D9Checklist {
         & $use $fs
     }
 
-    # 20 — точка відновлення перед першою автоматичною зміною
-    $autoChanges = @($items | Where-Object { $_.action.type -in 'tweaks', 'maintenance', 'actions', 'uninstall' })
+    # 20 — точка відновлення перед першою автоматичною зміною. Кроки до неї (перевірка диска, увімкнення
+    # захисту системи — без нього точку не створити) від неї не залежать, інакше їх ніколи не виконати
+    $autoChanges = @($items | Where-Object { $_.action.type -in 'tweaks', 'maintenance', 'actions', 'uninstall' -and $_.group -gt 20 })
     $rpFindings = @(& $free | Where-Object { $_.fix.type -eq 'maintenance' -and $_.fix.action -eq 'restorePoint' })
     if ($autoChanges -or $rpFindings) {
         $why = if ($rpFindings) { ($rpFindings.title) -join '; ' } else { T-D9 'Щоб будь-яку зміну можна було скасувати.' }
@@ -237,11 +238,13 @@ function Update-D9ChecklistStatus {
     return $Checklist
 }
 
+# Крок готовий, коли попередні автоматичні кроки виконано. Статус «done» з'являється лише після
+# перевірки наприкінці, тож у межах одного запуску достатньо, що крок уже виконувався (executedAt)
 function Test-D9ChecklistReady {
     param($Checklist, $Item)
     foreach ($dep in @($Item.dependsOn)) {
         $d = $Checklist.items | Where-Object id -eq $dep | Select-Object -First 1
-        if ($d -and $d.status -ne 'done' -and $d.auto) { return $false }
+        if ($d -and $d.auto -and $d.status -ne 'done' -and -not $d.executedAt) { return $false }
     }
     return $true
 }

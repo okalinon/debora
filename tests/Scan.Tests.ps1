@@ -234,6 +234,18 @@ Describe 'Автоматичні виправлення' {
         }
         @($fixList.items | Where-Object { -not $_.auto -and $_.group -in 40, 45 }).Count | Should -Be 0 -Because 'автоматично виправне не дублюється ручним кроком'
     }
+    It 'кроки після виконаної точки відновлення готові в тому ж запуску; перевірка диска від неї не залежить' {
+        $list = New-D9Checklist -Scan (New-TestScan $fixFindings) -Catalog $catalog
+        $rp = $list.items | Where-Object { $_.action.type -eq 'restorePoint' }
+        $chk = $list.items | Where-Object { $_.id -eq '12|chkdskScan' }
+        $chk.dependsOn | Should -Not -Contain $rp.id
+        Test-D9ChecklistReady $list $chk | Should -BeTrue
+        $later = @($list.items | Where-Object { $_.dependsOn -contains $rp.id -and $_.action.action -ne 'reboot' })
+        $later.Count | Should -BeGreaterThan 0
+        foreach ($i in $later) { Test-D9ChecklistReady $list $i | Should -BeFalse -Because $i.title }
+        $rp.executedAt = (Get-Date).ToString('s')   # статус ще 'pending' — його ставить перевірка наприкінці
+        foreach ($i in $later) { Test-D9ChecklistReady $list $i | Should -BeTrue -Because $i.title }
+    }
     It 'при помилках диска — і резервна копія, і перевірка диска; потрібне перезавантаження' {
         ($fixList.items | Where-Object { $_.id -eq '10|backup' }) | Should -Not -BeNullOrEmpty
         ($fixList.items | Where-Object { $_.id -eq '90|reboot' }) | Should -Not -BeNullOrEmpty

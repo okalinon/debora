@@ -1,4 +1,4 @@
-﻿# Перевіряє, що кожен пакет із config/apps.json існує в джерелі winget / msstore.
+﻿# Перевіряє, що кожен пакет із config/apps.json існує в джерелі winget / msstore, а для source=github — що останній реліз має MSI.
 # Потрібен інтернет; ≈2–4 хвилини. Запускати після змін каталогу: .\build\Test-AppCatalog.ps1
 param([string]$Only)
 $ErrorActionPreference = 'Stop'
@@ -7,6 +7,12 @@ $catalog = Get-Content (Join-Path $PSScriptRoot '..\config\apps.json') -Raw -Enc
 $bad = @()
 foreach ($app in $catalog.apps | Where-Object { -not $Only -or $_.id -like $Only }) {
     $source = if ($app.source) { $app.source } else { 'winget' }
+    if ($source -eq 'github') {
+        $rel = try { Invoke-RestMethod "https://api.github.com/repos/$($app.repo)/releases/latest" -Headers @{ 'User-Agent' = 'Debora' } -UseBasicParsing } catch { $null }
+        $msi = @($rel.assets | Where-Object { $_.name -match '\.msi$' })
+        if ($msi) { Write-Host "OK    $($app.id) ($($rel.tag_name), MSI: $($msi.Count))" -ForegroundColor Green } else { Write-Host "НЕМАЄ $($app.id): у релізі $($app.repo) немає MSI" -ForegroundColor Red; $bad += $app.id }
+        continue
+    }
     $out = & winget show --id $app.id --exact --source $source --accept-source-agreements --disable-interactivity 2>&1 | Out-String
     if ($LASTEXITCODE -eq 0) { Write-Host "OK    $($app.id)" -ForegroundColor Green }
     else { Write-Host "НЕМАЄ $($app.id) ($source): код $LASTEXITCODE" -ForegroundColor Red; $bad += $app.id }

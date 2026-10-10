@@ -33,7 +33,10 @@ function Get-D9SystemDisk {
 function Get-D9SystemInfo {
     $os    = Get-CimInstance Win32_OperatingSystem
     $cs    = Get-CimInstance Win32_ComputerSystem
-    $cpu   = Get-CimInstance Win32_Processor | Select-Object -First 1
+    # Назва процесора — з реєстру, з CIM лише кількість ядер: повний Win32_Processor триває понад секунду
+    $cpuName = (Get-ItemProperty 'HKLM:\HARDWARE\DESCRIPTION\System\CentralProcessor\0' -ErrorAction SilentlyContinue).ProcessorNameString
+    $cores = (Get-CimInstance Win32_Processor -Property NumberOfCores -ErrorAction SilentlyContinue | Measure-Object NumberOfCores -Sum).Sum
+    if (-not $cpuName) { $cpuName = (Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | Select-Object -First 1).Name }
     $build = [int]$os.BuildNumber
     $displayVersion = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction SilentlyContinue).DisplayVersion
     $disk  = Get-D9SystemDisk
@@ -45,8 +48,8 @@ function Get-D9SystemInfo {
         DisplayVersion = $displayVersion
         Manufacturer   = $cs.Manufacturer
         Model          = $cs.Model
-        Cpu            = ($cpu.Name -replace '\s+', ' ').Trim()
-        Cores          = [int]$cpu.NumberOfCores
+        Cpu            = ([string]$cpuName -replace '\s+', ' ').Trim()
+        Cores          = [int]$cores
         RamGB          = [math]::Round($cs.TotalPhysicalMemory / 1GB, 1)
         SystemDisk     = $disk.Type
         HasBattery     = [bool](Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue)

@@ -11,7 +11,8 @@ Describe 'Каталог програм' {
             $apps.categories.id | Should -Contain $a.category -Because $a.id
             $a.name | Should -Not -BeNullOrEmpty -Because $a.id
             $a.description.uk | Should -Not -BeNullOrEmpty -Because $a.id
-            if ($a.source) { $a.source | Should -BeIn @('winget', 'msstore') -Because $a.id }
+            if ($a.source) { $a.source | Should -BeIn @('winget', 'msstore', 'github') -Because $a.id }
+            if ($a.source -eq 'github') { $a.repo | Should -Match '^[\w.-]+/[\w.-]+$' -Because $a.id }
         }
     }
     It 'ID Microsoft Store — 12 символів, winget — «Видавець.Назва»' {
@@ -105,6 +106,7 @@ Describe 'Встановлення (з підміною winget)' {
         Should -Invoke Invoke-D9Winget -Times 1 -Exactly -ParameterFilter { $Arguments[0] -eq 'install' -and $Arguments[2] -eq 'VideoLAN.VLC' }
     }
     It 'встановлені програми: ID з усіх джерел winget export' {
+        Mock Get-D9GithubInstalled { @{} }
         Mock Invoke-D9Winget {
             $file = $Arguments[$Arguments.IndexOf('-o') + 1]
             $json = '{"Sources":[{"Packages":[{"PackageIdentifier":"Google.Chrome"},{"PackageIdentifier":"7zip.7zip"}]},{"Packages":[{"PackageIdentifier":"9NKSQGP7F2NH"}]}]}'
@@ -115,5 +117,54 @@ Describe 'Встановлення (з підміною winget)' {
         $ids.Count | Should -Be 3
         $ids.Contains('google.chrome') | Should -BeTrue -Because 'порівняння без урахування регістру'
         $ids.Contains('9NKSQGP7F2NH') | Should -BeTrue
+    }
+}
+
+Describe 'Програми з релізів GitHub' {
+    BeforeAll {
+        $script:rel = [pscustomobject]@{ tag_name = 'v0.6.0'; assets = @(
+            [pscustomobject]@{ name = 'app-0.6.0-windows-x64-portable.zip' }
+            [pscustomobject]@{ name = 'app-0.6.0-linux-x86_64.AppImage' }
+            [pscustomobject]@{ name = 'app-0.6.0-windows-arm64.msi'; digest = 'sha256:' + ('a' * 64) }
+            [pscustomobject]@{ name = 'app-0.6.0-windows-x64.msi'; digest = 'sha256:' + ('b' * 64) }
+            [pscustomobject]@{ name = 'app-0.6.0-windows-x86.msi' }
+        ) }
+    }
+    It 'MSI під архітектуру: <arch> → <file>' -TestCases @(
+        @{ arch = 'x64'; file = 'app-0.6.0-windows-x64.msi' }
+        @{ arch = 'arm64'; file = 'app-0.6.0-windows-arm64.msi' }
+        @{ arch = 'x86'; file = 'app-0.6.0-windows-x86.msi' }
+    ) {
+        param($arch, $file)
+        (Select-D9GithubAsset $rel $arch).name | Should -Be $file
+    }
+    It 'на ARM64 без окремого MSI бере x64, для x86 не бере x86_64' {
+        $only64 = [pscustomobject]@{ assets = @([pscustomobject]@{ name = 'Tool_1.0_x64_en-US.msi' }, [pscustomobject]@{ name = 'tool-linux-x86_64.msi' }) }
+        (Select-D9GithubAsset $only64 'arm64').name | Should -Be 'Tool_1.0_x64_en-US.msi'
+        Select-D9GithubAsset $only64 'x86' | Should -BeNullOrEmpty
+    }
+    It 'версія з тегу й порівняння версій' {
+        ConvertFrom-D9ReleaseTag 'v0.6.0' | Should -Be '0.6.0'
+        ConvertFrom-D9ReleaseTag 'artcraft-v0.41.0' | Should -Be '0.41.0'
+        Test-D9VersionNewer '0.10.0' '0.9.5' | Should -BeTrue
+        Test-D9VersionNewer '0.6.0' '0.6.0' | Should -BeFalse
+    }
+    It 'контрольна сума — з поля digest' {
+        Get-D9GithubAssetHash $rel (Select-D9GithubAsset $rel 'x64') | Should -Be ('B' * 64)
+    }
+    It 'Install-D9Apps і Update-D9Apps передають такі програми в інсталятор GitHub, а не winget' {
+        Mock Install-D9GithubApp { [pscustomobject]@{ id = $App.id; name = $App.name; result = 'installed'; code = 0 } }
+        Mock Invoke-D9Winget { throw 'winget не мав викликатися' }
+        $app = (Import-D9AppCatalog).apps | Where-Object id -eq 'storytold.photocraft'
+        (Install-D9Apps -Apps @($app)).result | Should -Be 'installed'
+        (Update-D9Apps -Ids @('storytold.photocraft')).result | Should -Be 'installed'
+        Should -Invoke Install-D9GithubApp -Times 2 -Exactly
+    }
+    It 'кожна програма з GitHub має репозиторій, вираз назви й іконку' {
+        foreach ($a in (Import-D9AppCatalog).apps | Where-Object source -eq 'github') {
+            $a.repo | Should -Not -BeNullOrEmpty
+            $a.match | Should -Not -BeNullOrEmpty
+            $a.icon | Should -Match '^https://'
+        }
     }
 }

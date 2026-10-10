@@ -61,6 +61,8 @@ function Get-D9InstalledAppIds {
             foreach ($s in @($json.Sources)) { foreach ($p in @($s.Packages)) { if ($p.PackageIdentifier) { [void]$set.Add($p.PackageIdentifier) } } }
         }
     } finally { if (Test-Path -LiteralPath $file) { [IO.File]::Delete($file) } }
+    # Програми з релізів GitHub winget не бачить — визначаємо за записом у «Програмах і засобах»
+    foreach ($id in @((Get-D9GithubInstalled).Keys)) { [void]$set.Add($id) }
     return , $set
 }
 
@@ -79,6 +81,7 @@ function Install-D9Apps {
         $n++
         if ($script:D9OnProgress) { & $script:D9OnProgress $n $Apps.Count $app.name }
         Write-D9Log "[$n/$($Apps.Count)] $($app.name) ($($app.id))..."
+        if ($app.source -eq 'github') { Install-D9GithubApp $app; continue }   # реліз GitHub, MSI (GithubApps.ps1)
         $r = try { Invoke-D9Winget (Get-D9AppArguments $app) } catch { [pscustomobject]@{ Code = -1; Output = @($_.Exception.Message) } }
         $result = ConvertFrom-D9WingetCode $r.Code
         $level = switch ($result) { 'installed' { 'Ok' } 'already' { 'Ok' } 'upToDate' { 'Ok' } 'reboot' { 'Warn' } default { 'Error' } }
@@ -93,6 +96,7 @@ function Install-D9Apps {
 function Get-D9AppUpgrades {
     $r = Invoke-D9Winget @('upgrade', '--accept-source-agreements', '--disable-interactivity')
     ConvertFrom-D9WingetTable $r.Output
+    try { Get-D9GithubUpgrades } catch { }
 }
 
 # Розбір таблиці winget: колонки за позиціями заголовка (назви колонок локалізовані, тому — за порядком)
@@ -118,8 +122,11 @@ function ConvertFrom-D9WingetTable {
 # встановлену програму з пакетом (ставили не через winget), встановлює пакет поверх — це і є оновлення.
 function Update-D9Apps {
     param([Parameter(Mandatory)][string[]]$Ids)
+    $github = @{}
+    foreach ($a in @((Import-D9AppCatalog).apps | Where-Object source -eq 'github')) { $github[$a.id] = $a }
     foreach ($id in $Ids) {
         Write-D9Log "Оновлення $id..."
+        if ($github.ContainsKey($id)) { Install-D9GithubApp $github[$id]; continue }
         $common = @('--id', $id, '--exact', '--source', 'winget', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
         $r = try { Invoke-D9Winget (@('upgrade') + $common) } catch { [pscustomobject]@{ Code = -1; Output = @($_.Exception.Message) } }
         $result = ConvertFrom-D9WingetCode $r.Code
@@ -142,6 +149,8 @@ function Invoke-D9AppUpgradeAll {
     $result = ConvertFrom-D9WingetCode $r.Code
     if ($result -in 'installed', 'upToDate') { Write-D9Log 'Оновлення програм завершено.' Ok }
     else { Write-D9Log "winget завершився з кодом $($r.Code): частина програм могла не оновитися (наприклад, відкриті зараз)." Warn }
+    $gh = @(try { Get-D9GithubUpgrades } catch { })
+    if ($gh) { [void](Update-D9Apps -Ids @($gh.Id)) }
     [pscustomobject]@{ Code = $r.Code; Result = $result }
 }
 

@@ -5655,6 +5655,199 @@
         "en": "Ink notes with a pen."
       },
       "homepage": "http://www.microsoft.com/"
+    },
+    {
+      "id": "storytold.photocraft",
+      "source": "github",
+      "repo": "storytold/photocraft",
+      "match": "^PhotoCraft$",
+      "category": "graphics",
+      "name": "PhotoCraft",
+      "description": {
+        "uk": "Відкритий аналог Adobe Photoshop: шари, маски, ретуш і фільтри.",
+        "en": "Open-source Adobe Photoshop alternative: layers, masks, retouching."
+      },
+      "homepage": "https://github.com/storytold/photocraft",
+      "icon": "https://raw.githubusercontent.com/storytold/photocraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.photocraft.png"
+    },
+    {
+      "id": "storytold.lightcraft",
+      "source": "github",
+      "repo": "storytold/lightcraft",
+      "match": "^LightCraft$",
+      "category": "graphics",
+      "name": "LightCraft",
+      "description": {
+        "uk": "Відкритий аналог Adobe Lightroom: каталог фото й обробка RAW.",
+        "en": "Open-source Adobe Lightroom alternative: photo library and RAW editing."
+      },
+      "homepage": "https://github.com/storytold/lightcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/lightcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.lightcraft.png"
+    },
+    {
+      "id": "storytold.filmcraft",
+      "source": "github",
+      "repo": "storytold/filmcraft",
+      "match": "^FilmCraft$",
+      "category": "media",
+      "name": "FilmCraft",
+      "description": {
+        "uk": "Відкритий аналог Adobe Premiere Pro: монтаж відео.",
+        "en": "Open-source Adobe Premiere Pro alternative: video editing."
+      },
+      "homepage": "https://github.com/storytold/filmcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/filmcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.filmcraft.png"
+    },
+    {
+      "id": "storytold.effectcraft",
+      "source": "github",
+      "repo": "storytold/effectcraft",
+      "match": "^EffectCraft$",
+      "category": "media",
+      "name": "EffectCraft",
+      "description": {
+        "uk": "Відкритий аналог Adobe After Effects: анімація й візуальні ефекти.",
+        "en": "Open-source Adobe After Effects alternative: motion graphics and VFX."
+      },
+      "homepage": "https://github.com/storytold/effectcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/effectcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.effectcraft.png"
+    },
+    {
+      "id": "storytold.pdfcraft",
+      "source": "github",
+      "repo": "storytold/pdfcraft",
+      "match": "^PdfCraft$",
+      "category": "office",
+      "name": "PdfCraft",
+      "description": {
+        "uk": "Відкритий аналог Adobe Acrobat: перегляд, редагування й підпис PDF.",
+        "en": "Open-source Adobe Acrobat alternative: view, edit and sign PDFs."
+      },
+      "homepage": "https://github.com/storytold/pdfcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/pdfcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.pdfcraft.png"
+    },
+    {
+      "id": "storytold.designcraft",
+      "source": "github",
+      "repo": "storytold/designcraft",
+      "match": "^DesignCraft$",
+      "category": "graphics",
+      "name": "DesignCraft",
+      "description": {
+        "uk": "Відкритий аналог Adobe InDesign: верстка журналів, книг і буклетів.",
+        "en": "Open-source Adobe InDesign alternative: page layout and publishing."
+      },
+      "homepage": "https://github.com/storytold/designcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/designcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.designcraft.png"
+    },
+    {
+      "id": "storytold.wordcraft",
+      "source": "github",
+      "repo": "storytold/wordcraft",
+      "match": "^WordCraft$",
+      "category": "office",
+      "name": "WordCraft",
+      "description": {
+        "uk": "Відкритий аналог Microsoft Word: текстові документи.",
+        "en": "Open-source Microsoft Word alternative."
+      },
+      "homepage": "https://github.com/storytold/wordcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/wordcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.wordcraft.png"
+    },
+    {
+      "id": "storytold.gridcraft",
+      "source": "github",
+      "repo": "storytold/gridcraft",
+      "match": "^GridCraft$",
+      "category": "office",
+      "name": "GridCraft",
+      "description": {
+        "uk": "Відкритий аналог Microsoft Excel: електронні таблиці.",
+        "en": "Open-source Microsoft Excel alternative: spreadsheets."
+      },
+      "homepage": "https://github.com/storytold/gridcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/gridcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.gridcraft.png"
+    },
+    {
+      "id": "storytold.deckcraft",
+      "source": "github",
+      "repo": "storytold/deckcraft",
+      "match": "^DeckCraft$",
+      "category": "office",
+      "name": "DeckCraft",
+      "description": {
+        "uk": "Відкритий аналог Microsoft PowerPoint: презентації.",
+        "en": "Open-source Microsoft PowerPoint alternative: presentations."
+      },
+      "homepage": "https://github.com/storytold/deckcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/deckcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.deckcraft.png"
+    },
+    {
+      "id": "storytold.cadcraft",
+      "source": "github",
+      "repo": "storytold/cadcraft",
+      "match": "^CadCraft$",
+      "category": "graphics",
+      "name": "CadCraft",
+      "description": {
+        "uk": "Відкритий аналог AutoCAD: креслення й проєктування.",
+        "en": "Open-source AutoCAD-style drafting and design."
+      },
+      "homepage": "https://github.com/storytold/cadcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/cadcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.cadcraft.png"
+    },
+    {
+      "id": "storytold.soundcraft",
+      "source": "github",
+      "repo": "storytold/soundcraft",
+      "match": "^SoundCraft$",
+      "category": "media",
+      "name": "SoundCraft",
+      "description": {
+        "uk": "Відкритий аналог Avid Pro Tools: запис і зведення звуку.",
+        "en": "Open-source Avid Pro Tools alternative: recording and mixing."
+      },
+      "homepage": "https://github.com/storytold/soundcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/soundcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.soundcraft.png"
+    },
+    {
+      "id": "storytold.craft-launcher",
+      "source": "github",
+      "repo": "storytold/craft-launcher",
+      "match": "^ArtCraft Launcher$",
+      "category": "graphics",
+      "name": "ArtCraft Launcher",
+      "description": {
+        "uk": "Запуск і оновлення всіх програм ArtCraft з одного місця.",
+        "en": "Launcher for all ArtCraft apps."
+      },
+      "homepage": "https://github.com/storytold/craft-launcher",
+      "icon": "https://raw.githubusercontent.com/storytold/craft-launcher/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.artcraft-launcher.png"
+    },
+    {
+      "id": "storytold.artcraft",
+      "source": "github",
+      "repo": "storytold/artcraft",
+      "match": "^ArtCraft$",
+      "category": "graphics",
+      "name": "ArtCraft",
+      "description": {
+        "uk": "Творчий рушій ArtCraft для художників, дизайнерів і кіномейкерів.",
+        "en": "ArtCraft crafting engine for artists, designers and filmmakers."
+      },
+      "homepage": "https://getartcraft.com/",
+      "icon": "https://raw.githubusercontent.com/storytold/artcraft/HEAD/crates/desktop/artcraft/icons/Square142x142Logo.png"
+    },
+    {
+      "id": "ArtCraft.VectorCraft",
+      "category": "graphics",
+      "name": "VectorCraft",
+      "description": {
+        "uk": "Відкритий аналог Adobe Illustrator: векторна графіка.",
+        "en": "Open-source Adobe Illustrator alternative: vector graphics."
+      },
+      "homepage": "https://github.com/storytold/vectorcraft",
+      "icon": "https://raw.githubusercontent.com/storytold/vectorcraft/HEAD/assets/app-icon/hicolor/128x128/apps/ai.storyteller.vectorcraft.png"
     }
   ],
   "bundles": [
@@ -5809,6 +6002,29 @@
         "yt-dlp.yt-dlp",
         "Gyan.FFmpeg",
         "MediaArea.MediaInfo.GUI"
+      ]
+    },
+    {
+      "id": "artcraft",
+      "name": {
+        "uk": "Замість Adobe й Office",
+        "en": "Instead of Adobe and Office"
+      },
+      "description": {
+        "uk": "Відкриті безкоштовні аналоги Photoshop, Lightroom, Illustrator, Premiere, After Effects, InDesign, Acrobat, Word, Excel і PowerPoint від ArtCraft.",
+        "en": "Free open-source ArtCraft alternatives to Adobe and Office apps."
+      },
+      "apps": [
+        "storytold.photocraft",
+        "storytold.lightcraft",
+        "ArtCraft.VectorCraft",
+        "storytold.filmcraft",
+        "storytold.effectcraft",
+        "storytold.designcraft",
+        "storytold.pdfcraft",
+        "storytold.wordcraft",
+        "storytold.gridcraft",
+        "storytold.deckcraft"
       ]
     }
   ]

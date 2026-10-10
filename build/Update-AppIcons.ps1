@@ -84,6 +84,7 @@ function Convert-IconBytes([byte[]]$Bytes) {
 $rejectHashes = @('2E946EB076A2D750EBD2990F5F44C7B6', 'C21D17FB86B1F57E8B5B2D5F7DC80745')
 
 function Get-IconUrls([object]$App) {
+    if ($App.icon) { [string]$App.icon }   # пряме посилання з каталогу (напр. іконка з репозиторію програми)
     foreach ($k in Get-IconKeys $App) { $u = $db[$k]; if ($u) { $u; break } }
     $hp = [string]$App.homepage
     if ($hp -match '^https?://([^/]+)') {

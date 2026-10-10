@@ -277,6 +277,9 @@ function Invoke-D9ChecklistStep {
             if (-not $progs) { Write-D9Log '  Ці програми вже видалено.' Ok }
             else {
                 $res = @(Uninstall-D9Programs -Programs $progs)
+                # Небажане ПЗ: залишки прибираємо одразу (папки — у Кошик, реєстр — з резервною копією .reg)
+                $left = @($res | ForEach-Object { $_.leftovers } | Where-Object { $_ })
+                if ($left) { [void](Remove-D9UninstallLeftovers -Items $left) }
                 $bad = @($res | Where-Object { $_.result -notin 'removed', 'reboot' })
                 if ($bad) { $Item.note = "не видалено: $(($bad.name) -join ', ')" }
             }

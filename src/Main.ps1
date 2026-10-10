@@ -232,7 +232,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.20.0-dev'
+$script:D9Version  = '0.21.0-dev'
 $script:D9Language = $Language
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
@@ -508,6 +508,12 @@ switch ($PSCmdlet.ParameterSetName) {
         if (-not (Confirm-D9 "Видалити $($progs.Count) програм(и)?")) { exit $ExitCodes.Cancelled }
         [void](New-D9RestorePoint)
         $res = @(Uninstall-D9Programs -Programs $progs)
+        $left = @($res | ForEach-Object { $_.leftovers } | Where-Object { $_ })
+        if ($left) {
+            Write-Host "Залишки після видалення:" -ForegroundColor Cyan
+            foreach ($l in $left) { Write-Host "  $(if ($l.Type -eq 'folder') { 'Папка ' } else { 'Реєстр' }) $($l.Path)" }
+            if (Confirm-D9 "Прибрати $($left.Count) залишків? Папки — у Кошик, реєстр — з резервною копією .reg") { [void](Remove-D9UninstallLeftovers -Items $left) }
+        }
         exit $(if (@($res | Where-Object { $_.result -notin 'removed', 'reboot' })) { $ExitCodes.Partial } else { $ExitCodes.Ok })
     }
 

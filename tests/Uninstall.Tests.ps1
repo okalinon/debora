@@ -69,3 +69,53 @@ Describe 'Небажані програми в чеклісті' {
         ($list.items | Where-Object { $_.action.type -eq 'restorePoint' }) | Should -Not -BeNullOrEmpty
     }
 }
+
+Describe 'Розмір, папка й залишки програм' {
+    # Не в TestDrive: папки в \Temp\ навмисно не вважаються папками програм
+    BeforeAll { $script:work = Join-Path $env:LOCALAPPDATA ('DeboraTests\' + [guid]::NewGuid().ToString('N')) }
+    AfterAll { if (Test-Path $work) { [IO.Directory]::Delete((Split-Path $work), $true) } }
+    It 'назва без версії й розрядності: <name> → <clean>' -TestCases @(
+        @{ name = 'Notepad++ (64-bit x64)'; clean = 'Notepad++' }
+        @{ name = 'NVIDIA PhysX System Software 9.23.1019'; clean = 'NVIDIA PhysX System Software' }
+        @{ name = '7-Zip 24.08 (x64)'; clean = '7-Zip' }
+        @{ name = 'OBS Studio'; clean = 'OBS Studio' }
+    ) {
+        param($name, $clean)
+        Get-D9CleanProgramName $name | Should -Be $clean
+    }
+    It 'папка програми: зі значка у вкладеній bin\64bit — корінь програми; системні папки — ні' {
+        $root = Join-Path $work 'Apps\Studio'
+        New-Item -ItemType Directory -Path (Join-Path $root 'bin\64bit') -Force | Out-Null
+        Get-D9ProgramFolder ([pscustomobject]@{ DisplayIcon = "`"$root\bin\64bit\studio.exe`",0" }) | Should -Be $root
+        Get-D9ProgramFolder ([pscustomobject]@{ InstallLocation = $env:ProgramFiles }) | Should -BeNullOrEmpty
+        Get-D9ProgramFolder ([pscustomobject]@{ UninstallString = "MsiExec.exe /X{11111111-2222-3333-4444-555555555555}" }) | Should -BeNullOrEmpty
+    }
+    It 'залишки: папка в AppData і розділ Software; чужі й великі вкладення — пропускаються' {
+        $old = $env:APPDATA
+        try {
+            $env:APPDATA = Join-Path $work 'Roaming'
+            New-Item -ItemType Directory -Path (Join-Path $env:APPDATA 'ZzDeboraTestApp') -Force | Out-Null
+            Set-Content (Join-Path $env:APPDATA 'ZzDeboraTestApp\settings.ini') 'x'
+            New-Item -Path 'HKCU:\SOFTWARE\ZzDeboraTestApp' -Force | Out-Null
+            $prog = [pscustomobject]@{ Name = 'ZzDeboraTestApp 1.2.3'; Publisher = ''; Folder = $null }
+            $left = @(Find-D9UninstallLeftovers -Program $prog)
+            ($left | Where-Object Type -eq 'folder').Path | Should -Be (Join-Path $env:APPDATA 'ZzDeboraTestApp')
+            ($left | Where-Object Type -eq 'registry').Path | Should -Contain 'HKCU:\SOFTWARE\ZzDeboraTestApp'
+            # Інша встановлена програма з тією ж назвою — нічого не чіпаємо
+            @(Find-D9UninstallLeftovers -Program $prog -Remaining @([pscustomobject]@{ Name = 'ZzDeboraTestApp 2.0'; Folder = $null })).Count | Should -Be 0
+            # Усередині папки стоїть інша програма (як ігри в папці Steam) — папку пропускаємо
+            $nested = [pscustomobject]@{ Name = 'Game'; Folder = (Join-Path $env:APPDATA 'ZzDeboraTestApp\games\Game') }
+            @(Find-D9UninstallLeftovers -Program $prog -Remaining @($nested) | Where-Object Type -eq 'folder').Count | Should -Be 0
+        } finally { $env:APPDATA = $old; [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('SOFTWARE\ZzDeboraTestApp', $false) }
+    }
+    It 'розділ реєстру видаляється лише після резервної копії .reg' {
+        New-Item -Path 'HKCU:\SOFTWARE\Debloater9Test\leftover\sub' -Force | Out-Null
+        Set-ItemProperty 'HKCU:\SOFTWARE\Debloater9Test\leftover' -Name v -Value 1
+        $r = Remove-D9UninstallLeftovers -Items @([pscustomobject]@{ Type = 'registry'; Path = 'HKCU:\SOFTWARE\Debloater9Test\leftover'; Size = 0 })
+        $r.Removed | Should -Be 1
+        Test-Path 'HKCU:\SOFTWARE\Debloater9Test\leftover' | Should -BeFalse
+        $reg = Get-ChildItem $r.Backup -Filter '*.reg'
+        $reg.Count | Should -Be 1
+        (Get-Content $reg[0].FullName -Raw) | Should -Match 'Debloater9Test\\leftover'
+    }
+}

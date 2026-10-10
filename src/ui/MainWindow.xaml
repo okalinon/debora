@@ -665,7 +665,7 @@
           <Border Grid.Row="2" Style="{StaticResource Panel}" Margin="0,0,0,12">
             <DataGrid x:Name="TweakGrid">
               <DataGrid.Columns>
-                <DataGridTemplateColumn Header="" Width="40">
+                <DataGridTemplateColumn Header="" Width="54">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -711,7 +711,7 @@
                 </WrapPanel>
                 <DataGrid x:Name="DriverOnlineGrid" Margin="-6,6,-6,0" MinHeight="40" MaxHeight="320">
                   <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="" Width="40">
+                    <DataGridTemplateColumn Header="" Width="54">
                       <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center"/></DataTemplate>
                       </DataGridTemplateColumn.CellTemplate>
@@ -749,7 +749,7 @@
                 </DockPanel>
                 <DataGrid x:Name="DriverPackageGrid" Margin="-6,10,-6,0" MinHeight="44" MaxHeight="300">
                   <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="" Width="40">
+                    <DataGridTemplateColumn Header="" Width="54">
                       <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center"/></DataTemplate>
                       </DataGridTemplateColumn.CellTemplate>
@@ -878,7 +878,7 @@
           <Border Grid.Row="2" Style="{StaticResource Panel}">
             <DataGrid x:Name="UninstGrid">
               <DataGrid.Columns>
-                <DataGridTemplateColumn Header="" Width="40">
+                <DataGridTemplateColumn Header="" Width="54">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
@@ -886,9 +886,11 @@
                 <DataGridTextColumn Header="Програма" Binding="{Binding Title}" Width="3*" MinWidth="220" IsReadOnly="True">
                   <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="Видавець" Binding="{Binding Group}" Width="2*" MinWidth="120" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Розмір" Binding="{Binding Note}" Width="80" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Встановлено" Binding="{Binding Kind}" Width="100" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Видавець" Binding="{Binding Group}" Width="2*" MinWidth="120" IsReadOnly="True">
+                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Розмір" Binding="{Binding Note}" Width="100" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Встановлено" Binding="{Binding Kind}" Width="130" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Примітка" Width="3*" MinWidth="200">
                   <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding Color}" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
@@ -919,7 +921,7 @@
           <Border Grid.Row="2" Style="{StaticResource Panel}" Margin="0,0,0,12">
             <DataGrid x:Name="StartupGrid">
               <DataGrid.Columns>
-                <DataGridTemplateColumn Header="Запускати" Width="84">
+                <DataGridTemplateColumn Header="Запускати" Width="110">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>

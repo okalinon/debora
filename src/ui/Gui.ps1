@@ -1092,11 +1092,11 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $updateUninstSel = {
         $sel = @($state.UninstRows | Where-Object Selected)
         $size = [long](($sel | ForEach-Object { $_.Tag.Size } | Measure-Object -Sum).Sum)
-        $ui.UninstSelectedText.Text = if ($sel) { "Вибрано: $($sel.Count)$(if ($size) { ", звільниться ≈ $(Format-D9Size $size)" })" } else { 'Нічого не вибрано' }
+        $ui.UninstSelectedText.Text = if ($sel) { "Вибрано: $($sel.Count)$(if ($size) { ", звільниться ≈ $(Format-D9Size $size)" }). Після видалення Debora запропонує прибрати залишки." } else { 'Нічого не вибрано' }
         $ui.BtnUninstall.Content = if ($sel) { "Видалити вибрані ($($sel.Count))" } else { 'Видалити вибрані' }
         $ui.BtnUninstall.IsEnabled = [bool]$sel -and -not $state.Job
     }
-    $loadUninst = { & $startJob 'Читання списку програм' { @(Get-D9UninstallList) } $null { param($r) & $fillUninst @($r) } }
+    $loadUninst = { & $startJob 'Читання списку програм (розміри папок рахуються лише першого разу)' { @(Get-D9UninstallListDetailed) } $null { param($r) & $fillUninst @($r) } }
     $ui.UninstSearch.Add_TextChanged({ $ui.UninstSearchHint.Visibility = if ($ui.UninstSearch.Text) { 'Collapsed' } else { 'Visible' }; & $showUninst })
     $ui.ChkUninstBloat.Add_Click({ & $showUninst })
     $ui.UninstGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateUninstSel })
@@ -1125,6 +1125,20 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             if ($bad) { $msg += "`n" + (($bad | ForEach-Object { "• $($_.name): $($_.message)" }) -join "`n") }
             if (@($res | Where-Object result -eq 'reboot')) { $msg += "`nДля завершення потрібне перезавантаження." }
             [void][Windows.MessageBox]::Show($win, $msg, 'Debora', 'OK', $(if ($bad) { 'Warning' } else { 'Information' }))
+            # Залишки: папки й розділи реєстру, які деінсталятори не прибрали
+            $left = @($res | ForEach-Object { $_.leftovers } | Where-Object { $_ })
+            if ($left) {
+                $size = [long](($left | Measure-Object Size -Sum).Sum)
+                $text = ($left | ForEach-Object { if ($_.Type -eq 'folder') { "Папка:  $($_.Path)$(if ($_.Size) { '  (' + (Format-D9Size $_.Size) + ')' })" } else { "Реєстр: $($_.Path)" } }) -join "`r`n"
+                if (Show-D9TextDialog $win 'Залишки після видалення' "Деінсталятори лишили $($left.Count) папок і розділів реєстру$(if ($size) { ' (' + (Format-D9Size $size) + ')' }). Прибрати? Папки підуть у Кошик, розділи реєстру — з резервною копією .reg, тож усе можна повернути." $text 'Прибрати') {
+                    & $startJob 'Прибирання залишків' { param($a) Remove-D9UninstallLeftovers -Items $a.Items } @{ Items = $left } {
+                        param($r)
+                        [void][Windows.MessageBox]::Show($win, "Прибрано: $($r.Removed). Папки — у Кошику; копія реєстру — $($r.Backup)", 'Debora')
+                        & $loadUninst
+                    }
+                    return
+                }
+            }
             & $loadUninst
         }
     })

@@ -47,9 +47,155 @@ function Get-D9UninstallList {
                 UninstallString = [string]$p.UninstallString; QuietUninstallString = [string]$p.QuietUninstallString
                 IsMsi = ($p.WindowsInstaller -eq 1 -and $k.PSChildName -match '^\{[0-9A-F-]{36}\}$')
                 Bloat = $(if ($bloat) { Get-D9Text $bloat.reason } else { $null }); Keep = $keep
+                Folder = (Get-D9ProgramFolder $p); SizeEstimated = $false
             }
         }
     }
+}
+
+# Список програм з доповненими даними: якщо в реєстрі немає розміру чи дати — рахуємо за папкою програми
+# (лише коли папка належить одній програмі, щоб не приписати спільну папку виробника кільком записам).
+function Get-D9UninstallListDetailed {
+    param($KnownBloat)
+    $list = @(Get-D9UninstallList -KnownBloat $KnownBloat)
+    $byFolder = @{}
+    foreach ($p in $list | Where-Object Folder) { $byFolder[$p.Folder] = 1 + [int]$byFolder[$p.Folder] }
+    $cache = Get-D9ProgramSizeCache
+    foreach ($p in $list) {
+        if (-not $p.Folder -or $byFolder[$p.Folder] -gt 1) { continue }
+        if (-not $p.Size) {
+            $key = "$($p.Name)|$($p.Version)|$($p.Folder)"
+            $hit = $cache.items.$key
+            if ($hit -and ([datetime]$hit.time) -gt (Get-Date).AddDays(-14)) { $p.Size = [long]$hit.size }
+            else {
+                $p.Size = [long](Get-D9FolderSize $p.Folder 3000)
+                $cache.items | Add-Member -NotePropertyName $key -NotePropertyValue ([pscustomobject]@{ size = $p.Size; time = (Get-Date).ToString('s') }) -Force
+            }
+            $p.SizeEstimated = $true
+        }
+        if (-not $p.InstallDate) { $p.InstallDate = try { (Get-Item -LiteralPath $p.Folder -ErrorAction Stop).CreationTime } catch { $null } }
+    }
+    Save-D9ProgramSizeCache $cache
+    $list
+}
+
+function Get-D9ProgramSizeCachePath { Join-Path (Join-Path (Get-D9DataRoot) 'cache') 'program-sizes.json' }
+function Get-D9ProgramSizeCache {
+    $path = Get-D9ProgramSizeCachePath
+    $c = try { ConvertFrom-Json ([IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)) } catch { $null }
+    if (-not $c -or -not $c.items) { $c = [pscustomobject]@{ items = [pscustomobject]@{} } }
+    $c
+}
+function Save-D9ProgramSizeCache {
+    param($Cache)
+    try {
+        $path = Get-D9ProgramSizeCachePath
+        $dir = Split-Path $path
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        [IO.File]::WriteAllText($path, (ConvertTo-Json $Cache -Depth 5 -Compress), (New-Object Text.UTF8Encoding $false))
+    } catch { }   # кеш необов'язковий (наприклад, без прав на запис)
+}
+
+# Папки, які ніколи не вважаємо «папкою програми» (системні й загальні)
+function Test-D9GenericFolder {
+    param([string]$Path)
+    $p = $Path.TrimEnd('\')
+    if ($p -match '^[A-Za-z]:$') { return $true }
+    $generic = @($env:SystemRoot, $env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramData, $env:APPDATA, $env:LOCALAPPDATA, $env:USERPROFILE, $env:PUBLIC,
+                 (Join-Path $env:LOCALAPPDATA 'Programs'), (Join-Path $env:ProgramFiles 'Common Files'), (Join-Path $env:ProgramFiles 'WindowsApps')) | Where-Object { $_ }
+    foreach ($g in $generic) { if ($p -ieq $g.TrimEnd('\')) { return $true } }
+    if ($env:SystemRoot -and $p -like "$($env:SystemRoot.TrimEnd('\'))\*") { return $true }
+    if ($p -match '(?i)\\(Package Cache|Installer|Temp|WindowsApps)(\\|$)') { return $true }
+    return $false
+}
+
+# Папка програми: InstallLocation → папка значка → папка деінсталятора (без системних і загальних папок)
+function Get-D9ProgramFolder {
+    param([Parameter(Mandatory)]$Entry)
+    $candidates = @()
+    if ($Entry.InstallLocation) { $candidates += [string]$Entry.InstallLocation }
+    if ($Entry.DisplayIcon) { $candidates += Split-Path ((([string]$Entry.DisplayIcon) -replace ',\s*-?\d+$', '').Trim('"', ' ')) -ErrorAction SilentlyContinue }
+    $u = Split-D9CommandLine ([string]$Entry.UninstallString)
+    if ($u -and $u.File -notmatch '(?i)msiexec') { $candidates += Split-Path $u.File -ErrorAction SilentlyContinue }
+    foreach ($c in $candidates) {
+        if (-not $c) { continue }
+        $path = [Environment]::ExpandEnvironmentVariables($c.Trim('"', ' ')).TrimEnd('\')
+        # Значок і деінсталятор часто лежать у вкладеній папці (obs-studio\bin\64bit) — піднімаємось до кореня програми
+        while ((Split-Path $path -Leaf) -match '^(?i)(bin|bin32|bin64|32bit|64bit|x64|x86|amd64|win32|win64|app|program|resources|uninstall|uninst)$' -and
+               -not (Test-D9GenericFolder (Split-Path $path))) { $path = Split-Path $path }
+        if ($path -notmatch '^[A-Za-z]:\\' -or (Test-D9GenericFolder $path)) { continue }
+        if (Test-Path -LiteralPath $path -PathType Container) { return $path }
+    }
+    return $null
+}
+
+# Назва без версії й розрядності: «Notepad++ (64-bit x64)» → «Notepad++», «NVIDIA PhysX 9.23.1019» → «NVIDIA PhysX»
+function Get-D9CleanProgramName {
+    param([string]$Name)
+    $n = $Name -replace '\s*\((x64|x86|64-bit|32-bit|64-bit x64|[^)]*bit[^)]*)\)', '' -replace '\s+v?\d+(\.\d+)+.*$', '' -replace '\s+(x64|x86|64-bit|32-bit)$', ''
+    $n.Trim()
+}
+
+# Залишки після видалення: точні збіги назви програми (або «Видавець\Назва») у папках даних і розділах Software реєстру,
+# а також папка програми, якщо деінсталятор її лишив. Повертає Type (folder|registry), Path, Size.
+function Find-D9UninstallLeftovers {
+    param([Parameter(Mandatory)]$Program, [object[]]$Remaining = @())
+    $name = Get-D9CleanProgramName $Program.Name
+    if ($name.Length -lt 3) { return }
+    $publisher = (([string]$Program.Publisher) -replace '(?i),?\s*(Inc|LLC|Ltd|GmbH|Corp|Corporation|Co)\.?$', '').Trim()
+    # Не чіпаємо те, що належить іншим встановленим програмам з тією ж назвою
+    $taken = @{}
+    foreach ($r in $Remaining) { $taken[(Get-D9CleanProgramName $r.Name).ToLower()] = $true; if ($r.Folder) { $taken[$r.Folder.ToLower()] = $true } }
+    if ($taken.ContainsKey($name.ToLower())) { return }
+    $rel = @($name); if ($publisher -and $publisher -ine $name) { $rel += "$publisher\$name" }
+    $folders = @()
+    if ($Program.Folder -and -not $taken.ContainsKey($Program.Folder.ToLower())) { $folders += $Program.Folder }
+    foreach ($base in $env:ProgramData, $env:APPDATA, $env:LOCALAPPDATA, $env:ProgramFiles, ${env:ProgramFiles(x86)}) {
+        if ($base) { foreach ($r in $rel) { $folders += Join-Path $base $r } }
+    }
+    $otherFolders = @($Remaining | Where-Object Folder | ForEach-Object { $_.Folder.TrimEnd('\') + '\' })
+    foreach ($f in $folders | Select-Object -Unique) {
+        if (-not (Test-Path -LiteralPath $f -PathType Container) -or (Test-D9GenericFolder $f)) { continue }
+        # Усередині стоїть інша програма (наприклад, ігри в папці Steam) — не чіпаємо
+        if (@($otherFolders | Where-Object { $_ -like "$($f.TrimEnd('\'))\*" }).Count) { Write-D9Log "  Пропущено $f — усередині інші встановлені програми" Detail; continue }
+        $size = Get-D9FolderSize $f 3000
+        if ($size -ge 2GB) { Write-D9Log "  Пропущено $f ($(Format-D9Size $size)) — завелика для автоматичного прибирання, перегляньте вручну" Detail; continue }
+        [pscustomobject]@{ Type = 'folder'; Path = $f; Size = $size }
+    }
+    foreach ($hive in 'HKCU:\SOFTWARE', 'HKLM:\SOFTWARE', 'HKLM:\SOFTWARE\WOW6432Node') {
+        foreach ($r in $rel) {
+            $k = "$hive\$r"
+            if (Test-Path -LiteralPath $k) { [pscustomobject]@{ Type = 'registry'; Path = $k; Size = 0 } }
+        }
+    }
+}
+
+# Прибирає залишки: папки — у Кошик (можна відновити), розділи реєстру — після експорту в .reg (резервна копія в папці даних)
+function Remove-D9UninstallLeftovers {
+    param([Parameter(Mandatory)][object[]]$Items)
+    Add-Type -AssemblyName Microsoft.VisualBasic
+    $backup = Join-Path (Join-Path (Get-D9DataRoot) 'uninstall-backup') (Get-Date -Format 'yyyy-MM-dd_HH-mm-ss')
+    $done = 0; $i = 0
+    foreach ($it in $Items) {
+        try {
+            if ($it.Type -eq 'folder') {
+                [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($it.Path, 'OnlyErrorDialogs', 'SendToRecycleBin')
+                Write-D9Log "  У Кошик: $($it.Path)" Detail
+            } else {
+                if (-not (Test-Path $backup)) { New-Item -ItemType Directory -Path $backup -Force | Out-Null }
+                $i++
+                $regPath = $it.Path -replace '^HKCU:', 'HKEY_CURRENT_USER' -replace '^HKLM:', 'HKEY_LOCAL_MACHINE'
+                $null = & reg.exe export $regPath (Join-Path $backup "$i.reg") /y 2>&1
+                if ($LASTEXITCODE -ne 0) { throw 'не вдалося зберегти резервну копію — розділ не видалено' }
+                $hive = if ($it.Path -like 'HKCU:*') { [Microsoft.Win32.Registry]::CurrentUser } else { [Microsoft.Win32.Registry]::LocalMachine }
+                $hive.DeleteSubKeyTree(($it.Path -replace '^HK(CU|LM):\\', ''), $false)
+                Write-D9Log "  Реєстр: $($it.Path) (копія: $backup)" Detail
+            }
+            $done++
+        } catch { Write-D9Log "  Не вдалося прибрати $($it.Path): $($_.Exception.Message)" Warn }
+    }
+    Write-D9Log "Прибрано залишків: $done з $($Items.Count). Папки — у Кошику; розділи реєстру можна повернути з .reg у $backup" Ok
+    [pscustomobject]@{ Removed = $done; Backup = $backup }
 }
 
 # Як видалити: File, Args, Silent (чи без вікон)
@@ -90,6 +236,11 @@ function Uninstall-D9Programs {
         $result = if ($gone -and $code -eq 3010) { 'reboot' } elseif ($gone) { 'removed' } elseif ($msg) { 'failed' } else { 'stillPresent' }
         $text = @{ removed = 'видалено'; reboot = 'видалено, потрібне перезавантаження'; stillPresent = "не видалено (код $code; можливо, скасовано у вікні деінсталятора)"; failed = "помилка: $msg" }[$result]
         Write-D9Log "  $($prog.Name): $text" $(if ($result -in 'removed', 'reboot') { 'Ok' } else { 'Warn' })
-        [pscustomobject]@{ name = $prog.Name; result = $result; message = $text }
+        $left = @()
+        if ($result -in 'removed', 'reboot') {
+            $left = @(Find-D9UninstallLeftovers -Program $prog -Remaining @(Get-D9UninstallList))
+            if ($left) { Write-D9Log "  Залишки після видалення: $($left.Count) (папки й розділи реєстру)" Detail }
+        }
+        [pscustomobject]@{ name = $prog.Name; result = $result; message = $text; leftovers = $left }
     }
 }

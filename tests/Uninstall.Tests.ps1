@@ -14,6 +14,8 @@ AfterAll {
 }
 
 Describe 'Команда видалення' {
+    # Шляхи в прикладах вигадані — вважаємо, що деінсталятори існують (осиротілі записи перевіряються окремо)
+    BeforeAll { Mock Test-Path { $true } -ParameterFilter { $LiteralPath -like 'C:\Program Files*' -or $LiteralPath -like 'C:\App*' } }
     It 'розбір командного рядка: <line>' -TestCases @(
         @{ line = '"C:\Program Files\App\unins000.exe" /LOG'; file = 'C:\Program Files\App\unins000.exe'; rest = '/LOG' }
         @{ line = 'C:\Program Files\App\Uninstall.exe /S'; file = 'C:\Program Files\App\Uninstall.exe'; rest = '/S' }
@@ -117,5 +119,52 @@ Describe 'Розмір, папка й залишки програм' {
         $reg = Get-ChildItem $r.Backup -Filter '*.reg'
         $reg.Count | Should -Be 1
         (Get-Content $reg[0].FullName -Raw) | Should -Match 'Debloater9Test\\leftover'
+    }
+}
+
+Describe 'Записи без деінсталятора й порожні аргументи' {
+    It 'деінсталятор без аргументів запускається (раніше: «ArgumentList is null or empty»)' {
+        $key = 'HKCU:\Software\Debloater9Test\noargs'
+        New-Item -Path $key -Force | Out-Null
+        $prog = New-Prog @{ Name = 'NoArgs'; Key = $key; UninstallString = "$env:SystemRoot\System32\whoami.exe" }
+        (Get-D9UninstallCommand $prog).Args | Should -BeNullOrEmpty
+        $r = Uninstall-D9Programs -Programs @($prog) -TimeoutMinutes 1
+        $r.result | Should -Be 'stillPresent'   # whoami не видаляє запис, але запуск має пройти без помилки
+        $r.message | Should -Not -Match 'ArgumentList'
+    }
+    It 'осиротілий запис (немає ні деінсталятора, ні папки) — прибирається лише запис, з копією .reg' {
+        $key = 'HKCU:\Software\Debloater9Test\orphan'
+        New-Item -Path $key -Force | Out-Null
+        $prog = New-Prog @{ Name = 'Orphan'; Key = (Get-Item $key).PSPath; UninstallString = 'Q:\NoSuchDir\NoSuch App\app.exe' }
+        (Get-D9UninstallCommand $prog).Method | Should -Be 'orphan'
+        $r = Uninstall-D9Programs -Programs @($prog)
+        $r.result | Should -Be 'removed'
+        Test-Path $key | Should -BeFalse
+    }
+    It 'деінсталятора немає, а папка програми є — нічого не чіпаємо, радимо лаунчер' {
+        $key = 'HKCU:\Software\Debloater9Test\missing'
+        New-Item -Path $key -Force | Out-Null
+        $dir = Join-Path $TestDrive 'Game'
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        $prog = New-Prog @{ Name = 'Game'; Key = (Get-Item $key).PSPath; UninstallString = "$dir\uninstall.exe" }
+        (Get-D9UninstallCommand $prog).Method | Should -Be 'missing'
+        (Uninstall-D9Programs -Programs @($prog)).result | Should -Be 'failed'
+        Test-Path $key | Should -BeTrue
+    }
+}
+
+Describe 'Записи від видалених програм у реєстрі' {
+    It 'App Paths на неіснуючий exe — знаходиться й прибирається з копією .reg' {
+        $key = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\zzdeboratest.exe'
+        try {
+            New-Item -Path $key -Force | Out-Null
+            Set-ItemProperty -Path $key -Name '(default)' -Value 'Q:\NoSuchDir\zzdeboratest.exe'
+            $hit = @(Get-D9OrphanRegistryEntries | Where-Object Name -eq 'zzdeboratest.exe')
+            $hit.Count | Should -Be 1
+            $hit[0].Kind | Should -Be 'apppath'
+            # Прибираємо лише тестовий запис (справжні записи цього ПК тест не чіпає)
+            (Remove-D9UninstallLeftovers -Items @([pscustomobject]@{ Type = 'registry'; Path = $hit[0].Path; Size = 0 })).Removed | Should -Be 1
+            Test-Path $key | Should -BeFalse
+        } finally { [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\zzdeboratest.exe', $false) }
     }
 }

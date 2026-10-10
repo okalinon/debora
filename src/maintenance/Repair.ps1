@@ -13,6 +13,7 @@ $script:D9MaintenanceActions = [ordered]@{
     wuReset        = @{ Group = 48; Fn = 'Invoke-D9WindowsUpdateReset'; Title = 'Скинути Windows Update' }
     windowsUpdate  = @{ Group = 49; Fn = 'Install-D9WindowsUpdates';    Title = 'Встановити оновлення Windows' }
     browserCache   = @{ Group = 51; Fn = 'Clear-D9BrowserCache';        Title = 'Очистити кеш браузерів' }
+    orphanEntries  = @{ Group = 52; Fn = 'Clear-D9OrphanEntries';       Title = 'Прибрати з реєстру записи від уже видалених програм' }
     wingetUpgrade  = @{ Group = 70; Fn = 'Invoke-D9AppUpgradeAll';      Title = 'Оновити програми' }
     repairSystem   = @{ Group = 75; Fn = 'Invoke-D9RepairSystem';       Title = 'Відновити системні файли Windows' }
     defragHdd      = @{ Group = 13; Fn = 'Invoke-D9DefragHdd';          Title = 'Дефрагментувати жорсткий диск' }

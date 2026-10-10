@@ -170,6 +170,45 @@ function Find-D9UninstallLeftovers {
     }
 }
 
+# Записи в реєстрі від уже видалених програм — лише те, що перевіряється напевно:
+#   uninstall — запис у «Програмах і засобах», від якого не лишилось ні деінсталятора, ні папки програми;
+#   apppath   — реєстрація exe в App Paths (запуск через Win+R за назвою), коли файлу вже немає.
+function Get-D9OrphanRegistryEntries {
+    foreach ($p in @(Get-D9UninstallList)) {
+        $c = Get-D9UninstallCommand $p
+        if ($c -and $c.Method -eq 'orphan') {
+            [pscustomobject]@{ Kind = 'uninstall'; Name = $p.Name; Path = (ConvertTo-D9RegDrivePath $p.Key); Target = $c.File }
+        }
+    }
+    foreach ($root in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths', 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths') {
+        foreach ($k in @(Get-ChildItem $root -ErrorAction SilentlyContinue)) {
+            $v = (Get-ItemProperty -LiteralPath $k.PSPath -ErrorAction SilentlyContinue).'(default)'
+            if (-not $v) { continue }
+            $file = [Environment]::ExpandEnvironmentVariables(([string]$v).Trim().Trim('"'))
+            if ($file -match '^[A-Za-z]:\\' -and -not (Test-Path -LiteralPath $file)) {
+                [pscustomobject]@{ Kind = 'apppath'; Name = $k.PSChildName; Path = "$root\$($k.PSChildName)"; Target = $file }
+            }
+        }
+    }
+}
+
+# Крок обслуговування: прибрати такі записи (кожен — після резервної копії .reg)
+function Clear-D9OrphanEntries {
+    $items = @(Get-D9OrphanRegistryEntries)
+    if (-not $items) { Write-D9Log 'Записів від видалених програм не знайдено.' Ok; return [pscustomobject]@{ Done = $true; RebootRecommended = $false } }
+    Write-D9Log "Прибирання записів від видалених програм: $($items.Count)..."
+    foreach ($i in $items) { Write-D9Log "  $($i.Name) → $($i.Target)" Detail }
+    [void](Remove-D9UninstallLeftovers -Items @($items | ForEach-Object { [pscustomobject]@{ Type = 'registry'; Path = $_.Path; Size = 0 } }))
+    [pscustomobject]@{ Done = $true; RebootRecommended = $false }
+}
+
+# Шлях провайдера реєстру (Microsoft.PowerShell.Core\Registry::HKEY_CURRENT_USER\...) → HKCU:\...
+function ConvertTo-D9RegDrivePath {
+    param([string]$Path)
+    $p = $Path -replace '^Microsoft\.PowerShell\.Core\\Registry::', '' -replace '^Registry::', ''
+    $p -replace '^HKEY_CURRENT_USER', 'HKCU:' -replace '^HKEY_LOCAL_MACHINE', 'HKLM:'
+}
+
 # Прибирає залишки: папки — у Кошик (можна відновити), розділи реєстру — після експорту в .reg (резервна копія в папці даних)
 function Remove-D9UninstallLeftovers {
     param([Parameter(Mandatory)][object[]]$Items)
@@ -209,6 +248,15 @@ function Get-D9UninstallCommand {
     if ($guid) { return [pscustomobject]@{ File = 'msiexec.exe'; Args = "/x $guid /qn /norestart"; Silent = $true; Method = 'msi' } }
     $c = Split-D9CommandLine $Program.UninstallString
     if (-not $c) { return $null }
+    # Деінсталятора вже немає (програму видалили вручну, лишився запис) — прибираємо лише запис
+    $file = [Environment]::ExpandEnvironmentVariables($c.File)
+    if ($file -match '^[A-Za-z]:\\' -and -not (Test-Path -LiteralPath $file)) {
+        # Осиротілий — лише якщо зникла й папка (деінсталятора чи вказана InstallLocation); інакше програма ще на диску
+        $dirs = @((Split-Path $file), [string]$Program.Folder) | Where-Object { $_ }
+        $present = @($dirs | Where-Object { Test-Path -LiteralPath $_ })
+        $method = if ($present) { 'missing' } else { 'orphan' }
+        return [pscustomobject]@{ File = $file; Args = ''; Silent = $true; Method = $method }
+    }
     $leaf = Split-Path $c.File -Leaf
     if ($leaf -match '(?i)^unins\d{3}\.exe$') { return [pscustomobject]@{ File = $c.File; Args = "$($c.Args) /VERYSILENT /SUPPRESSMSGBOXES /NORESTART".Trim(); Silent = $true; Method = 'inno' } }
     if ($leaf -match '(?i)^(uninst|uninstall)[^\\]*\.exe$' -and $c.Args -notmatch '(?i)(^|\s)/S(\s|$)') { return [pscustomobject]@{ File = $c.File; Args = "$($c.Args) /S".Trim(); Silent = $true; Method = 'nsis' } }
@@ -225,9 +273,27 @@ function Uninstall-D9Programs {
         $cmd = Get-D9UninstallCommand $prog
         if (-not $cmd) { [pscustomobject]@{ name = $prog.Name; result = 'failed'; message = 'немає команди видалення' }; continue }
         Write-D9Log "[$n/$($Programs.Count)] Видалення $($prog.Name)$(if (-not $cmd.Silent) { ' — відкриється вікно деінсталятора, пройдіть його' })..."
+        if ($cmd.Method -eq 'missing') {
+            $text = 'деінсталятора немає, хоча файли програми на диску — видаліть її через лаунчер (Steam, EA, Ubisoft…) або її власним способом'
+            Write-D9Log "  $($prog.Name): $text" Warn
+            [pscustomobject]@{ name = $prog.Name; result = 'failed'; message = $text; leftovers = @() }
+            continue
+        }
+        if ($cmd.Method -eq 'orphan') {
+            Write-D9Log "  Деінсталятора $($cmd.File) уже немає — програму видалено раніше, прибираю лише її запис" Detail
+            $r = Remove-D9UninstallLeftovers -Items @([pscustomobject]@{ Type = 'registry'; Path = (ConvertTo-D9RegDrivePath $prog.Key); Size = 0 })
+            $gone = -not (Test-Path -LiteralPath $prog.Key)
+            $text = if ($gone) { "прибрано запис (копія: $($r.Backup))" } else { 'не вдалося прибрати запис' }
+            Write-D9Log "  $($prog.Name): $text" $(if ($gone) { 'Ok' } else { 'Warn' })
+            [pscustomobject]@{ name = $prog.Name; result = $(if ($gone) { 'removed' } else { 'failed' }); message = $text; leftovers = @() }
+            continue
+        }
         $code = $null; $msg = $null
         try {
-            $p = Start-Process -FilePath $cmd.File -ArgumentList $cmd.Args -PassThru -ErrorAction Stop -WindowStyle $(if ($cmd.Silent) { 'Hidden' } else { 'Normal' })
+            # Порожній -ArgumentList Start-Process не приймає — передаємо аргументи лише коли вони є
+            $sp = @{ FilePath = $cmd.File; PassThru = $true; ErrorAction = 'Stop'; WindowStyle = $(if ($cmd.Silent) { 'Hidden' } else { 'Normal' }) }
+            if ($cmd.Args) { $sp.ArgumentList = $cmd.Args }
+            $p = Start-Process @sp
             if (-not $p.WaitForExit($TimeoutMinutes * 60000)) { $msg = "не завершилось за $TimeoutMinutes хв" }
             else { $code = $p.ExitCode }
         } catch { $msg = $_.Exception.Message }

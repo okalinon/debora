@@ -356,3 +356,13 @@ function Test-D9OtherDrivesSpace {
     $list = ($full | ForEach-Object { "{0} — вільно {1} з {2}" -f $_.DeviceID, (Format-D9Size $_.FreeSpace), (Format-D9Size $_.Size) }) -join '; '
     New-D9Finding $Check suggestion "Майже заповнені диски: $list" 'На заповненому диску не вистачає місця для нових файлів, а NTFS працює повільніше. Знайти, що займає місце, допоможуть WinDirStat чи WizTree (вкладка «Програми» → «Утиліти»).' @{ type = 'manual' }
 }
+
+# ======================= Записи від видалених програм =======================
+
+function Test-D9OrphanEntries {
+    param($Check, $Ctx)
+    $items = @(Get-D9OrphanRegistryEntries)
+    if (-not $items) { return }
+    $names = ($items | Select-Object -First 8 | ForEach-Object { $_.Name }) -join ', '
+    New-D9Finding $Check suggestion "Записів від уже видалених програм: $($items.Count)" "Програм і їхніх файлів на диску вже немає, а записи лишились у «Програмах і засобах» чи реєстрі: $names. Debora прибере їх (кожен — з резервною копією .reg)." @{ type = 'maintenance'; action = 'orphanEntries' }
+}

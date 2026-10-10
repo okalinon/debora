@@ -1072,6 +1072,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $state.UninstRows = @(@($list | Where-Object { $_ }) | Sort-Object @{ Expression = { [bool]$_.Bloat }; Descending = $true }, Name | ForEach-Object {
             $cmd = Get-D9UninstallCommand $_
             $note = if ($_.Bloat) { @("Рекомендуємо видалити: $($_.Bloat)", '#D70015') }
+                    elseif ($cmd -and $cmd.Method -eq 'orphan') { @('Програму вже видалено, лишився лише запис у списку — Debora прибере його', '#B25000') }
+                    elseif ($cmd -and $cmd.Method -eq 'missing') { @('Деінсталятор відсутній — видаліть через лаунчер програми (Steam, EA, Ubisoft…)', '#D70015') }
                     elseif ($_.Keep) { @('Потрібна іншим програмам або обладнанню — краще не видаляти', '#B25000') }
                     elseif ($cmd -and -not $cmd.Silent) { @('відкриється вікно деінсталятора', '#6E6E73') }
                     else { @('', '#6E6E73') }
@@ -1081,7 +1083,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         })
         & $showUninst
         $bloat = @($state.UninstRows | Where-Object { $_.Tag.Bloat }).Count
-        $ui.UninstSummary.Text = "Встановлено програм: $(@($state.UninstRows).Count)$(if ($bloat) { ", з них рекомендуємо видалити: $bloat (вгорі списку)" }). Більшість видаляється тихо; для решти відкриється звичайний деінсталятор."
+        $orphans = @($state.UninstRows | Where-Object { (Get-D9UninstallCommand $_.Tag).Method -eq 'orphan' }).Count
+        $ui.UninstSummary.Text = "Встановлено програм: $(@($state.UninstRows).Count)$(if ($bloat) { ", з них рекомендуємо видалити: $bloat (вгорі списку)" })$(if ($orphans) { "; записів від уже видалених програм: $orphans" }). Більшість видаляється тихо; для решти відкриється звичайний деінсталятор."
         & $updateUninstSel
     }
     $showUninst = {
@@ -1107,7 +1110,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if (-not (& $needAdmin)) { return }
         $lines = @($sel | ForEach-Object {
             $c = Get-D9UninstallCommand $_.Tag
-            "• $($_.Title)$(if ($c -and -not $c.Silent) { '  (відкриється вікно деінсталятора)' })$(if ($_.Tag.Keep) { '  ⚠ потрібна іншим програмам' })"
+            "• $($_.Title)$(if ($c -and $c.Method -eq 'orphan') { '  (лише запис — програми вже немає)' })$(if ($c -and -not $c.Silent) { '  (відкриється вікно деінсталятора)' })$(if ($_.Tag.Keep) { '  ⚠ потрібна іншим програмам' })"
         })
         if (-not (Show-D9TextDialog $win 'Видалення програм' "Буде видалено $($sel.Count) програм(и). Перед цим створюється точка відновлення; повернути програму — встановити знову (вкладка «Програми»)." ($lines -join "`r`n") 'Видалити')) { return }
         $ui.LogExpander.IsExpanded = $true

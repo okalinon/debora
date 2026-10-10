@@ -13,7 +13,7 @@
     { "id": "network",     "weight": 1,   "name": { "uk": "Мережа",           "en": "Network" } },
     { "id": "battery",     "weight": 1,   "name": { "uk": "Батарея",          "en": "Battery" } }
   ],
-  "checks": [
+  "checks": [{ "id": "clean.orphan-entries", "category": "cleanliness", "probe": "Test-D9OrphanEntries", "name": { "uk": "Записи від видалених програм", "en": "Leftover entries of removed programs" } },
     { "id": "sec.network-shares", "category": "security", "probe": "Test-D9NetworkShares", "name": { "uk": "Спільні мережеві папки", "en": "Network shares" } },
     { "id": "disk.other-free", "category": "disk", "probe": "Test-D9OtherDrivesSpace", "name": { "uk": "Вільне місце на інших дисках", "en": "Free space on other drives" }, "thresholds": { "percent": 5, "minSizeGB": 20 } },
     { "id": "stab.reliability-index", "category": "stability", "probe": "Test-D9Reliability", "name": { "uk": "Індекс стабільності Windows", "en": "Windows stability index" }, "thresholds": { "suggestion": 5, "warning": 3, "days": 14 } },

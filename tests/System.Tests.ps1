@@ -15,6 +15,13 @@ Describe 'Відомості про систему' {
         $s.RamGB | Should -BeGreaterThan 0
         $s.SystemDisk | Should -BeIn @('hdd', 'ssd', 'nvme', 'unknown')
     }
+    It 'тип диска не залежить від того, чи завантажено модуль Storage' {
+        $before = Get-D9SystemDisk
+        [void](Get-PhysicalDisk -ErrorAction SilentlyContinue)   # модуль Storage підміняє числа текстом
+        $after = Get-D9SystemDisk
+        $after.Type | Should -Be $before.Type
+        $after.PartitionStyle | Should -Be $before.PartitionStyle
+    }
 }
 
 Describe 'Читання стану реальних об''єктів' {

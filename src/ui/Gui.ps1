@@ -19,9 +19,9 @@ public class D9Link { public string Label { get; set; } public string Url { get;
 public class D9Row : INotifyPropertyChanged {
     public event PropertyChangedEventHandler PropertyChanged;
     void On(string n) { var h = PropertyChanged; if (h != null) h(this, new PropertyChangedEventArgs(n)); }
-    bool selected; string status; string note; string kind; string color;
+    bool selected; bool enabled; string status; string note; string kind; string color;
     public bool Selected { get { return selected; } set { selected = value; On("Selected"); } }
-    public bool Enabled { get; set; }
+    public bool Enabled { get { return enabled; } set { enabled = value; On("Enabled"); } }
     public int Number { get; set; }
     public string Id { get; set; }
     public string Title { get; set; }
@@ -44,6 +44,15 @@ function New-D9Row {
     $row.Enabled = $true
     foreach ($k in $Props.Keys) { $row.$k = $Props[$k] }
     return $row
+}
+
+# Списки для WPF — лише самі об'єкти, без обгорток PSObject: інакше прив'язка не бачить INotifyPropertyChanged
+# і програмні зміни (галочки «Зняти все», статуси) не з'являються на екрані.
+function Set-D9Items {
+    param($Control, $Items)
+    $list = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($i in @($Items)) { if ($null -ne $i) { $list.Add($i.psobject.BaseObject) } }
+    $Control.ItemsSource = $list
 }
 
 function ConvertTo-D9UiLinks {
@@ -103,8 +112,9 @@ function Show-D9Gui {
                    'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnReboot', 'ChecklistSummary', 'ChecklistList',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
-                   'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid',
-                   'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'SessionGrid',
+                   'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
+                   'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
+                   'AppSearch', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore', 'AppGrid',
                    'BtnStartupApply', 'BtnStartupRefresh', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState') {
         $ui[$n] = $win.FindName($n)
@@ -113,7 +123,8 @@ function Show-D9Gui {
     $isAdmin = Test-D9IsAdmin
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
     $actionButtons = @('BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
-                       'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers')
+                       'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
+                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool')
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -149,18 +160,22 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $ui.StatusText.Text = if ($text) { $text } elseif ($busy) { 'Виконується…' } else { 'Готово' }
         if (-not $busy) {
             $ui.BtnInstallDrivers.IsEnabled = [bool]$state.Packages
+            $ui.BtnDriverOnlineInstall.IsEnabled = [bool]$state.OnlineCands
             $ui.BtnOpenReport.IsEnabled = [bool]$state.ReportPath
         }
     }
+    # $Done викликається з таймера, коли обробник кнопки вже завершився: блоки коду PowerShell не є замиканнями,
+    # тож локальні змінні обробника там недоступні. Усе потрібне передавайте через $Context — він приходить
+    # у $Done другим параметром.
     $startJob = {
-        param([string]$Title, [scriptblock]$Work, $Arg, [scriptblock]$Done)
+        param([string]$Title, [scriptblock]$Work, $Arg, [scriptblock]$Done, $Context)
         if ($state.Job) { return }
         & $setBusy $true $Title
         $sync.Progress = $null
         $rs = [runspacefactory]::CreateRunspace($iss); $rs.Open()
         $ps = [powershell]::Create(); $ps.Runspace = $rs
         [void]$ps.AddScript($prelude).AddArgument($sync).AddArgument($Work.ToString()).AddArgument($Arg)
-        $state.Job = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); Done = $Done; Title = $Title }
+        $state.Job = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); Done = $Done; Title = $Title; Context = $Context }
     }
     $log = { param([string]$text) $ui.LogBox.AppendText("$text`r`n"); $ui.LogBox.ScrollToEnd() }
     $needAdmin = {
@@ -171,7 +186,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
 
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromMilliseconds(250)
-    $timer.Add_Tick({
+    $onTick = {
         $line = $null
         while ($sync.Log.TryDequeue([ref]$line)) {
             $level, $msg = $line -split '\|', 2
@@ -196,10 +211,11 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                 $ui.LogExpander.IsExpanded = $true
                 [void][Windows.MessageBox]::Show($win, "Не вдалося виконати: $($res.error)", 'Debloater9', 'OK', 'Error')
             } elseif ($job.Done) {
-                try { & $job.Done $res.result } catch { & $log "ПОМИЛКА інтерфейсу: $($_.Exception.Message)" }
+                try { & $job.Done $res.result $job.Context } catch { & $log "ПОМИЛКА інтерфейсу: $($_.Exception.Message)" }
             }
         }
-    })
+    }
+    $timer.Add_Tick($onTick)
 
     # Клік по будь-якому посиланню в списках
     $win.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{
@@ -224,8 +240,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             if ($null -eq $v) { continue }
             New-D9Row @{ Title = (Get-D9Text $c.name); Number = [int]$v; Status = "$v"; Color = $(if ($v -ge 85) { '#2E7D32' } elseif ($v -ge 60) { '#E0A100' } else { '#C62828' }) }
         }
-        $ui.CategoryList.ItemsSource = @($cats)
-        $ui.FindingsList.ItemsSource = @(foreach ($f in $scan.findings) {
+        Set-D9Items $ui.CategoryList @($cats)
+        Set-D9Items $ui.FindingsList @(foreach ($f in $scan.findings) {
             $st = $script:D9SevUi[[string]$f.severity]
             New-D9Row @{ Badge = $st.Badge; Color = $st.Color; Title = $f.title; Detail = $f.details; Links = (ConvertTo-D9UiLinks $f.links) }
         })
@@ -238,7 +254,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $done = @($items | Where-Object status -eq 'done').Count
         $autoLeft = @($items | Where-Object { $_.auto -and $_.status -ne 'done' }).Count
         $ui.ChecklistSummary.Text = "Виконано $done з $($items.Count). Автоматичних кроків залишилось: $autoLeft. Ручні кроки описані з посиланнями; виконавши такий крок, позначте його або натисніть «Перевірити ще раз»."
-        $ui.ChecklistList.ItemsSource = @(foreach ($i in $items) {
+        Set-D9Items $ui.ChecklistList @(foreach ($i in $items) {
             $deps = @($i.dependsOn | ForEach-Object { $id = $_; ($items | Where-Object id -eq $id).number } | Where-Object { $_ } | Sort-Object)
             $detail = "$($i.why)"
             if ($deps -and $i.status -ne 'done') { $detail += "  (після кроку $($deps -join ', '))" }
@@ -267,7 +283,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                          Selected = ($applicable -and @($preset.tweaks) -contains $t.id -and $st.State -ne 'applied') }
         }
         $state.TweakRows = @($rows)
-        $ui.TweakGrid.ItemsSource = $state.TweakRows
+        Set-D9Items $ui.TweakGrid $state.TweakRows
         $applied = @($states | Where-Object State -eq 'applied').Count
         $ui.TweaksSummary.Text = "Налаштувань: $(@($Catalog.Tweaks).Count), застосовано: $applied. Галочками відмічено незастосоване з профілю «$(Get-D9Text $preset.name)». Наведіть мишку на назву, щоб побачити пояснення."
     }
@@ -280,7 +296,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         } @{ Catalog = $Catalog; Sys = $SystemInfo } { param($r) & $fillTweaks @($r) }
     }
     $fillSessions = {
-        $ui.SessionGrid.ItemsSource = @(Get-D9SessionList | ForEach-Object {
+        Set-D9Items $ui.SessionGrid @(Get-D9SessionList | ForEach-Object {
             $when = try { ([datetime]$_.Started).ToString('dd.MM.yyyy HH:mm') } catch { $_.Started }
             $status = if ($_.Undone) { 'відкочено' } elseif ($_.Errors) { "помилок: $($_.Errors)" } else { 'застосовано' }
             New-D9Row @{ Id = $_.Id; Title = $when; Detail = $_.Selection; Number = [int]$_.Changed; Status = $status }
@@ -302,14 +318,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             New-D9Row @{ Badge = '!'; Color = '#B26A00'; Title = $_.Name; Detail = $detail; Links = (ConvertTo-D9UiLinks $_.Links) }
         })
         if (-not $problems) { $problems = @(New-D9Row @{ Badge = '✓'; Color = '#2E7D32'; Title = 'Усі пристрої мають драйвери'; Detail = 'Перевірте лише вік драйверів у таблиці нижче.' }) }
-        $ui.DriverProblemsList.ItemsSource = $problems
-        $ui.DriverInstalledGrid.ItemsSource = @($rep.Important | ForEach-Object { New-D9Row @{ Group = $_.Group; Title = $_.Name; Status = $_.Version; Detail = $_.Date; Note = $_.Provider } })
+        Set-D9Items $ui.DriverProblemsList $problems
+        Set-D9Items $ui.DriverInstalledGrid @($rep.Important | ForEach-Object { New-D9Row @{ Group = $_.Group; Title = $_.Name; Status = $_.Version; Detail = $_.Date; Note = $_.Provider } })
     }
     $statusUi = @{ missing = @('встановити', '#C62828'); newer = @('оновити', '#2563EB'); current = @('вже актуальний', '#5D6675') }
     $fillPackages = {
         param($found)
         $state.Packages = @($found.Packages)
-        $ui.DriverPackageGrid.ItemsSource = @($found.Packages | ForEach-Object {
+        Set-D9Items $ui.DriverPackageGrid @($found.Packages | ForEach-Object {
             $cur = @($_.Current | ForEach-Object { $_.version } | Where-Object { $_ } | Sort-Object -Unique) -join ', '
             $date = if ($_.Package.Inf.Date) { $_.Package.Inf.Date.ToString('dd.MM.yyyy') } else { '?' }
             New-D9Row @{ Title = $_.Name; Kind = $statusUi[$_.Status][0]; Color = $statusUi[$_.Status][1]
@@ -439,14 +455,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if (-not $ids) { [void][Windows.MessageBox]::Show($win, 'Нічого не вибрано.', 'Debloater9'); return }
         if (-not (& $needAdmin)) { return }
         & $startJob 'Підготовка попереднього перегляду' $previewWork @{ Catalog = $Catalog; Sys = $SystemInfo; Ids = $ids } {
-            param($r)
+            param($r, $c)
             if (-not $r.Count) { [void][Windows.MessageBox]::Show($win, 'Усе вибране вже застосовано.', 'Debloater9'); return }
             if (-not (Show-D9TextDialog $win 'Застосувати налаштування' "Змін до застосування: $($r.Count). Перед змінами створюється точка відновлення." $r.Text)) { return }
             & $startJob 'Застосування налаштувань' {
                 param($a)
                 $plan = New-D9Plan -Catalog $a.Catalog -TweakIds $a.Ids -SystemInfo $a.Sys
                 Invoke-D9Plan -Plan $plan -SystemInfo $a.Sys -Selection 'вибрані налаштування (вікно)'
-            } @{ Catalog = $Catalog; Sys = $SystemInfo; Ids = $ids } {
+            } @{ Catalog = $Catalog; Sys = $SystemInfo; Ids = $c.Ids } {
                 param($session)
                 $ok = @($session.entries | Where-Object result -eq 'ok').Count
                 $err = @($session.entries | Where-Object result -eq 'error').Count
@@ -454,7 +470,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                 & $loadTweakStates
                 [void][Windows.MessageBox]::Show($win, "Готово. Змінено: $ok, помилок: $err.`nЧастина змін запрацює після перезавантаження. Відкат — на вкладці «Журнал змін».", 'Debloater9', 'OK', $(if ($err) { 'Warning' } else { 'Information' }))
             }
-        }
+        } @{ Ids = $ids }
     })
 
     # ---------- кнопки: Драйвери ----------
@@ -501,6 +517,76 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
     })
 
+    # ---------- Драйвери з інтернету (Microsoft Update Catalog + Windows Update) ----------
+    $fillOnline = {
+        param($cands)
+        $state.OnlineCands = @($cands | Where-Object { $_ })
+        Set-D9Items $ui.DriverOnlineGrid @($state.OnlineCands | ForEach-Object {
+            $kind = if ($_.Status -eq 'missing') { @('встановити', '#C62828') } elseif ($_.Optional) { @('необов''язково', '#5D6675') } else { @('оновити', '#2563EB') }
+            $cur = if ($_.Device.Version) { "$($_.Device.Version)$(if ($_.Device.Date -and ([datetime]$_.Device.Date).Year -ge 2010) { ' (' + ([datetime]$_.Device.Date).ToString('dd.MM.yyyy') + ')' })" } else { 'немає драйвера' }
+            $new = "$($_.Row.Version)$(if ($_.Row.Date) { ' (' + ([datetime]$_.Row.Date).ToString('dd.MM.yyyy') + ')' })"
+            New-D9Row @{ Title = $_.Device.Name; Id = $_.Row.Title; Kind = $kind[0]; Color = $kind[1]; Detail = "$cur → $new"
+                         Note = "$(Format-D9Size $_.Row.Size)$(if ($_.Recommended) { ' · рекомендує Windows Update' } else { ' · каталог Microsoft' })"
+                         Selected = -not $_.Optional; Tag = $_ }
+        })
+        $ui.BtnDriverOnlineInstall.IsEnabled = [bool]$state.OnlineCands
+        $main = @($state.OnlineCands | Where-Object { -not $_.Optional }).Count
+        $ui.StatusText.Text = if ($state.OnlineCands) { "Знайдено драйверів: $(@($state.OnlineCands).Count), з них рекомендовано встановити: $main. Необов'язкові замінюють робочі драйвери Windows на системних пристроях." } else { 'Новіших драйверів не знайдено — встановлені актуальні.' }
+    }
+    $oemTool = Get-D9OemTool $SystemInfo
+    if ($oemTool) { $ui.BtnOemTool.Content = "Оновити через $($oemTool.Name)"; $ui.BtnOemTool.Visibility = 'Visible' }
+    $ui.BtnOemTool.Add_Click({
+        if (-not (& $needAdmin)) { return }
+        $t = Get-D9OemTool $SystemInfo
+        if ([Windows.MessageBox]::Show($win, "Встановити (за потреби) і запустити $($t.Name)?`nЦе фірмова утиліта $($t.Vendor): вона сама поставить драйвери, прошивки й BIOS для вашої моделі. Триває 10–30 хвилин; не вимикайте ПК, ноутбук — від мережі.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob "Запуск $($t.Name)" { param($a) Invoke-D9OemDriverTool -SystemInfo $a.Sys } @{ Sys = $SystemInfo } {
+            param($r)
+            $msg = if ($r.Done) { "$($r.Tool) завершила роботу." } else { "$($r.Tool) завершилась з кодом $($r.Code) — подробиці в журналі виконання." }
+            if ($r.RebootRecommended) { if ([Windows.MessageBox]::Show($win, "$msg`n`nПерезавантажити комп'ютер зараз?", 'Debloater9', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force } }
+            else { [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9') }
+            & $driverReport
+        }
+    })
+    $ui.BtnDriverOnline.Add_Click({
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Пошук драйверів онлайн' { param($a) @(Find-D9DriverUpdates -SystemInfo $a.Sys -IncludeWindowsUpdate) } @{ Sys = $SystemInfo } {
+            param($r)
+            & $fillOnline @($r)
+            if (-not $state.OnlineCands) { [void][Windows.MessageBox]::Show($win, 'Новіших драйверів у каталозі Microsoft не знайдено — встановлені драйвери актуальні.', 'Debloater9') }
+        }
+    })
+    $ui.BtnDriverOnlineInstall.Add_Click({
+        $chosen = @($ui.DriverOnlineGrid.ItemsSource | Where-Object Selected | ForEach-Object Tag)
+        if (-not $chosen) { [void][Windows.MessageBox]::Show($win, 'Позначте драйвери галочками.', 'Debloater9'); return }
+        if (-not (& $needAdmin)) { return }
+        $mb = [long](($chosen | ForEach-Object { $_.Row.Size } | Measure-Object -Sum).Sum)
+        $text = ($chosen | ForEach-Object { "$($_.Device.Name): $($_.Row.Version) — $($_.Row.Title)" }) -join "`r`n"
+        if (-not (Show-D9TextDialog $win 'Драйвери з інтернету' "Буде завантажено $($chosen.Count) пакет(ів), разом $(Format-D9Size $mb), і встановлено ті, що точно підходять до пристроїв. Перед встановленням створюється точка відновлення, попередні драйвери зберігаються." $text 'Завантажити й встановити')) { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Завантаження й встановлення драйверів' {
+            param($a)
+            $found = Save-D9DriverUpdates -Candidates $a.Cands -Folder $a.Folder
+            $todo = @($found.Packages | Where-Object Status -ne 'current')
+            if (-not $todo) { return @{ Session = $null; Count = 0 } }
+            $cat = New-D9DriverCatalog -Packages $todo
+            $plan = New-D9Plan -Catalog $cat -TweakIds @($cat.Tweaks.id) -SystemInfo $a.Sys
+            @{ Session = (Invoke-D9Plan -Plan $plan -SystemInfo $a.Sys -Selection 'драйвери з Microsoft Update Catalog'); Count = $todo.Count }
+        } @{ Cands = $chosen; Folder = (Join-Path $DriverDir 'Завантажені'); Sys = $SystemInfo } {
+            param($r)
+            & $fillSessions
+            if (-not $r.Session) { [void][Windows.MessageBox]::Show($win, 'Після перевірки пакетів встановлювати нічого: поточні драйвери не старші.', 'Debloater9'); return }
+            $ok = @($r.Session.entries | Where-Object result -eq 'ok').Count
+            $err = @($r.Session.entries | Where-Object result -eq 'error')
+            $msg = "Встановлено: $ok з $($r.Count), помилок: $($err.Count)."
+            if ($err) { $msg += "`n" + (($err | Select-Object -First 6 | ForEach-Object { "• $($_.action.name): $($_.message)" }) -join "`n") }
+            $msg += "`nЗавантажені пакети лежать у папці «Драйвери\Завантажені» — їх можна використати на такому самому ПК без інтернету."
+            $msg += "`n`nПерезавантажити комп'ютер зараз, щоб драйвери запрацювали?"
+            if ([Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'YesNo', $(if ($err) { 'Warning' } else { 'Question' })) -eq 'Yes') { Restart-Computer -Force }
+            & $driverReport
+        }
+    })
+
     # Застосувати «каталог» (твіки, автозапуск, пауза) через рушій: точка відновлення, журнал, відкат
     $applyCatalog = {
         param($cat, [string]$title, [string]$selection, [scriptblock]$after, [switch]$NoRestorePoint)
@@ -509,14 +595,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $plan = New-D9Plan -Catalog $a.Catalog -TweakIds @($a.Catalog.Tweaks.id) -SystemInfo $a.Sys
             Invoke-D9Plan -Plan $plan -SystemInfo $a.Sys -Selection $a.Selection -NoRestorePoint:$a.NoRp
         } @{ Catalog = $cat; Sys = $SystemInfo; Selection = $selection; NoRp = [bool]$NoRestorePoint } {
-            param($session)
+            param($session, $c)
             $err = @($session.entries | Where-Object result -eq 'error')
             & $fillSessions
             if ($err) {
                 [void][Windows.MessageBox]::Show($win, "Частина змін не застосувалась:`n" + (($err | Select-Object -First 8 | ForEach-Object { "• $($_.message)" }) -join "`n"), 'Debloater9', 'OK', 'Warning')
             }
-            if ($after) { & $after $session }
-        }
+            if ($c.After) { & $c.After $session }
+        } @{ After = $after }
     }
 
     # ---------- кнопки: Автозавантаження ----------
@@ -529,7 +615,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             New-D9Row @{ Selected = [bool]$i.Enabled; Title = $i.Name; Detail = $i.Command; Group = $(if ($i.Publisher) { $i.Publisher } else { '—' })
                          Note = $i.Where; Status = ($note -join '; '); Color = $(if ($i.Missing) { '#C62828' } else { '#5D6675' }); Tag = $i }
         })
-        $ui.StartupGrid.ItemsSource = $state.StartupRows
+        Set-D9Items $ui.StartupGrid $state.StartupRows
         $on = @($items | Where-Object Enabled).Count
         $ui.StartupSummary.Text = "Програм в автозавантаженні: $(@($items).Count), запускаються: $on. Зніміть галочку з тих, яким не потрібно стартувати разом із Windows, і натисніть «Застосувати зміни». Програми не видаляються; усе відкочується в «Журналі змін»."
     }
@@ -611,6 +697,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     # ---------- кнопки: Журнал ----------
     $ui.BtnRefreshSessions.Add_Click({ & $fillSessions })
     $ui.BtnSystemRestore.Add_Click({ Start-Process rstrui.exe })
+    $ui.BtnDiagnostics.Add_Click({
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Збір діагностики' { param($a) New-D9DiagnosticsBundle -SystemInfo $a.Sys -OutDir $a.Dir -ReportDir $a.Dir } @{ Sys = $SystemInfo; Dir = $ReportDir } {
+            param($zip)
+            $zip = @($zip) | Where-Object { $_ -is [string] -and $_ -like '*.zip' } | Select-Object -Last 1
+            if ($zip) { Start-Process explorer.exe "/select,`"$zip`"" }
+        }
+    })
     $ui.BtnUndo.Add_Click({
         $row = $ui.SessionGrid.SelectedItem
         if (-not $row) { [void][Windows.MessageBox]::Show($win, 'Виберіть сесію в таблиці.', 'Debloater9'); return }
@@ -626,6 +720,83 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             & $fillSessions
             & $loadTweakStates
             [void][Windows.MessageBox]::Show($win, "$msg`n`nДеякі зміни повернуться після перезавантаження.", 'Debloater9')
+        }
+    })
+
+    # ---------- Програми (winget) ----------
+    $appCatalog = Import-D9AppCatalog
+    $appCats = @{}
+    foreach ($c in $appCatalog.categories) { $appCats[[string]$c.id] = Get-D9Text $c.name }
+    $state.AppRows = @($appCatalog.apps | ForEach-Object {
+        New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#5D6675'; Tag = $_ }
+    })
+    $showApps = {
+        $q = $ui.AppSearch.Text.Trim()
+        $shown = if ($q) { @($state.AppRows | Where-Object { $_.Title -like "*$q*" -or $_.Group -like "*$q*" -or $_.Note -like "*$q*" -or $_.Id -like "*$q*" }) } else { $state.AppRows }
+        Set-D9Items $ui.AppGrid $shown
+    }
+    & $showApps
+    $ui.AppSearch.Add_TextChanged({ & $showApps })
+    $hasWinget = [bool](Get-D9WingetPath)
+    if (-not $hasWinget) {
+        $ui.AppsSummary.Text = 'winget не знайдено — без нього програми не встановлюються. Встановіть «Інсталятор застосунків» з Microsoft Store і перезапустіть Debloater9.'
+        $ui.BtnWingetStore.Visibility = 'Visible'
+    }
+    $ui.BtnWingetStore.Add_Click({ Start-Process 'ms-windows-store://pdp/?productid=9NBLGGH4NNS1' })
+    $noWinget = { [void][Windows.MessageBox]::Show($win, 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store (посилання на вкладці).', 'Debloater9', 'OK', 'Warning') }
+    $markApp = {
+        param($row, [bool]$installed)
+        if ($installed) { $row.Status = 'встановлено'; $row.Color = '#2E7D32'; $row.Selected = $false; $row.Enabled = $false }
+        else { $row.Status = 'не встановлено'; $row.Color = '#5D6675'; $row.Enabled = $true }
+    }
+    $loadApps = {
+        if (-not $hasWinget) { return }
+        & $startJob 'Перевірка встановлених програм' { $s = Get-D9InstalledAppIds; [string[]]@($s) } $null {
+            param($ids)
+            $ids = @($ids)
+            foreach ($r in $state.AppRows) { & $markApp $r ($ids -contains $r.Id) }
+            $state.AppsLoaded = $true
+            $n = @($state.AppRows | Where-Object { $_.Status -eq 'встановлено' }).Count
+            $ui.AppsSummary.Text = "Програм у каталозі: $(@($state.AppRows).Count), з них уже встановлено: $n. Позначте потрібні й натисніть «Встановити вибрані» — офіційні інсталятори через winget, без реклами й «довантажувачів»."
+        }
+    }
+    $ui.BtnAppsRefresh.Add_Click({ if ($hasWinget) { & $loadApps } else { & $noWinget } })
+    $ui.BtnAppsInstall.Add_Click({
+        if (-not $hasWinget) { & $noWinget; return }
+        $sel = @($state.AppRows | Where-Object Selected)
+        if (-not $sel) { [void][Windows.MessageBox]::Show($win, 'Позначте програми галочками.', 'Debloater9'); return }
+        $names = ($sel | ForEach-Object { "• $($_.Title)" }) -join "`n"
+        if ([Windows.MessageBox]::Show($win, "Встановити програми ($($sel.Count))?`n`n$names`n`nВстановлення йде у фоні; деякі інсталятори можуть показати власне вікно.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Встановлення програм' { param($a) Install-D9Apps -Apps $a.Apps } @{ Apps = @($sel | ForEach-Object Tag) } {
+            param($res)
+            $res = @($res | Where-Object { $_ })
+            foreach ($r in $res) {
+                $row = $state.AppRows | Where-Object Id -eq $r.id | Select-Object -First 1
+                if (-not $row) { continue }
+                if ($r.result -in 'failed', 'notFound') { $row.Status = 'помилка'; $row.Color = '#C62828' } else { & $markApp $row $true }
+            }
+            $bad = @($res | Where-Object { $_.result -in 'failed', 'notFound' })
+            $msg = "Встановлено: $($res.Count - $bad.Count) з $($res.Count)."
+            if ($bad) { $msg += "`nНе вдалося: $(($bad | ForEach-Object name) -join ', '). Подробиці — у журналі виконання внизу." }
+            if (@($res | Where-Object result -eq 'reboot')) { $msg += "`nДеякі програми запрацюють після перезавантаження." }
+            [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'OK', $(if ($bad) { 'Warning' } else { 'Information' }))
+        }
+    })
+    $ui.BtnAppsUpgrade.Add_Click({
+        if (-not $hasWinget) { & $noWinget; return }
+        & $startJob 'Пошук оновлень програм' { @(Get-D9AppUpgrades) } $null {
+            param($up)
+            $up = @($up | Where-Object { $_ })
+            if (-not $up) { [void][Windows.MessageBox]::Show($win, 'Усі програми актуальні.', 'Debloater9'); return }
+            $text = ($up | ForEach-Object { "$($_.Name)    $($_.Version) → $($_.Available)" }) -join "`r`n"
+            if (-not (Show-D9TextDialog $win 'Оновити програми' "Оновлення є для $($up.Count) програм. Відкриті програми краще закрити — їх не вдасться оновити." $text)) { return }
+            $ui.LogExpander.IsExpanded = $true
+            & $startJob 'Оновлення програм' { Invoke-D9AppUpgradeAll } $null {
+                param($r)
+                $ok = $r.Result -in 'installed', 'upToDate'
+                [void][Windows.MessageBox]::Show($win, $(if ($ok) { 'Програми оновлено.' } else { 'Оновлення завершено, але частину програм (наприклад, відкритих зараз) оновити не вдалося. Подробиці — у журналі виконання внизу.' }), 'Debloater9', 'OK', $(if ($ok) { 'Information' } else { 'Warning' }))
+            }
         }
     })
 
@@ -652,6 +823,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($sender, $e)
         if ($e.OriginalSource -ne $ui.Tabs) { return }
         if ($ui.Tabs.SelectedItem.Header -eq 'Автозавантаження' -and -not $state.StartupRows -and -not $state.Job) { & $loadStartup }
+        if ($ui.Tabs.SelectedItem.Header -eq 'Програми' -and -not $state.AppsLoaded -and -not $state.Job) { & $loadApps }
     })
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job) {

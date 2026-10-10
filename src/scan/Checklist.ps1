@@ -1,10 +1,14 @@
 ﻿# Чекліст «що робити» з результатів сканування: порядок, посилання, дії, автоматичні галочки.
 #
 # Групи (порядок виконання):
-#   10 резервна копія · 20 точка відновлення · 30-32 драйвери (мережа → системні → решта)
-#   40 безпека · 45 оновлення Windows · 50 очищення · 55 небажані програми
-#   60-62 налаштування (застосунки, конфіденційність, швидкодія) · 70 оновлення програм
-#   75 відновлення системних файлів · 80 ручні поради щодо швидкодії · 90 перезавантаження · 100 інше
+#   10 резервна копія · 12 перевірка диска · 19 захист системи · 20 точка відновлення · 30-33 драйвери
+#   40 безпека (вручну) · 41 посилити захист (твіки) · 42 виправити безпеку (дії) · 43-44 Захисник
+#   45 оновлення Windows (вручну) · 46 відновити оновлення (дії) · 48-49 скидання й встановлення оновлень
+#   50 очищення · 55 небажані програми · 60-62 налаштування (твіки) · 63 виправити систему (дії)
+#   70 оновлення програм · 75 відновлення системних файлів · 80-85 ручні кроки й поради · 90 перезавантаження
+#
+# Типи дій кроку: tweaks (твіки з каталогу), actions (готові дії зі знахідок — реєстр, служба, команда…;
+# через рушій, тож з журналом і відкатом), maintenance (див. $D9MaintenanceActions), restorePoint, manual.
 
 function New-D9ChecklistItem {
     param([int]$Group, [string]$Key, [string]$Title, [string]$Why, [object[]]$Links, $Action, $Verify, [string[]]$DependsOn)
@@ -43,13 +47,17 @@ function New-D9Checklist {
     if ($diskDanger) {
         $why = ($diskDanger | ForEach-Object { "$($_.title). $($_.details)" }) -join ' '
         & $add (New-D9ChecklistItem 10 'backup' 'Скопіювати важливі файли на інший диск або в хмару' $why @() @{ type = 'manual' } $null) | Out-Null
-        & $use $diskDanger
+        & $use @($diskDanger | Where-Object { $_.fix.type -ne 'maintenance' })   # перевірка диска (chkdsk) — окремим автоматичним кроком
     }
 
     # 30-32 — пристрої без драйвера: мережа першою, щоб з'явився інтернет
     $netIds = @()
     $devices = @($f | Where-Object checkId -eq 'upd.problem-devices')
     $rank = { param($d) if ($d.data.class -eq 'Net') { 30 } elseif ($d.data.class -eq 'System' -or "$($d.data.hwid)" -like 'ACPI\*') { 31 } else { 32 } }
+    # 29 — спершу автоматичний пошук драйверів в інтернеті; ручні кроки нижче лишаються запасним варіантом
+    if ($devices) {
+        & $add (New-D9ChecklistItem 29 'driverUpdate' $script:D9MaintenanceActions['driverUpdate'].Title "Пристроїв без драйвера: $($devices.Count). Debloater9 знайде драйвери в каталозі Microsoft і Windows Update, завантажить і встановить (з відкатом)." @() @{ type = 'maintenance'; action = 'driverUpdate' } @{ type = 'executed' }) | Out-Null
+    }
     foreach ($d in ($devices | Sort-Object { & $rank $_ })) {
         $group = & $rank $d
         $why = "$($d.title). $($d.details)"
@@ -62,8 +70,8 @@ function New-D9Checklist {
     foreach ($x in (& $free | Where-Object { $_.fix.type -eq 'drivers' })) { & $manual 33 $x }
 
     # 40 — безпека й резервні копії (ручні кроки), 45 — оновлення Windows
-    foreach ($x in (& $free | Where-Object { $_.category -in 'security', 'backup' -and $_.fix.type -ne 'tweaks' -and $_.severity -in 'critical', 'warning' } | Sort-Object { if ($_.severity -eq 'critical') { 0 } else { 1 } })) { & $manual 40 $x }
-    foreach ($x in (& $free | Where-Object { $_.category -eq 'updates' -and $_.fix.type -ne 'tweaks' -and $_.severity -in 'critical', 'warning' })) { & $manual 45 $x }
+    foreach ($x in (& $free | Where-Object { $_.category -in 'security', 'backup' -and $_.fix.type -notin 'tweaks', 'actions', 'maintenance', 'apps' -and $_.severity -in 'critical', 'warning' } | Sort-Object { if ($_.severity -eq 'critical') { 0 } else { 1 } })) { & $manual 40 $x }
+    foreach ($x in (& $free | Where-Object { $_.category -eq 'updates' -and $_.fix.type -notin 'tweaks', 'actions', 'maintenance' -and $_.severity -in 'critical', 'warning' })) { & $manual 45 $x }
 
     # 50 — очищення диска: одна автоматична дія з усіх знахідок, що виправляються твіками cleanup.*
     $space = @(& $free | Where-Object { (& $isCleanup $_) -or $_.checkId -eq 'disk.free-space' })
@@ -96,16 +104,47 @@ function New-D9Checklist {
         & $use $fs
     }
 
-    # 70, 75 — обслуговування
-    foreach ($m in @(@{ g = 70; action = 'wingetUpgrade' }, @{ g = 75; action = 'repairSystem' })) {
-        foreach ($x in (& $free | Where-Object { $_.fix.type -eq 'maintenance' -and $_.fix.action -eq $m.action })) {
-            & $add (New-D9ChecklistItem $m.g $x.key $x.title $x.details $x.links @{ type = 'maintenance'; action = $m.action } @{ type = 'executed' }) | Out-Null
-            $used[$x.key] = $true
-        }
+    # 42, 46, 63 — готові дії зі знахідок (реєстр, служби, команди), згруповані за змістом
+    $actionGroups = @(
+        @{ g = 42; key = 'fix-security'; title = 'Виправити налаштування безпеки';    match = { param($x) $x.category -in 'security', 'backup' } }
+        @{ g = 46; key = 'fix-updates';  title = 'Відновити роботу оновлень Windows'; match = { param($x) $x.category -eq 'updates' } }
+        @{ g = 63; key = 'fix-system';   title = 'Виправити налаштування системи';    match = { param($x) $true } }
+    )
+    foreach ($ag in $actionGroups) {
+        $fs = @(& $free | Where-Object { $_.fix.type -eq 'actions' -and @($_.fix.actions).Count } | Where-Object { & $ag.match $_ })
+        if (-not $fs) { continue }
+        $fixes = @($fs | ForEach-Object { [pscustomobject]@{ key = $_.key; title = $_.title; actions = @($_.fix.actions) } })
+        $why = ($fs | ForEach-Object { $_.title }) -join ' · '
+        $verify = @{ type = 'checks'; items = @($fs | ForEach-Object { @{ checkId = $_.checkId; key = $_.key } }) }
+        $reboot = [bool](@($fs | Where-Object { $_.fix.reboot }))
+        & $add (New-D9ChecklistItem $ag.g $ag.key "$($ag.title) ($($fs.Count))" $why @() @{ type = 'actions'; fixes = $fixes; reboot = $reboot } $verify) | Out-Null
+        & $use $fs
+    }
+
+    # 71 — оновити конкретні програми (вразливі версії) через winget
+    $appFs = @(& $free | Where-Object { $_.fix.type -eq 'apps' -and @($_.fix.ids).Count })
+    if ($appFs) {
+        $ids = @($appFs | ForEach-Object { $_.fix.ids } | Sort-Object -Unique)
+        $verify = @{ type = 'checks'; items = @($appFs | ForEach-Object { @{ checkId = $_.checkId; key = $_.key } }) }
+        & $add (New-D9ChecklistItem 71 'apps' "Оновити вразливі програми ($($ids.Count))" (($appFs | ForEach-Object { $_.title }) -join ' · ') @() @{ type = 'apps'; ids = $ids } $verify) | Out-Null
+        & $use $appFs
+    }
+
+    # 12-75 — обслуговування: один крок на кожну дію, навіть якщо до неї ведуть кілька знахідок
+    foreach ($name in $script:D9MaintenanceActions.Keys) {
+        $fs = @(& $free | Where-Object { $_.fix.type -eq 'maintenance' -and $_.fix.action -eq $name })
+        if (-not $fs) { continue }
+        $existing = $items | Where-Object { $_.action.type -eq 'maintenance' -and $_.action.action -eq $name } | Select-Object -First 1
+        if ($existing) { $existing.why += ' · ' + (($fs | ForEach-Object { $_.title }) -join ' · '); & $use $fs; continue }
+        $m = $script:D9MaintenanceActions[$name]
+        $title = if ($fs.Count -eq 1 -and $name -in 'wingetUpgrade', 'repairSystem') { $fs[0].title } else { $m.Title }
+        $why = if ($fs.Count -eq 1) { "$($fs[0].title). $($fs[0].details)" } else { ($fs | ForEach-Object { $_.title }) -join ' · ' }
+        & $add (New-D9ChecklistItem $m.Group $name $title $why @($fs | ForEach-Object { $_.links }) @{ type = 'maintenance'; action = $name } @{ type = 'executed' }) | Out-Null
+        & $use $fs
     }
 
     # 20 — точка відновлення перед першою автоматичною зміною
-    $autoChanges = @($items | Where-Object { $_.action.type -in 'tweaks', 'maintenance' })
+    $autoChanges = @($items | Where-Object { $_.action.type -in 'tweaks', 'maintenance', 'actions' })
     $rpFindings = @(& $free | Where-Object { $_.fix.type -eq 'maintenance' -and $_.fix.action -eq 'restorePoint' })
     if ($autoChanges -or $rpFindings) {
         $why = if ($rpFindings) { ($rpFindings.title) -join '; ' } else { 'Щоб будь-яку зміну можна було скасувати.' }
@@ -117,7 +156,7 @@ function New-D9Checklist {
 
     # 90 — одне перезавантаження наприкінці
     $rebootFindings = @(& $free | Where-Object { $_.fix.type -eq 'maintenance' -and $_.fix.action -eq 'reboot' })
-    $needsReboot = $rebootFindings -or @($items | Where-Object { $_.group -in 30, 31, 32, 75 }) -or
+    $needsReboot = $rebootFindings -or @($items | Where-Object { $_.group -in 12, 30, 31, 32, 49, 75 -or $_.action.reboot }) -or
         @($items | Where-Object { $_.action.type -eq 'tweaks' } | ForEach-Object { $_.action.ids } | ForEach-Object { Get-D9Tweak $Catalog $_ } | Where-Object rebootRequired)
     if ($needsReboot) {
         $why = if ($rebootFindings) { ($rebootFindings.title) -join '; ' } else { 'Щоб драйвери й налаштування запрацювали повністю.' }
@@ -174,13 +213,14 @@ function Get-D9Checklist {
 function Update-D9ChecklistStatus {
     param([Parameter(Mandatory)]$Checklist, [Parameter(Mandatory)]$Context)
     $pending = @($Checklist.items | Where-Object status -ne 'done')
-    $checkIds = @($pending | Where-Object { $_.verify.type -eq 'check' } | ForEach-Object { $_.verify.checkId } | Sort-Object -Unique)
+    $checkIds = @($pending | ForEach-Object { if ($_.verify.type -eq 'check') { $_.verify.checkId } elseif ($_.verify.type -eq 'checks') { $_.verify.items.checkId } } | Where-Object { $_ } | Sort-Object -Unique)
     $fresh = if ($checkIds) { (Invoke-D9Scan -Context $Context -OnlyChecks $checkIds).findings } else { @() }
     $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
     foreach ($item in $pending) {
         $done = switch ($item.verify.type) {
             'check'    { -not ($fresh | Where-Object key -eq $item.verify.key) }
             'tweaks'   { -not (@($item.verify.ids | ForEach-Object { Get-D9Tweak $Context.Catalog $_ } | Where-Object { (Get-D9TweakState $_ $Context.System) -in 'notApplied', 'partial' })) }
+            'checks'   { -not @($item.verify.items | Where-Object { $k = $_.key; $fresh | Where-Object key -eq $k }) }
             'executed' { [bool]$item.executedAt }
             'reboot'   { $boot -gt [datetime]$Checklist.created }
             default    { $false }
@@ -215,16 +255,32 @@ function Invoke-D9ChecklistStep {
             $session = Invoke-D9Plan -Plan $plan -SystemInfo $Context.System -Selection "checklist: $($Item.title)" -NoRestorePoint:$restoreDone
             $Item.note = "сесія $($session.id)"
         }
+        'actions' {
+            # Кожне виправлення — тимчасовий «твік»: рушій знімає стан до змін, пише журнал, і все відкочується
+            $restoreDone = [bool]($Checklist.items | Where-Object { $_.action.type -eq 'restorePoint' -and $_.status -eq 'done' })
+            $tweaks = @($Item.action.fixes | ForEach-Object { [pscustomobject]@{ id = "fix:$($_.key)"; name = [pscustomobject]@{ uk = $_.title }; actions = @($_.actions) } })
+            $catalog = [pscustomobject]@{ Tweaks = $tweaks; Presets = @() }
+            $plan = New-D9Plan -Catalog $catalog -TweakIds @($tweaks.id) -SystemInfo $Context.System
+            $session = Invoke-D9Plan -Plan $plan -SystemInfo $Context.System -Selection "checklist: $($Item.title)" -NoRestorePoint:$restoreDone
+            $err = @($session.entries | Where-Object result -eq 'error').Count
+            $Item.note = "сесія $($session.id)$(if ($err) { ", помилок: $err" })"
+        }
+        'apps' {
+            $res = @(Update-D9Apps -Ids @($Item.action.ids))
+            $bad = @($res | Where-Object { $_.result -in 'failed', 'notFound' })
+            if ($bad) { $Item.note = "не вдалося: $(($bad.id) -join ', ')" }
+        }
         'maintenance' {
-            switch ($Item.action.action) {
-                'wingetUpgrade' { & winget upgrade --all --silent --accept-source-agreements --accept-package-agreements --disable-interactivity }
-                'repairSystem'  { Repair-WindowsImage -Online -RestoreHealth | Out-Null; & sfc.exe /scannow }
-                'reboot' {
-                    if (-not $AllowReboot) { Write-D9Log "  Перезавантажте комп'ютер вручну або запустіть з -AllowReboot" Warn; return $false }
-                    $Item.executedAt = (Get-Date).ToString('s'); Save-D9Checklist $Checklist
-                    Restart-Computer -Force
-                }
+            if ($Item.action.action -eq 'reboot') {
+                if (-not $AllowReboot) { Write-D9Log "  Перезавантажте комп'ютер вручну або запустіть з -AllowReboot" Warn; return $false }
+                $Item.executedAt = (Get-Date).ToString('s'); Save-D9Checklist $Checklist
+                Restart-Computer -Force
+                return $true
             }
+            $m = $script:D9MaintenanceActions[[string]$Item.action.action]
+            if (-not $m) { Write-D9Log "  Невідома дія обслуговування: $($Item.action.action)" Warn; return $false }
+            $r = & $m.Fn
+            if ($r.RebootRecommended) { $Item.note = 'потрібне перезавантаження' }
         }
     }
     $Item.executedAt = (Get-Date).ToString('s')

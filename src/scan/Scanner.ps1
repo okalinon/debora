@@ -46,38 +46,102 @@ function Get-D9ScanScore {
     [pscustomobject]@{ overall = $overall; verdict = $verdict; categories = $scores }
 }
 
+# Виконання однієї проби: @{ ok; out; error; ms }
+$script:D9ProbeRunner = {
+    param($check, $ctx)
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    try { @{ ok = $true; out = @(& $check.probe -Check $check -Ctx $ctx | Where-Object { $_ }); ms = [int]$sw.ElapsedMilliseconds } }
+    catch { @{ ok = $false; error = $_.Exception.Message; ms = [int]$sw.ElapsedMilliseconds } }
+}
+
+# Проби переважно чекають на WMI, журнали подій і диск — паралельно в пулі runspace сканування в рази швидше.
+# Кожен runspace отримує ті самі функції й дані D9*, як фонові завдання вікна. Повертає @{ id = результат }.
+function Invoke-D9ProbesParallel {
+    param([Parameter(Mandatory)][object[]]$Checks, [Parameter(Mandatory)]$Context, [int]$Threads = [math]::Max(3, [math]::Min(6, [Environment]::ProcessorCount)))
+    $iss = [Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+    foreach ($f in (Get-ChildItem function: | Where-Object { $_.Name -like '*-D9*' })) {
+        $iss.Commands.Add((New-Object Management.Automation.Runspaces.SessionStateFunctionEntry $f.Name, $f.Definition))
+    }
+    foreach ($v in (Get-Variable -Scope Script -Name 'D9*' -ErrorAction SilentlyContinue)) {
+        if ($v.Name -in 'D9OnProgress', 'D9OnLog') { continue }   # колбеки вікна працюють лише у своєму потоці
+        $iss.Variables.Add((New-Object Management.Automation.Runspaces.SessionStateVariableEntry $v.Name, $v.Value, ''))
+    }
+    $pool = [runspacefactory]::CreateRunspacePool(1, $Threads, $iss, $Host)
+    $pool.Open()
+    $results = @{}
+    try {
+        $jobs = foreach ($c in $Checks) {
+            $ps = [powershell]::Create(); $ps.RunspacePool = $pool
+            [void]$ps.AddScript($script:D9ProbeRunner.ToString()).AddArgument($c).AddArgument($Context)
+            [pscustomobject]@{ Check = $c; PS = $ps; Handle = $ps.BeginInvoke() }
+        }
+        $done = 0
+        while ($done -lt $jobs.Count) {
+            foreach ($j in $jobs) {
+                if ($results.ContainsKey($j.Check.id) -or -not $j.Handle.IsCompleted) { continue }
+                $r = try { @($j.PS.EndInvoke($j.Handle))[0] } catch { @{ ok = $false; error = $_.Exception.Message; ms = 0 } }
+                if (-not $r) { $r = @{ ok = $true; out = @(); ms = 0 } }
+                $results[$j.Check.id] = $r
+                $j.PS.Dispose()
+                $done++
+                Write-Progress -Activity 'Debloater9: сканування' -Status "$done / $($jobs.Count): $(Get-D9Text $j.Check.name)" -PercentComplete ($done * 100 / $jobs.Count)
+                if ($script:D9OnProgress) { & $script:D9OnProgress $done $jobs.Count (Get-D9Text $j.Check.name) }
+            }
+            if ($done -lt $jobs.Count) { Start-Sleep -Milliseconds 50 }
+        }
+    } finally { $pool.Close(); $pool.Dispose() }
+    return $results
+}
+
 function Invoke-D9Scan {
-    param([Parameter(Mandatory)]$Context, [string[]]$OnlyChecks)
+    param([Parameter(Mandatory)]$Context, [string[]]$OnlyChecks, [switch]$Sequential)
     $results = New-Object System.Collections.ArrayList
     $findings = New-Object System.Collections.ArrayList
     $total = [Diagnostics.Stopwatch]::StartNew()
 
     $list = @($Context.Config.checks | Where-Object { -not $OnlyChecks -or $OnlyChecks -contains $_.id })
-    $n = 0
+    # Що запускати: придатність, глибоке сканування, права
+    $pre = @{}
     foreach ($check in $list) {
-        $n++
-        Write-Progress -Activity 'Debloater9: сканування' -Status "$n / $($list.Count): $(Get-D9Text $check.name)" -PercentComplete ($n * 100 / $list.Count)
-        if ($script:D9OnProgress) { & $script:D9OnProgress $n $list.Count (Get-D9Text $check.name) }
-        $status = 'ok'; $note = $null
-        $sw = [Diagnostics.Stopwatch]::StartNew()
         $fit = if ($check.requires) { Test-D9Applicable $check.requires $Context.System } else { $null }
-        if ($fit -and -not $fit.Applicable) { $status = 'notApplicable'; $note = $fit.Reason }
-        elseif ($check.deep -and -not $Context.Deep) { $status = 'notRun'; $note = 'лише в глибокому скануванні' }
-        elseif ($check.adminOnly -and -not $Context.IsAdmin) { $status = 'skipped'; $note = 'потрібні права адміністратора' }
+        if ($fit -and -not $fit.Applicable) { $pre[$check.id] = @('notApplicable', $fit.Reason) }
+        elseif ($check.deep -and -not $Context.Deep) { $pre[$check.id] = @('notRun', 'лише в глибокому скануванні') }
+        elseif ($check.adminOnly -and -not $Context.IsAdmin) { $pre[$check.id] = @('skipped', 'потрібні права адміністратора') }
+    }
+    $run = @($list | Where-Object { -not $pre.ContainsKey($_.id) })
+    $outputs = $null
+    if (-not $Sequential -and $run.Count -ge 8) {
+        try { $outputs = Invoke-D9ProbesParallel -Checks $run -Context $Context }
+        catch { Write-D9Log "Паралельне сканування недоступне ($($_.Exception.Message)) — виконую послідовно." Detail; $outputs = $null }
+    }
+    if (-not $outputs) {
+        $outputs = @{}; $n = 0
+        $runner = [scriptblock]::Create($script:D9ProbeRunner.ToString())   # прив'язка до поточного runspace (у вікні це фоновий потік)
+        foreach ($check in $run) {
+            $n++
+            Write-Progress -Activity 'Debloater9: сканування' -Status "$n / $($run.Count): $(Get-D9Text $check.name)" -PercentComplete ($n * 100 / $run.Count)
+            if ($script:D9OnProgress) { & $script:D9OnProgress $n $run.Count (Get-D9Text $check.name) }
+            $outputs[$check.id] = & $runner $check $Context
+        }
+    }
+
+    foreach ($check in $list) {
+        $status = 'ok'; $note = $null; $ms = 0
+        if ($pre.ContainsKey($check.id)) { $status, $note = $pre[$check.id] }
         else {
-            try {
-                $out = @(& $check.probe -Check $check -Ctx $Context | Where-Object { $_ })
+            $r = $outputs[$check.id]; $ms = [int]$r.ms
+            if (-not $r.ok) { $status = 'error'; $note = $r.error }
+            else {
+                $out = @($r.out | Where-Object { $_ })
                 $skips = @($out | Where-Object severity -eq 'skipped')
                 $real  = @($out | Where-Object severity -ne 'skipped')
                 if ($skips -and -not $real) { $status = 'skipped'; $note = $skips[0].title }
                 elseif ($real) { $status = 'found'; foreach ($f in $real) { [void]$findings.Add($f) } }
-            } catch {
-                $status = 'error'; $note = $_.Exception.Message
             }
         }
         [void]$results.Add([pscustomobject]@{
             id = $check.id; category = $check.category; name = Get-D9Text $check.name
-            status = $status; note = $note; ms = [int]$sw.ElapsedMilliseconds
+            status = $status; note = $note; ms = $ms
         })
     }
 

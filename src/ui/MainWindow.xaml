@@ -253,13 +253,40 @@
             <StackPanel Orientation="Horizontal">
               <Button x:Name="BtnDriverScan" Style="{StaticResource Primary}" Content="Перевірити драйвери"/>
               <Button x:Name="BtnOemPage" Content="Сторінка драйверів виробника" IsEnabled="False"/>
+              <Button x:Name="BtnOemTool" Content="Утиліта виробника" Visibility="Collapsed" ToolTip="Встановить і запустить фірмову утиліту виробника ПК: драйвери й BIOS саме для вашої моделі"/>
             </StackPanel>
             <TextBlock x:Name="OemText" Margin="0,10,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+            <TextBlock Text="Автоматично з інтернету" FontSize="15" FontWeight="SemiBold" Margin="0,18,0,4"/>
+            <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="Debloater9 шукає драйвери для пристроїв без драйвера і новіші версії для решти в офіційному каталозі Microsoft (там драйвери від Intel, AMD, NVIDIA, Realtek та інших) і серед рекомендацій Windows Update. Завантаження перевіряються за контрольною сумою, попередні драйвери зберігаються для відкату."/>
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="BtnDriverOnline" Style="{StaticResource Primary}" Content="Знайти нові драйвери онлайн"/>
+              <Button x:Name="BtnDriverOnlineInstall" Content="Завантажити й встановити вибрані" IsEnabled="False"/>
+            </StackPanel>
+            <DataGrid x:Name="DriverOnlineGrid" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" RowHeaderWidth="0" Margin="0,10,0,0" MinHeight="40" MaxHeight="320">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Header="" Width="36">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center"/></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="200" IsReadOnly="True">
+                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Id}"/></Style></DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTemplateColumn Header="Що робити" Width="*" MinWidth="90">
+                  <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Зараз → нова версія" Binding="{Binding Detail}" Width="2*" MinWidth="200" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Розмір · джерело" Binding="{Binding Note}" Width="*" MinWidth="110" IsReadOnly="True">
+                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#5D6675"/></Style></DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+              </DataGrid.Columns>
+            </DataGrid>
             <TextBlock Text="Пристрої без драйвера або з помилкою" FontSize="15" FontWeight="SemiBold" Margin="0,18,0,6"/>
             <ListBox x:Name="DriverProblemsList" ItemTemplate="{StaticResource ItemTemplate}" BorderBrush="{StaticResource Line}" MinHeight="60" MaxHeight="320"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"/>
 
-            <TextBlock Text="Встановити драйвери з папки" FontSize="15" FontWeight="SemiBold" Margin="0,22,0,4"/>
+            <TextBlock Text="Або встановити драйвери з папки" FontSize="15" FontWeight="SemiBold" Margin="0,22,0,4"/>
             <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8"
                        Text="Завантажте драйвери з сайту виробника в папку (архіви .zip теж можна). Програма знайде ті, що підходять до цього ПК, пропустить актуальні й поставить у правильному порядку, зберігши попередні для відкату."/>
             <DockPanel>
@@ -300,6 +327,49 @@
         </ScrollViewer>
       </TabItem>
 
+      <!-- ================= Програми ================= -->
+      <TabItem Header="Програми">
+        <Grid Margin="20">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <DockPanel>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+              <TextBlock Text="Пошук:" VerticalAlignment="Center" Margin="8,0,6,0" Foreground="{StaticResource Muted}"/>
+              <TextBox x:Name="AppSearch" Width="180" VerticalContentAlignment="Center" Padding="4,3"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="BtnAppsInstall" Style="{StaticResource Primary}" Content="Встановити вибрані"/>
+              <Button x:Name="BtnAppsRefresh" Content="Перевірити встановлені"/>
+              <Button x:Name="BtnAppsUpgrade" Content="Оновити всі програми"/>
+            </StackPanel>
+          </DockPanel>
+          <StackPanel Grid.Row="1" Margin="0,12,0,8">
+            <TextBlock x:Name="AppsSummary" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                       Text="Позначте програми й натисніть «Встановити вибрані». Встановлення — офіційними інсталяторами через winget, без реклами й «довантажувачів»."/>
+            <Button x:Name="BtnWingetStore" Style="{StaticResource LinkButton}" Content="Встановити winget («Інсталятор застосунків») з Microsoft Store" Visibility="Collapsed" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+          </StackPanel>
+          <DataGrid x:Name="AppGrid" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" RowHeaderWidth="0" Grid.Row="2">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="" Width="36">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Програма" Binding="{Binding Title}" Width="2*" MinWidth="150" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="ToolTip" Value="{Binding Id}"/></Style></DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
+              <DataGridTextColumn Header="Категорія" Binding="{Binding Group}" Width="*" MinWidth="110" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Опис" Binding="{Binding Note}" Width="3*" MinWidth="220" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#5D6675"/></Style></DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
+              <DataGridTemplateColumn Header="Стан" Width="*" MinWidth="110">
+                <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding Color}"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
       <!-- ================= Автозавантаження ================= -->
       <TabItem Header="Автозавантаження">
         <Grid Margin="20">
@@ -401,6 +471,7 @@
             <Button x:Name="BtnUndo" Style="{StaticResource Primary}" Content="Відкотити вибрану сесію"/>
             <Button x:Name="BtnRefreshSessions" Content="Оновити"/>
             <Button x:Name="BtnSystemRestore" Content="Відновлення системи Windows"/>
+            <Button x:Name="BtnDiagnostics" Content="Зібрати діагностику" ToolTip="Один zip з відомостями про систему, драйвери, помилки й журнал змін — щоб розібратися з проблемою"/>
           </StackPanel>
           <TextBlock Grid.Row="1" Margin="0,12,0,8" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
                      Text="Кожне застосування змін — окрема сесія. Відкат повертає саме те, що було до змін; значення, які після цього змінили ви або Windows, не перезаписуються."/>

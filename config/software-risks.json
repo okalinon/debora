@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "note": "Програми з відомими вразливостями (minVersion — перша безпечна версія) або без підтримки (eol — дата кінця підтримки). ПЕРЕВІРЯТИ ПЕРЕД КОЖНИМ РЕЛІЗОМ за офіційними повідомленнями виробників.",
+  "note": "Програми з відомими вразливостями (minVersion — перша безпечна версія) або без підтримки (eol — дата кінця підтримки). winget — ID пакета, щоб Debloater9 оновив програму сам. ПЕРЕВІРЯТИ ПЕРЕД КОЖНИМ РЕЛІЗОМ за офіційними повідомленнями виробників.",
   "programs": [
-    { "pattern": "WinRAR*", "minVersion": "7.13", "exploited": true, "url": "https://www.win-rar.com/",
+    { "pattern": "WinRAR*", "winget": "RARLab.WinRAR", "minVersion": "7.13", "exploited": true, "url": "https://www.win-rar.com/",
       "reason": { "uk": "У старих версіях WinRAR є вразливості, які активно використовують у фішингових архівах.", "en": "Older WinRAR versions have actively exploited archive vulnerabilities." } },
-    { "pattern": "7-Zip*", "minVersion": "25.0", "url": "https://www.7-zip.org/",
+    { "pattern": "7-Zip*", "winget": "7zip.7zip", "minVersion": "25.0", "url": "https://www.7-zip.org/",
       "reason": { "uk": "Старі версії 7-Zip мають вразливості обробки архівів.", "en": "Older 7-Zip versions have archive handling vulnerabilities." } },
-    { "pattern": "VLC media player*", "minVersion": "3.0.21", "url": "https://www.videolan.org/",
+    { "pattern": "VLC media player*", "winget": "VideoLAN.VLC", "minVersion": "3.0.21", "url": "https://www.videolan.org/",
       "reason": { "uk": "Старі версії VLC мають вразливості, що спрацьовують при відкритті медіафайлу.", "en": "Older VLC versions have media-file vulnerabilities." } },
     { "pattern": "Adobe Flash*", "eol": "2020-12-31",
       "reason": { "uk": "Flash Player не підтримується з 2021 року й небезпечний. Видаліть його.", "en": "Flash Player is unsupported since 2021. Uninstall it." } },

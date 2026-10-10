@@ -250,6 +250,22 @@
       ]
     },
     {
+      "id": "ui.no-spotlight",
+      "category": "ui",
+      "risk": "safe",
+      "name": { "uk": "Вимкнути «Windows: цікаве» (Spotlight) на робочому столі й екрані блокування", "en": "Disable Windows Spotlight on desktop and lock screen" },
+      "description": {
+        "uk": "Оновлення вмикають шпалери, що щодня завантажуються з інтернету, і значок «Дізнатися про це зображення». Після вимкнення лишаються звичайні шпалери, які можна вибрати в Параметри → Персоналізація.",
+        "en": "Updates turn on daily wallpapers downloaded from the internet and the \"Learn about this picture\" icon. Afterwards a regular wallpaper stays; pick one in Settings → Personalization."
+      },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\CloudContent", "name": "DisableSpotlightCollectionOnDesktop", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\CloudContent", "name": "DisableWindowsSpotlightFeatures", "value": 1, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "RotatingLockScreenEnabled", "value": 0, "kind": "DWord" },
+        { "type": "registry", "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\HideDesktopIcons\\NewStartPanel", "name": "{2cc5ca98-6485-489a-920e-b3e88a6ccce3}", "value": 1, "kind": "DWord" }
+      ]
+    },
+    {
       "id": "ui.search-local",
       "category": "ui",
       "risk": "safe",

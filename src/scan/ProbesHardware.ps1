@@ -86,7 +86,10 @@ function Test-D9RamConfig {
     }
     $rated = ($sticks | Measure-Object Speed -Maximum).Maximum
     $actual = ($sticks | Where-Object ConfiguredClockSpeed | Measure-Object ConfiguredClockSpeed -Minimum).Minimum
-    if ($rated -and $actual -and $actual -lt $rated * 0.9) {
+    # Для DDR3 і старіших BIOS часто віддає реальну частоту (667 МГц), а не ефективну (1333 МТ/с)
+    if ($rated -and $actual -and $actual -lt $rated * 0.55) { $actual *= 2 }
+    # На ноутбуках частоту обмежує процесор або BIOS — користувач нічого не змінить, не шумимо
+    if ($rated -and $actual -and $actual -lt $rated * 0.9 -and -not $Ctx.System.HasBattery) {
         New-D9Finding $Check suggestion "Пам'ять працює на $actual МГц замість $rated МГц" 'На настільних ПК увімкніть профіль XMP / EXPO / DOCP в BIOS. На ноутбуках частоту зазвичай обмежує процесор — тоді нічого робити не треба.' @{ type = 'manual' } -Key "$($Check.id):speed"
     }
     if ($Ctx.System.OsFamily -eq 'win11' -and $total -lt 8) {
@@ -153,7 +156,7 @@ function Test-D9GpuDriver {
             New-D9Finding $Check warning "Відеокарта працює без драйвера ($($g.Name))" 'Без драйвера немає апаратного прискорення, нормальної частоти екрана й енергозбереження.' @{ type = 'drivers' } -Key "$($Check.id):$($g.PNPDeviceID)"
         } elseif ($age -gt $limit) {
             $years = [math]::Round($age / 365, 1)
-            New-D9Finding $Check suggestion "Драйверу відеокарти $($g.Name) вже $years р. (версія $($g.DriverVersion))" 'Нові драйвери виправляють збої та додають продуктивність в іграх і браузерах. Завантажуйте з сайту NVIDIA / AMD / Intel або виробника ноутбука.' @{ type = 'drivers' } -Key "$($Check.id):$($g.PNPDeviceID)"
+            New-D9Finding $Check suggestion "Драйверу відеокарти $($g.Name) вже $years р. (версія $($g.DriverVersion))" 'Нові драйвери виправляють збої та додають продуктивність в іграх і браузерах. Debloater9 пошукає новіший у каталозі Microsoft; найсвіжіші версії — також у NVIDIA App, AMD Adrenalin, Intel Driver & Support Assistant (вкладка «Програми» / сайт виробника).' @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):$($g.PNPDeviceID)"
         }
     }
 }
@@ -162,7 +165,7 @@ function Test-D9DiskLayout {
     param($Check, $Ctx)
     $ns = 'root\Microsoft\Windows\Storage'
     $physical = @(Get-CimInstance -Namespace $ns -ClassName MSFT_PhysicalDisk -ErrorAction SilentlyContinue)
-    $fast = @($physical | Where-Object { [int]$_.MediaType -eq 4 -or [int]$_.BusType -eq 17 })
+    $fast = @($physical | Where-Object { (Get-D9CimInt $_ MediaType) -eq 4 -or (Get-D9CimInt $_ BusType) -eq 17 })
     if ($Ctx.System.SystemDisk -eq 'hdd' -and $fast) {
         $sizeGB = [math]::Round(($fast | Select-Object -First 1).Size / 1GB)
         New-D9Finding $Check suggestion "Windows стоїть на HDD, хоча в комп'ютері є SSD ($sizeGB ГБ)" 'Перенесення Windows на SSD — найбільше можливе прискорення: запуск у 3–5 разів швидший. Перенести можна безкоштовними програмами клонування або перевстановленням.' @{ type = 'manual' } -Key "$($Check.id):system-on-hdd"

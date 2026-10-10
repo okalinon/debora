@@ -33,6 +33,18 @@
     .\Debloater9.ps1 -Drivers                     # які драйвери потрібні і де їх взяти
 .EXAMPLE
     .\Debloater9.ps1 -DriverInstall D:\Драйвери   # встановити підходящі драйвери з папки
+.EXAMPLE
+    .\Debloater9.ps1 -DriverUpdate -WhatIf        # які новіші драйвери є в каталозі Microsoft
+.EXAMPLE
+    .\Debloater9.ps1 -DriverUpdate -Yes           # знайти, завантажити й встановити (з відкатом)
+.EXAMPLE
+    .\Debloater9.ps1 -Apps                        # каталог програм і що вже встановлено
+.EXAMPLE
+    .\Debloater9.ps1 -InstallApp Google.Chrome,7zip.7zip -Yes
+.EXAMPLE
+    .\Debloater9.ps1 -UpgradeApps -Yes            # оновити всі програми (winget upgrade --all)
+.EXAMPLE
+    .\Debloater9.ps1 -Diagnostics                 # зібрати zip для розбору проблеми (у папку «Звіти»)
 #>
 [CmdletBinding(DefaultParameterSetName = 'Info')]
 param(
@@ -51,6 +63,31 @@ param(
 
     [Parameter(ParameterSetName = 'DriverInstall', Mandatory)]
     [string]$DriverInstall,
+
+    # Знайти новіші драйвери й драйвери для невпізнаних пристроїв в інтернеті (Microsoft Update Catalog + Windows Update), завантажити й встановити
+    [Parameter(ParameterSetName = 'DriverUpdate', Mandatory)]
+    [switch]$DriverUpdate,
+
+    # Разом із необов'язковими: заміна робочих драйверів Windows на системних пристроях
+    [Parameter(ParameterSetName = 'DriverUpdate')]
+    [switch]$IncludeOptional,
+
+    [Parameter(ParameterSetName = 'Apps', Mandatory)]
+    [switch]$Apps,
+
+    # ID з каталогу (config/apps.json) або назви: Google.Chrome, "7-Zip"
+    [Parameter(ParameterSetName = 'InstallApp', Mandatory)]
+    [string[]]$InstallApp,
+
+    [Parameter(ParameterSetName = 'UpgradeApps', Mandatory)]
+    [switch]$UpgradeApps,
+
+    [Parameter(ParameterSetName = 'Diagnostics', Mandatory)]
+    [switch]$Diagnostics,
+
+    # Куди покласти zip діагностики (типово — папка «Звіти» поруч із програмою)
+    [Parameter(ParameterSetName = 'Diagnostics')]
+    [string]$OutDir,
 
     [Parameter(ParameterSetName = 'Scan', Mandatory)]
     [switch]$Scan,
@@ -82,10 +119,12 @@ param(
     [string[]]$Tweak,
 
     [Parameter(ParameterSetName = 'Apply')]
+    [Parameter(ParameterSetName = 'DriverUpdate')]
     [switch]$WhatIf,
 
     [Parameter(ParameterSetName = 'Apply')]
     [Parameter(ParameterSetName = 'DriverInstall')]
+    [Parameter(ParameterSetName = 'DriverUpdate')]
     [switch]$NoRestorePoint,
 
     [Parameter(ParameterSetName = 'List')]
@@ -104,6 +143,9 @@ param(
     [Parameter(ParameterSetName = 'Undo')]
     [Parameter(ParameterSetName = 'Checklist')]
     [Parameter(ParameterSetName = 'DriverInstall')]
+    [Parameter(ParameterSetName = 'InstallApp')]
+    [Parameter(ParameterSetName = 'UpgradeApps')]
+    [Parameter(ParameterSetName = 'DriverUpdate')]
     [switch]$Yes,
 
     [ValidateSet('uk', 'en')]
@@ -127,10 +169,10 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.6.1-dev'
+$script:D9Version  = '0.8.2-dev'
 $script:D9Language = $Language
-$script:D9LogPath  = $LogPath
 Initialize-D9Console
+Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
 
 $ExitCodes = @{ Ok = 0; Partial = 1; BadArgs = 2; NotAdmin = 3; Cancelled = 4; Reboot = 10 }
 
@@ -282,6 +324,9 @@ switch ($PSCmdlet.ParameterSetName) {
             Write-Host "  6. Відкрити останній звіт"
             Write-Host "  7. Драйвери: що потрібно і де взяти"
             Write-Host "  8. Встановити драйвери з папки «Драйвери»"
+            Write-Host " 11. Знайти й встановити нові драйвери з інтернету (автоматично)"
+            Write-Host "  9. Зібрати діагностику (zip для розбору проблеми)"
+            Write-Host " 10. Оновити всі програми (winget)"
             Write-Host "  0. Вихід"
             $choice = Read-Host "Ваш вибір"
             switch ($choice) {
@@ -326,10 +371,104 @@ switch ($PSCmdlet.ParameterSetName) {
                         & $runSelf @('-DriverInstall', $folder)
                     }
                 }
+                '9' {
+                    & $runSelf @('-Diagnostics')
+                    $zip = Get-ChildItem $reports -Filter '*.zip' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                    if ($zip) { Start-Process explorer.exe "/select,`"$($zip.FullName)`"" }
+                }
+                '10' { & $runSelf @('-UpgradeApps') }
+                '11' { & $runSelf @('-DriverUpdate') }
                 '0' { exit $ExitCodes.Ok }
                 default { Write-Host "Введіть номер пункту." -ForegroundColor Yellow }
             }
         }
+    }
+
+    'DriverUpdate' {
+        $folder = Join-Path (Split-Path $PSCommandPath) 'Драйвери\Завантажені'
+        Write-Host ""
+        Write-Host "Онлайн-пошук драйверів: $($sys.Manufacturer) $($sys.Model), $($sys.OsName) $($sys.DisplayVersion)" -ForegroundColor Cyan
+        $all = @(Find-D9DriverUpdates -SystemInfo $sys -IncludeWindowsUpdate)
+        $cands = @($all | Where-Object { $IncludeOptional -or -not $_.Optional })
+        if (-not $all) { Write-D9Log 'Новіших драйверів не знайдено — встановлені актуальні.' Ok; exit $ExitCodes.Ok }
+        Write-Host ""
+        foreach ($c in $all) {
+            $mark = if ($c.Status -eq 'missing') { 'немає драйвера' } elseif ($c.Optional) { 'необов''язково' } else { 'новіший' }
+            $color = if ($c.Status -eq 'missing') { 'Yellow' } elseif ($c.Optional) { 'DarkGray' } else { 'White' }
+            Write-Host ("  [{0}] {1}{2}" -f $mark, $c.Device.Name, $(if ($c.Recommended) { ' (рекомендує Windows Update)' })) -ForegroundColor $color
+            Write-Host ("      {0} → {1} від {2:dd.MM.yyyy}, {3}" -f $(if ($c.Device.Version) { $c.Device.Version } else { 'немає' }), $c.Row.Version, $c.Row.Date, (Format-D9Size $c.Row.Size)) -ForegroundColor DarkGray
+        }
+        if ($all.Count -gt $cands.Count) { Write-Host "`nНеобов'язкові пропускаються; додайте -IncludeOptional, щоб встановити й їх." -ForegroundColor DarkGray }
+        if ($WhatIf -or -not $cands) { exit $ExitCodes.Ok }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log "Для встановлення потрібні права адміністратора (запускайте через run.bat)." Error; exit $ExitCodes.NotAdmin }
+        if (-not (Confirm-D9 "Завантажити й встановити $($cands.Count) драйвер(ів)? Попередні буде збережено для відкату")) { exit $ExitCodes.Cancelled }
+        $oemTool = Get-D9OemTool $sys
+        if ($oemTool -and (Confirm-D9 "Також запустити $($oemTool.Name) — утиліту $($oemTool.Vendor) для драйверів і BIOS вашої моделі (встановиться автоматично)?")) { [void](Invoke-D9OemDriverTool -SystemInfo $sys) }
+        $found = Save-D9DriverUpdates -Candidates $cands -Folder $folder
+        $todo = @($found.Packages | Where-Object Status -ne 'current')
+        if (-not $todo) { Write-D9Log 'Після перевірки пакетів встановлювати нічого.' Ok; exit $ExitCodes.Ok }
+        $drvCatalog = New-D9DriverCatalog -Packages $todo
+        $plan = New-D9Plan -Catalog $drvCatalog -TweakIds @($drvCatalog.Tweaks.id) -SystemInfo $sys
+        $session = Invoke-D9Plan -Plan $plan -SystemInfo $sys -Selection 'драйвери з Microsoft Update Catalog' -NoRestorePoint:$NoRestorePoint
+        $errors = @($session.entries | Where-Object result -eq 'error')
+        Write-D9Log ("Встановлено: {0}, помилок: {1}. Пакети збережено в {2} — їх можна взяти на інший такий самий ПК." -f @($session.entries | Where-Object result -eq 'ok').Count, $errors.Count, $folder) $(if ($errors) { 'Warn' } else { 'Ok' })
+        Write-D9Log "Перезавантажте комп'ютер, щоб драйвери запрацювали. Відкат: меню → 5." Warn
+        exit $(if ($errors) { $ExitCodes.Partial } else { $ExitCodes.Reboot })
+    }
+
+    'Apps' {
+        if (-not (Get-D9WingetPath)) { Write-D9Log 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store: ms-windows-store://pdp/?productid=9NBLGGH4NNS1' Error; exit $ExitCodes.Partial }
+        Write-D9Log 'Перевіряю встановлені програми (winget export)...'
+        $installed = Get-D9InstalledAppIds
+        $appCatalog = Import-D9AppCatalog
+        foreach ($c in $appCatalog.categories) {
+            $items = @($appCatalog.apps | Where-Object category -eq $c.id)
+            if (-not $items) { continue }
+            Write-Host ""
+            Write-Host (Get-D9Text $c.name) -ForegroundColor Cyan
+            foreach ($a in $items) {
+                $has = $installed.Contains($a.id)
+                Write-Host ("  {0} {1,-34} {2}" -f $(if ($has) { '[v]' } else { '[ ]' }), $a.name, $a.id) -ForegroundColor $(if ($has) { 'DarkGray' } else { 'Gray' })
+            }
+        }
+        Write-Host ""
+        Write-Host 'Встановити: -InstallApp <ID>[,<ID>...]   Оновити всі: -UpgradeApps' -ForegroundColor DarkGray
+        exit $ExitCodes.Ok
+    }
+
+    'InstallApp' {
+        if (-not (Get-D9WingetPath)) { Write-D9Log 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store.' Error; exit $ExitCodes.Partial }
+        $appCatalog = Import-D9AppCatalog
+        $list = foreach ($want in $InstallApp) {
+            $hit = @($appCatalog.apps | Where-Object { $_.id -eq $want -or $_.name -eq $want }) | Select-Object -First 1
+            if ($hit) { $hit } else { [pscustomobject]@{ id = $want; name = $want; source = 'winget' } }   # будь-який пакет winget за точним ID
+        }
+        Write-Host "Буде встановлено: $(($list | ForEach-Object name) -join ', ')"
+        if (-not (Confirm-D9 'Встановити?')) { exit $ExitCodes.Cancelled }
+        $res = @(Install-D9Apps -Apps @($list))
+        $bad = @($res | Where-Object { $_.result -in 'failed', 'notFound' })
+        if (@($res | Where-Object result -eq 'reboot')) { Write-D9Log 'Деякі програми запрацюють після перезавантаження.' Warn }
+        exit $(if ($bad) { $ExitCodes.Partial } else { $ExitCodes.Ok })
+    }
+
+    'UpgradeApps' {
+        if (-not (Get-D9WingetPath)) { Write-D9Log 'winget не знайдено.' Error; exit $ExitCodes.Partial }
+        $up = @(Get-D9AppUpgrades)
+        if (-not $up) { Write-D9Log 'Усі програми актуальні.' Ok; exit $ExitCodes.Ok }
+        Write-Host "Оновлення є для $($up.Count) програм:"
+        foreach ($u in $up) { Write-Host ("  {0,-40} {1} → {2}" -f $u.Name, $u.Version, $u.Available) }
+        if (-not (Confirm-D9 'Оновити всі? Відкриті програми краще закрити.')) { exit $ExitCodes.Cancelled }
+        $r = Invoke-D9AppUpgradeAll
+        exit $(if ($r.Result -in 'installed', 'upToDate') { $ExitCodes.Ok } else { $ExitCodes.Partial })
+    }
+
+    'Diagnostics' {
+        $target = if ($OutDir) { $OutDir } else { Join-Path (Split-Path $PSCommandPath) 'Звіти' }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Без прав адміністратора частина журналів і відомостей про драйвери буде неповною.' Warn }
+        try {
+            [void](New-D9DiagnosticsBundle -SystemInfo $sys -OutDir $target -ReportDir (Join-Path (Split-Path $PSCommandPath) 'Звіти'))
+            exit $ExitCodes.Ok
+        } catch { Write-D9Log "Не вдалося зібрати діагностику: $($_.Exception.Message)" Error; exit $ExitCodes.Partial }
     }
 
     'Drivers' {
@@ -471,6 +610,9 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-D9SystemSummary $sys $recommendation
         Write-Host "Що далі:"
         Write-Host "  -Scan                           перевірити стан Windows і отримати чекліст"
+        Write-Host "  -Diagnostics                    зібрати zip для розбору проблеми"
+        Write-Host "  -Apps / -InstallApp / -UpgradeApps   програми через winget"
+        Write-Host "  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити"
         Write-Host "  -ListTweaks                     каталог твіків і їхній стан"
         Write-Host "  -Preset Recommended -WhatIf     що зміниться за рекомендованим профілем"
         Write-Host "  -Preset Recommended -Yes        застосувати"

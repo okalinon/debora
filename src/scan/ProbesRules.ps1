@@ -71,11 +71,21 @@ function Test-D9ServiceRule {
 }
 
 # Події журналу. $null — журнал недоступний (немає прав), @() — подій немає.
+# Провайдери, яких немає в цій системі (драйвер іншого виробника), пропускаються:
+# Get-WinEvent падає на весь фільтр, якщо не знайде хоч одного.
 function Get-D9Events {
     param([hashtable]$Filter)
     try { @(Get-WinEvent -FilterHashtable $Filter -ErrorAction Stop) }
     catch {
         if ($_.FullyQualifiedErrorId -like 'NoMatchingEventsFound*') { return ,@() }
+        if ($_.FullyQualifiedErrorId -like 'NoMatchingProvidersFound*' -and $Filter.ProviderName) {
+            $known = @($Filter.ProviderName | Where-Object { Get-WinEvent -ListProvider $_ -ErrorAction SilentlyContinue })
+            if (-not $known) { return ,@() }
+            if ($known.Count -lt @($Filter.ProviderName).Count) {
+                $f = $Filter.Clone(); $f.ProviderName = $known
+                return Get-D9Events $f
+            }
+        }
         return $null
     }
 }

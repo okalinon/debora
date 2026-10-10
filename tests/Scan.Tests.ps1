@@ -170,6 +170,89 @@ Describe 'Чекліст' {
     }
 }
 
+Describe 'Автоматичні виправлення' {
+    BeforeAll {
+        $script:fixKey = "HKCU:\Software\Debloater9Test\fix-$([guid]::NewGuid().ToString('N'))"
+        New-Item $fixKey -Force | Out-Null
+        Set-ItemProperty $fixKey -Name Remote -Value 1 -Type DWord
+        $regFix = @{ type = 'actions'; actions = @([pscustomobject]@{ type = 'registry'; path = $fixKey; name = 'Remote'; value = 0; kind = 'DWord' }) }
+        $script:fixFindings = @(
+            (New-TestFinding 'sec.remote-assistance' 'security' 'suggestion' $regFix)
+            (New-TestFinding 'perf.print-spooler' 'performance' 'suggestion' @{ type = 'actions'; actions = @([pscustomobject]@{ type = 'service'; name = 'Spooler'; startup = 'Manual'; stop = $true }) })
+            (New-TestFinding 'sec.defender-detections' 'security' 'warning' @{ type = 'maintenance'; action = 'defenderScan' })
+            (New-TestFinding 'upd.failures' 'updates' 'warning' @{ type = 'maintenance'; action = 'wuReset' })
+            (New-TestFinding 'upd.last-update' 'updates' 'warning' @{ type = 'maintenance'; action = 'windowsUpdate' })
+            (New-TestFinding 'stab.disk-errors' 'disk' 'critical' @{ type = 'maintenance'; action = 'chkdskScan' })
+            (New-TestFinding 'sec.risky-software' 'security' 'warning' @{ type = 'apps'; ids = @('7zip.7zip') } 'sec.risky-software:7-Zip')
+            (New-TestFinding 'sec.risky-software' 'security' 'warning' @{ type = 'apps'; ids = @('VideoLAN.VLC') } 'sec.risky-software:VLC')
+            (New-TestFinding 'clean.browser-cache' 'cleanliness' 'suggestion' @{ type = 'maintenance'; action = 'browserCache' })
+        )
+        $script:fixList = New-D9Checklist -Scan (New-TestScan $fixFindings) -Catalog $catalog
+    }
+    AfterAll { Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue }
+
+    It 'дії в checks.json мають правильний формат, дії обслуговування існують' {
+        $types = @('registry', 'service', 'appx', 'scheduledTask', 'powercfg', 'command', 'driver')
+        foreach ($c in $scanConfig.Checks.checks | Where-Object { $_.params.fix }) {
+            $fix = $c.params.fix
+            switch ($fix.type) {
+                'maintenance' { $script:D9MaintenanceActions.Keys + 'restorePoint', 'reboot' | Should -Contain $fix.action -Because $c.id }
+                'actions' {
+                    @($fix.actions).Count | Should -BeGreaterThan 0 -Because $c.id
+                    foreach ($a in $fix.actions) {
+                        $a.type | Should -BeIn $types -Because $c.id
+                        if ($a.type -eq 'registry') {
+                            $a.path | Should -Match '^(HKLM|HKCU):\\' -Because $c.id
+                            ($a.delete -or ($null -ne $a.value -and $a.kind)) | Should -BeTrue -Because "$($c.id): значення або delete"
+                        }
+                        if ($a.type -eq 'service') { $a.startup | Should -BeIn @('Disabled', 'Manual', 'Automatic', 'AutomaticDelayed') -Because $c.id }
+                    }
+                }
+                'tweaks' { }
+                default { throw "$($c.id): невідомий тип виправлення $($fix.type)" }
+            }
+        }
+    }
+    It 'правил із готовим автоматичним виправленням — щонайменше 70' {
+        @($scanConfig.Checks.checks | Where-Object { $_.params.fix.type -in 'actions', 'maintenance' }).Count | Should -BeGreaterOrEqual 70
+    }
+    It 'знахідки з діями стають автоматичними кроками за змістом' {
+        $sec = $fixList.items | Where-Object { $_.id -eq '42|fix-security' }
+        $sec.auto | Should -BeTrue
+        @($sec.action.fixes).Count | Should -Be 1
+        $sec.verify.type | Should -Be 'checks'
+        ($fixList.items | Where-Object { $_.id -eq '63|fix-system' }).title | Should -Match '\(1\)'
+    }
+    It 'обслуговування: окремий автоматичний крок на кожну дію, у правильному порядку' {
+        $apps = $fixList.items | Where-Object { $_.id -eq '71|apps' }
+        $apps.action.ids | Should -Be @('7zip.7zip', 'VideoLAN.VLC')
+        @($apps.verify.items).Count | Should -Be 2
+        foreach ($pair in @(@('44', 'defenderScan'), @('48', 'wuReset'), @('49', 'windowsUpdate'), @('12', 'chkdskScan'), @('51', 'browserCache'))) {
+            $item = $fixList.items | Where-Object { $_.id -eq "$($pair[0])|$($pair[1])" }
+            $item | Should -Not -BeNullOrEmpty -Because $pair[1]
+            $item.auto | Should -BeTrue
+        }
+        @($fixList.items | Where-Object { -not $_.auto -and $_.group -in 40, 45 }).Count | Should -Be 0 -Because 'автоматично виправне не дублюється ручним кроком'
+    }
+    It 'при помилках диска — і резервна копія, і перевірка диска; потрібне перезавантаження' {
+        ($fixList.items | Where-Object { $_.id -eq '10|backup' }) | Should -Not -BeNullOrEmpty
+        ($fixList.items | Where-Object { $_.id -eq '90|reboot' }) | Should -Not -BeNullOrEmpty
+    }
+    It 'виконання кроку з діями змінює систему через рушій, і зміну можна відкотити' {
+        $list = New-D9Checklist -Scan (New-TestScan @($fixFindings[0])) -Catalog $catalog
+        foreach ($i in $list.items | Where-Object { $_.action.type -eq 'restorePoint' }) { $i.status = 'done' }
+        $item = $list.items | Where-Object { $_.action.type -eq 'actions' }
+        $ctx = [pscustomobject]@{ Catalog = $catalog; System = (New-TestSystemInfo) }
+        Invoke-D9ChecklistStep -Checklist $list -Item $item -Context $ctx | Should -BeTrue
+        (Get-ItemProperty $fixKey).Remote | Should -Be 0
+        $item.note -match 'сесія (\S+?)(,|$)' | Should -BeTrue -Because $item.note
+        $sessionId = $Matches[1]
+        $report = @(Undo-D9Session -Id $sessionId)
+        $report.result | Should -Be @('restored')
+        (Get-ItemProperty $fixKey).Remote | Should -Be 1
+    }
+}
+
 Describe 'Автоматичні галочки' {
     BeforeAll {
         $script:testRoot = "HKCU:\Software\Debloater9Test\$([guid]::NewGuid().ToString('N'))"
@@ -213,6 +296,74 @@ Describe 'HTML-звіт' {
     It 'посилання http стають клікабельними, системні — підказкою' {
         (ConvertTo-D9LinkHtml ([pscustomobject]@{ label = 'Сайт'; url = 'https://example.com' })) | Should -Match '<a href="https://example.com"'
         (ConvertTo-D9LinkHtml ([pscustomobject]@{ label = 'Параметри'; url = 'ms-settings:startupapps' })) | Should -Not -Match '<a '
+    }
+}
+
+Describe 'Універсальні правила' {
+    BeforeAll {
+        $script:ruleKey = "HKCU:\Software\Debloater9Test\rules-$([guid]::NewGuid().ToString('N'))"
+        New-Item $ruleKey -Force | Out-Null
+        function New-RuleCheck([string]$Probe, [hashtable]$Params) {
+            $base = @{ severity = 'warning'; title = @{ uk = 'знайдено {value}' }; details = @{ uk = 'd' } }
+            foreach ($k in $Params.Keys) { $base[$k] = $Params[$k] }
+            ConvertFrom-Json (ConvertTo-Json @{ id = 'test.rule'; category = 'security'; probe = $Probe; params = $base } -Depth 6)
+        }
+        $script:ruleCtx = [pscustomobject]@{ Now = Get-Date }
+    }
+    AfterAll { Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue }
+
+    It 'реєстр: ne "" спрацьовує лише на непорожній рядок, відсутнє значення — норма' {
+        $c = New-RuleCheck 'Test-D9RegistryRule' @{ path = $ruleKey; name = 'Pwd'; bad = @{ op = 'ne'; value = '' } }
+        Test-D9RegistryRule $c $ruleCtx | Should -BeNullOrEmpty
+        Set-ItemProperty $ruleKey -Name Pwd -Value ''
+        Test-D9RegistryRule $c $ruleCtx | Should -BeNullOrEmpty
+        Set-ItemProperty $ruleKey -Name Pwd -Value 'secret'
+        (Test-D9RegistryRule $c $ruleCtx).title | Should -Be 'знайдено secret'
+    }
+    It 'реєстр: in і exists' {
+        Set-ItemProperty $ruleKey -Name Comp -Value 255 -Type DWord
+        $in = New-RuleCheck 'Test-D9RegistryRule' @{ path = $ruleKey; name = 'Comp'; bad = @{ op = 'in'; value = @(255, 4294967295) } }
+        Test-D9RegistryRule $in $ruleCtx | Should -Not -BeNullOrEmpty
+        $ex = New-RuleCheck 'Test-D9RegistryRule' @{ path = $ruleKey; name = 'Missing'; bad = @{ op = 'exists' } }
+        Test-D9RegistryRule $ex $ruleCtx | Should -BeNullOrEmpty
+    }
+    It 'журнал: відсутній у системі провайдер — «подій немає», а не «журнал недоступний»' {
+        $events = Get-D9Events @{ LogName = 'System'; ProviderName = 'Debloater9-NoSuchProvider'; Id = 1 }
+        $null -eq $events | Should -BeFalse
+        @($events).Count | Should -Be 0
+        $c = New-RuleCheck 'Test-D9EventRule' @{ log = 'System'; providers = @('Debloater9-NoSuchProvider'); ids = @(1); days = 30; min = 1 }
+        Test-D9EventRule $c $ruleCtx | Should -BeNullOrEmpty
+    }
+    It 'журнал: відсутні провайдери у списку не ламають пошук за наявними' {
+        $f = @{ LogName = 'System'; ProviderName = 'Service Control Manager'; StartTime = (Get-Date).AddDays(-30) }
+        $plain = Get-D9Events $f
+        $f.ProviderName = @('Service Control Manager', 'Debloater9-NoSuchProvider')
+        @(Get-D9Events $f).Count | Should -Be @($plain).Count
+    }
+}
+
+Describe 'Помилки NTFS: системний том чи флешка' {
+    BeforeAll {
+        function New-NtfsEvent([string]$Drive, [string]$Device = '\Device\HarddiskVolume3') {
+            $xml = "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><EventData><Data Name='DriveName'>$Drive</Data><Data Name='DeviceName'>$Device</Data></EventData></Event>"
+            $e = [pscustomobject]@{ ProviderName = 'Ntfs'; Id = 55 }
+            $e | Add-Member ScriptMethod ToXml ([scriptblock]::Create("'$($xml -replace "'", "''")'")) -PassThru
+        }
+        $script:vols = @{ 'C:' = $true; 'G:' = $false; '\\?\Volume{1111}' = $true; '\\?\Volume{2222}' = $false; 'FLASH' = $false }
+    }
+    It '<drive> → <expected>' -TestCases @(
+        @{ drive = 'C:'; expected = $true }
+        @{ drive = 'G:'; expected = $false }
+        @{ drive = '\\?\Volume{1111}\'; expected = $true }
+        @{ drive = '\\?\Volume{2222}'; expected = $false }
+        @{ drive = 'FLASH'; expected = $false }
+        @{ drive = 'H:'; expected = $false }          # витягнута флешка
+        @{ drive = ''; expected = $true }             # невідомо — краще попередити
+    ) {
+        Test-D9NtfsEventOnSystem (New-NtfsEvent $drive) $vols | Should -Be $expected
+    }
+    It 'тіньові копії не вважаються диском' {
+        Test-D9NtfsEventOnSystem (New-NtfsEvent 'C:' '\Device\HarddiskVolumeShadowCopy20') $vols | Should -BeFalse
     }
 }
 

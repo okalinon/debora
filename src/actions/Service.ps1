@@ -1,5 +1,6 @@
-﻿# Дія "service": тип запуску служби і (необов'язково) зупинка.
+﻿# Дія "service": тип запуску служби і (необов'язково) зупинка або запуск.
 #   { "type": "service", "name": "SysMain", "startup": "Disabled", "stop": true }
+#   { "type": "service", "name": "mpssvc", "startup": "Automatic", "start": true }   — відновлення вимкненої служби
 # startup: Disabled | Manual | Automatic | AutomaticDelayed
 
 $script:D9ServiceStartup = @{
@@ -33,6 +34,7 @@ function Test-D9Service {
     param([Parameter(Mandatory)]$Action)
     $state = Get-D9ServiceState $Action
     if (-not $state.exists) { return $null }
+    if ($Action.start -and $state.status -ne 'Running') { return $false }
     return $state.startup -eq $Action.startup
 }
 
@@ -50,6 +52,7 @@ function Invoke-D9Service {
     # Спочатку тип запуску, потім зупинка — щоб служба не піднялась знову
     Set-D9ServiceStartup $Action.name $Action.startup
     if ($Action.stop) { Stop-Service -Name $Action.name -Force -ErrorAction SilentlyContinue }
+    if ($Action.start) { Start-Service -Name $Action.name -ErrorAction Stop }
 }
 
 function Restore-D9Service {
@@ -59,12 +62,13 @@ function Restore-D9Service {
         Set-D9ServiceStartup $Action.name $Before.startup
     }
     if ($Before.status -eq 'Running') { Start-Service -Name $Action.name -ErrorAction SilentlyContinue }
+    elseif ($Action.start) { Stop-Service -Name $Action.name -Force -ErrorAction SilentlyContinue }   # ми її запустили — зупиняємо
 }
 
 function Get-D9ServiceDescription {
     param([Parameter(Mandatory)]$Action, $State)
     if ($State -and -not $State.exists) { return "Служба $($Action.name): немає в системі" }
     $old = if ($State) { $State.startup } else { '?' }
-    $stop = if ($Action.stop) { ', зупинити' } else { '' }
+    $stop = if ($Action.stop) { ', зупинити' } elseif ($Action.start) { ', запустити' } else { '' }
     return "Служба $($Action.name): $old -> $($Action.startup)$stop"
 }

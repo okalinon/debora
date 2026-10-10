@@ -71,7 +71,7 @@ ol.cl{list-style:none;padding:0;margin:0}ol.cl li{display:flex;gap:12px;padding:
         foreach ($i in $Checklist.items) {
             $cls = if ($i.status -eq 'done') { 'done' } else { '' }
             $mark = if ($i.status -eq 'done') { '✓' } else { '' }
-            $kind = switch ($i.action.type) { 'manual' { 'вручну' } 'tweaks' { "автоматично · $(@($i.action.ids).Count) налаштувань" } 'restorePoint' { 'автоматично' } default { 'автоматично' } }
+            $kind = switch ($i.action.type) { 'manual' { 'вручну' } 'tweaks' { "автоматично · $(@($i.action.ids).Count) налаштувань" } 'actions' { "автоматично · $(@($i.action.fixes).Count) виправлень" } 'apps' { "автоматично · winget" } 'restorePoint' { 'автоматично' } default { 'автоматично' } }
             & $w "<li class=""$cls""><div class=""box"">$mark</div><div><div class=""t"">$($i.number). $(ConvertTo-D9Html $i.title)<span class=""tag"">$kind</span></div>"
             if ($i.why) { & $w "<div class=""d muted"">$(ConvertTo-D9Html $i.why)</div>" }
             $deps = @($i.dependsOn | ForEach-Object { $id = $_; ($Checklist.items | Where-Object id -eq $id).number } | Where-Object { $_ } | Sort-Object)

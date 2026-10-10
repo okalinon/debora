@@ -82,3 +82,29 @@ Describe 'Драйвери без Windows Update' {
         $with | Should -Be @('Maximum')
     }
 }
+
+Describe 'Пакет діагностики' {
+    BeforeAll {
+        $sessions = Join-Path $env:D9_DATA_ROOT 'sessions'
+        New-Item -ItemType Directory -Path $sessions -Force | Out-Null
+        Set-Content (Join-Path $sessions 'test-session.json') '{"id":"test"}'
+        $script:diagOut = Join-Path $TestDrive 'diag'
+        $script:zip = New-D9DiagnosticsBundle -SystemInfo (New-TestSystemInfo) -OutDir $diagOut
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $archive = [IO.Compression.ZipFile]::OpenRead($zip)
+        $script:entries = @($archive.Entries | ForEach-Object { $_.FullName -replace '\\', '/' })
+        $archive.Dispose()
+    }
+    It 'створює один zip у вказаній папці' {
+        @(Get-ChildItem $diagOut -Filter '*.zip').Count | Should -Be 1
+        $zip | Should -BeLike '*.zip'
+    }
+    It 'містить основні розділи і файли програми' {
+        foreach ($name in 'system.txt', 'devices.txt', 'drivers.txt', 'events-system.txt', 'README.txt', 'sessions/test-session.json') {
+            $entries | Should -Contain $name
+        }
+    }
+    It 'не лишає тимчасової папки' {
+        @(Get-ChildItem ([IO.Path]::GetTempPath()) -Directory -Filter 'd9diag-*' | Where-Object LastWriteTime -gt (Get-Date).AddMinutes(-5)).Count | Should -Be 0
+    }
+}

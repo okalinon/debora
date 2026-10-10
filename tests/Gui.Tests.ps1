@@ -20,6 +20,23 @@ Describe 'Вікно' {
         $r.Preset | Should -Be 'Стандартний'
     }
 
+    It 'вкладка «Програми»: каталог, пошук, позначка встановлених' {
+        $r = Invoke-InGui {
+            $all = @($ui.AppGrid.ItemsSource).Count
+            $ui.AppSearch.Text = 'браузер'
+            $found = @($ui.AppGrid.ItemsSource | ForEach-Object Title)
+            $ui.AppSearch.Text = ''
+            $chrome = $state.AppRows | Where-Object Id -eq 'Google.Chrome'
+            & $markApp $chrome $true
+            @{ All = $all; Found = $found; Status = $chrome.Status; Enabled = $chrome.Enabled }
+        }
+        $r.All | Should -Be @((Import-D9AppCatalog).apps).Count
+        $r.Found | Should -Contain 'Google Chrome'
+        $r.Found | Should -Not -Contain '7-Zip'
+        $r.Status | Should -Be 'встановлено'
+        $r.Enabled | Should -BeFalse
+    }
+
     It 'вкладка «Огляд» показує оцінку, категорії й знахідки' {
         $r = Invoke-InGui {
             $check = [pscustomobject]@{ id = 'perf.memory'; category = 'performance' }
@@ -88,11 +105,55 @@ Describe 'Вікно' {
             & $refreshMaintenance
             @{ Tabs = $ui.Tabs.Items.Count; Rows = $state.StartupRows; Pause = $ui.PauseState.Text; Drivers = $ui.WuDriversState.Text }
         }
-        $r.Tabs | Should -Be 7
+        $r.Tabs | Should -Be 8
         $r.Rows[0].Selected | Should -BeTrue
         $r.Rows[0].Status | Should -Match 'файл відсутній'
         $r.Pause | Should -Not -BeNullOrEmpty
         $r.Drivers | Should -Match 'Windows'
+    }
+
+    It 'програмна зміна галочок видна на екрані («Зняти все», «Вибрати профіль»)' {
+        # Регресія: рядки в обгортці PSObject — WPF не бачив змін, галочки на екрані лишались
+        $r = Invoke-InGui {
+            function Pump { $f = New-Object Windows.Threading.DispatcherFrame; [void][Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvoke([Action]{ $f.Continue = $false }, [Windows.Threading.DispatcherPriority]::Background); [Windows.Threading.Dispatcher]::PushFrame($f) }
+            function Get-Boxes($dep) { $out = @(); for ($i = 0; $i -lt [Windows.Media.VisualTreeHelper]::GetChildrenCount($dep); $i++) { $c = [Windows.Media.VisualTreeHelper]::GetChild($dep, $i); if ($c -is [Windows.Controls.CheckBox]) { $out += $c }; $out += Get-Boxes $c }; $out }
+            $win.ShowActivated = $false; $win.Left = -10000; $win.Show()
+            # Loaded запускає фонову перевірку стану й таймер — зупиняємо, щоб вони не перезаповнили таблицю й не тримали Close()
+            $timer.Stop()
+            if ($state.Job) { try { $state.Job.PS.Stop() } catch { }; $state.Job.PS.Dispose(); $state.Job.RS.Dispose(); $state.Job = $null }
+            $ui.Tabs.SelectedIndex = 2; Pump
+            & $fillTweaks @($Catalog.Tweaks | ForEach-Object { [pscustomobject]@{ Id = $_.id; State = 'notApplied'; Reason = $null } }); Pump
+            $before = @(Get-Boxes $ui.TweakGrid | Where-Object IsChecked).Count
+            $ui.BtnSelectNone.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent))); Pump
+            $after = @(Get-Boxes $ui.TweakGrid | Where-Object IsChecked).Count
+            $win.Close()
+            @{ Before = $before; After = $after }
+        }
+        $r.Before | Should -BeGreaterThan 0
+        $r.After | Should -Be 0
+    }
+
+    It 'ланцюжок завдань через таймер: контекст доходить до $Done і до наступного завдання' {
+        # Регресія: «Застосувати вибране» запускало друге завдання з $Done, де локальна $ids була порожня
+        $r = Invoke-InGui {
+            $script:chainResult = $null
+            $runTicks = {
+                for ($i = 0; $i -lt 600 -and $state.Job; $i++) {
+                    [void]$state.Job.Handle.AsyncWaitHandle.WaitOne(100)
+                    & $onTick
+                }
+            }
+            & {
+                $ids = @('ui.explorer', 'perf.game-dvr')   # локальна змінна «обробника кнопки»
+                & $startJob 'крок 1' { param($a) $a.Ids.Count } @{ Ids = $ids } {
+                    param($count, $c)
+                    & $startJob 'крок 2' { param($a) @($a.Ids) -join ',' } @{ Ids = $c.Ids } { param($joined, $c2) $script:chainResult = "$($c2.Count)|$joined" } @{ Count = $count }
+                } @{ Ids = $ids }
+            }
+            & $runTicks; & $runTicks
+            $script:chainResult
+        }
+        $r | Should -Be '2|ui.explorer,perf.game-dvr'
     }
 
     It 'фонове завдання має доступ до функцій і даних ядра та передає журнал' {

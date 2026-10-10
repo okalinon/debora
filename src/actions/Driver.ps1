@@ -13,6 +13,8 @@ function Get-D9DriverBackupDir {
 $script:D9PnpCache = $null
 $script:D9PnpCacheTime = [datetime]::MinValue
 
+function Clear-D9PnpCache { $script:D9PnpCache = $null }
+
 function Get-D9PnpEntities {
     if (-not $script:D9PnpCache -or ((Get-Date) - $script:D9PnpCacheTime).TotalSeconds -gt 60) {
         $script:D9PnpCache = @(Get-CimInstance Win32_PnPEntity -ErrorAction SilentlyContinue)

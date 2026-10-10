@@ -10,12 +10,28 @@ function Write-D9Log {
         [Parameter(Mandatory)][AllowEmptyString()][string]$Message,
         [ValidateSet('Info', 'Ok', 'Warn', 'Error', 'Detail')][string]$Level = 'Info'
     )
+    # Файл — першим, щоб у нього потрапляли й повідомлення фонових завдань вікна (там $D9OnLog)
+    if ($script:D9LogPath) {
+        try { Add-Content -Path $script:D9LogPath -Value ("{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}" -f (Get-Date), $Level, $Message) -Encoding UTF8 -ErrorAction Stop }
+        catch { }   # файл зайнятий іншим потоком — рядок пропускаємо, а не ламаємо операцію
+    }
     if ($script:D9OnLog) { & $script:D9OnLog $Message $Level; return }
     $color = @{ Info = 'Gray'; Ok = 'Green'; Warn = 'Yellow'; Error = 'Red'; Detail = 'DarkGray' }[$Level]
     Write-Host $Message -ForegroundColor $color
-    if ($script:D9LogPath) {
-        Add-Content -Path $script:D9LogPath -Value ("{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}" -f (Get-Date), $Level, $Message) -Encoding UTF8
-    }
+}
+
+# Постійний журнал виконання: %ProgramData%\Debloater9\logs\РРРР-ММ.log (або -LogPath).
+# Якщо писати нікуди (немає прав на файл, створений адміністратором) — працюємо без файлу.
+function Initialize-D9LogFile {
+    param([string]$Path, [string]$Mode)
+    if (-not $Path) { $Path = Join-Path (Join-Path (Get-D9DataRoot) 'logs') ('{0:yyyy-MM}.log' -f (Get-Date)) }
+    try {
+        $dir = Split-Path $Path
+        if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force -ErrorAction Stop | Out-Null }
+        $who = if (Test-D9IsAdmin) { 'адміністратор' } else { 'без прав адміністратора' }
+        Add-Content -Path $Path -Value ("`r`n{0:yyyy-MM-dd HH:mm:ss} ===== Debloater9 {1}, режим {2}, {3} =====" -f (Get-Date), $script:D9Version, $Mode, $who) -Encoding UTF8 -ErrorAction Stop
+        $script:D9LogPath = $Path
+    } catch { $script:D9LogPath = $null }
 }
 
 # Повертає текст потрібною мовою з об'єкта виду { "uk": "...", "en": "..." }

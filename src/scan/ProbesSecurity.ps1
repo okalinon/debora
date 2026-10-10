@@ -12,10 +12,10 @@ function Test-D9ProxyHosts {
     param($Check, $Ctx)
     $inet = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings' -ErrorAction SilentlyContinue
     if ($inet.ProxyEnable -eq 1 -and $inet.ProxyServer) {
-        New-D9Finding $Check warning "Увімкнено проксі-сервер: $($inet.ProxyServer)" 'Весь трафік браузерів іде через цей сервер. Якщо ви (або робота) його не налаштовували — це ознака шкідливої програми: вимкніть у Параметри → Мережа → Проксі.' @{ type = 'manual' } @((New-D9Link 'Параметри проксі' 'ms-settings:network-proxy')) -Key "$($Check.id):proxy"
+        New-D9Finding $Check warning "Увімкнено проксі-сервер: $($inet.ProxyServer)" 'Весь трафік браузерів іде через цей сервер. Якщо ви (або робота) його не налаштовували — це ознака шкідливої програми. Debloater9 вимкне проксі (відкочується в «Журналі змін»).' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'; name = 'ProxyEnable'; value = 0; kind = 'DWord' })) @((New-D9Link 'Параметри проксі' 'ms-settings:network-proxy')) -Key "$($Check.id):proxy"
     }
     if ($inet.AutoConfigURL) {
-        New-D9Finding $Check warning "Задано сценарій автоналаштування проксі: $($inet.AutoConfigURL)" 'Якщо ви його не налаштовували — це може перенаправляти трафік. Перевірте в Параметри → Мережа → Проксі.' @{ type = 'manual' } @((New-D9Link 'Параметри проксі' 'ms-settings:network-proxy')) -Key "$($Check.id):pac"
+        New-D9Finding $Check warning "Задано сценарій автоналаштування проксі: $($inet.AutoConfigURL)" 'Якщо ви його не налаштовували — це може перенаправляти трафік. Debloater9 прибере сценарій (відкочується в «Журналі змін»).' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'; name = 'AutoConfigURL'; delete = $true })) @((New-D9Link 'Параметри проксі' 'ms-settings:network-proxy')) -Key "$($Check.id):pac"
     }
     $hosts = "$env:SystemRoot\System32\drivers\etc\hosts"
     $lines = @(Get-Content $hosts -ErrorAction SilentlyContinue | ForEach-Object { ($_ -replace '#.*$', '').Trim() } | Where-Object { $_ })
@@ -23,7 +23,14 @@ function Test-D9ProxyHosts {
     $sensitive = 'google|microsoft|windowsupdate|apple|facebook|bank|paypal|privat24|monobank|binance|steam'
     $redirects = @($entries | Where-Object { $_.Ip -notin '0.0.0.0', '127.0.0.1', '::1', '::' -and $_.Host -match $sensitive })
     if ($redirects) {
-        New-D9Finding $Check critical "Файл hosts перенаправляє важливі сайти: $(($redirects | Select-Object -First 3 | ForEach-Object { "$($_.Host) → $($_.Ip)" }) -join ', ')" 'Типовий прийом шкідливих програм для крадіжки паролів. Відкрийте hosts від адміністратора й видаліть ці рядки, перевірте ПК антивірусом.' @{ type = 'manual' } -Key "$($Check.id):hosts"
+        # Копія hosts поруч — з неї відкат; прибираємо лише рядки з підозрілими перенаправленнями
+        $backup = "$hosts.d9-$((Get-Date).ToString('yyyyMMdd-HHmmss'))"
+        $names = ($redirects.Host | Sort-Object -Unique | ForEach-Object { "'$($_ -replace "'", "''")'" }) -join ','
+        $run = "Copy-Item -LiteralPath '$hosts' -Destination '$backup' -Force; `$bad = @($names); " +
+               "`$keep = Get-Content -LiteralPath '$hosts' | Where-Object { `$p = ((`$_ -replace '#.*$', '').Trim() -split '\s+'); -not (`$p.Count -ge 2 -and `$bad -contains `$p[1]) }; " +
+               "Set-Content -LiteralPath '$hosts' -Value `$keep -Encoding Default; & ipconfig.exe /flushdns | Out-Null"
+        $hostsFix = New-D9ActionsFix @(@{ type = 'command'; run = $run; undoRun = "Copy-Item -LiteralPath '$backup' -Destination '$hosts' -Force"; label = @{ uk = 'Прибрати підозрілі перенаправлення з hosts (копія поруч)'; en = 'Remove suspicious hosts redirects' } })
+        New-D9Finding $Check critical "Файл hosts перенаправляє важливі сайти: $(($redirects | Select-Object -First 3 | ForEach-Object { "$($_.Host) → $($_.Ip)" }) -join ', ')" 'Типовий прийом шкідливих програм для крадіжки паролів. Debloater9 прибере ці рядки (копія файлу зберігається поруч); після цього перевірте ПК антивірусом.' $hostsFix -Key "$($Check.id):hosts"
     } elseif ($entries.Count -gt 50) {
         New-D9Finding $Check info "У файлі hosts $($entries.Count) записів" 'Зазвичай це блокувальник реклами чи телеметрії. Якщо ви нічого такого не встановлювали — перевірте файл.' -Key "$($Check.id):hosts-many"
     }
@@ -94,7 +101,9 @@ function Test-D9RiskySoftware {
             $need = [version]$rule.minVersion
             if ($have -and $have -lt $need) {
                 $severity = if ($rule.exploited) { 'critical' } else { 'warning' }
-                New-D9Finding $Check $severity "$($app.DisplayName) $($app.DisplayVersion) має відомі вразливості" "$reason Оновіть щонайменше до $($rule.minVersion)." @{ type = 'manual' } @($rule.url | Where-Object { $_ } | ForEach-Object { New-D9Link 'Офіційний сайт' $_ }) -Key "$($Check.id):$($app.DisplayName)"
+                $fix = if ($rule.winget) { @{ type = 'apps'; ids = @($rule.winget) } } else { @{ type = 'manual' } }
+                $how = if ($rule.winget) { "Debloater9 оновить її через winget до актуальної версії." } else { "Оновіть щонайменше до $($rule.minVersion)." }
+                New-D9Finding $Check $severity "$($app.DisplayName) $($app.DisplayVersion) має відомі вразливості" "$reason $how" $fix @($rule.url | Where-Object { $_ } | ForEach-Object { New-D9Link 'Офіційний сайт' $_ }) -Key "$($Check.id):$($app.DisplayName)"
             }
         }
     }
@@ -131,11 +140,12 @@ function Test-D9DefenderConfig {
     $pref = try { Get-MpPreference -ErrorAction Stop } catch { $null }
     if ($pref) {
         if ($pref.PUAProtection -eq 0) {
-            New-D9Finding $Check suggestion 'Блокування потенційно небажаних програм вимкнено' 'Захисник не блокує рекламні «довантажувачі», тулбари й майнери. Увімкніть: Безпека Windows → Керування програмами й браузером → Захист на основі репутації.' @{ type = 'manual' } @($link) -Key "$($Check.id):pua"
+            New-D9Finding $Check suggestion 'Блокування потенційно небажаних програм вимкнено' 'Захисник не блокує рекламні «довантажувачі», тулбари й майнери. Debloater9 увімкне блокування.' (New-D9ActionsFix @(@{ type = 'command'; run = 'Set-MpPreference -PUAProtection Enabled'; undoRun = 'Set-MpPreference -PUAProtection Disabled'; test = '(Get-MpPreference).PUAProtection -eq 1'; label = @{ uk = 'Увімкнути блокування небажаних програм'; en = 'Enable PUA protection' } })) @($link) -Key "$($Check.id):pua"
         }
         $wide = @($pref.ExclusionPath | Where-Object { $_ -and $_ -notmatch '^N/A' -and ($_ -match '^[A-Za-z]:\\?$' -or $_ -match '\\(Users|Temp|AppData|Downloads|Windows)\\?$') })
         if ($wide) {
-            New-D9Finding $Check warning "Захисник не перевіряє цілі папки: $($wide -join ', ')" 'Такі винятки часто додають шкідливі програми, щоб сховатися. Якщо ви їх не додавали — видаліть у Безпека Windows → Винятки.' @{ type = 'manual' } @($link) -Key "$($Check.id):exclusions"
+            # Навмисно вручну: автоматична зміна винятків Захисника (і її відкат) виглядає для антивірусів як шкідлива дія
+            New-D9Finding $Check warning "Захисник не перевіряє цілі папки: $($wide -join ', ')" 'Такі винятки часто додають шкідливі програми, щоб сховатися. Якщо ви їх не додавали — видаліть у Безпека Windows → Захист від вірусів → Керування параметрами → Винятки.' @{ type = 'manual' } @($link) -Key "$($Check.id):exclusions"
         }
     }
 }
@@ -154,7 +164,7 @@ function Test-D9RestorePoints {
     $points = try { @(Get-ComputerRestorePoint -ErrorAction Stop) } catch { return New-D9Skip $Check 'потрібні права адміністратора' }
     $disabled = (Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore' -ErrorAction SilentlyContinue).DisableSR -eq 1
     if ($disabled -or -not $points) {
-        return New-D9Finding $Check warning 'Немає жодної точки відновлення системи' 'Якщо після оновлення чи драйвера Windows перестане працювати, відкотитися не буде куди. Увімкніть захист системи для диска C: (sysdm.cpl → Захист системи).' @{ type = 'maintenance'; action = 'restorePoint' } @((New-D9Link 'Захист системи' 'SystemPropertiesProtection.exe'))
+        return New-D9Finding $Check warning 'Немає жодної точки відновлення системи' 'Якщо після оновлення чи драйвера Windows перестане працювати, відкотитися не буде куди. Debloater9 увімкне захист системи для диска C: і створить першу точку.' @{ type = 'maintenance'; action = 'enableRestore' } @((New-D9Link 'Захист системи' 'SystemPropertiesProtection.exe'))
     }
     $last = ($points | ForEach-Object { [Management.ManagementDateTimeConverter]::ToDateTime($_.CreationTime) } | Sort-Object -Descending | Select-Object -First 1)
     $days = [int]($Ctx.Now - $last).TotalDays

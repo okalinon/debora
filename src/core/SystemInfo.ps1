@@ -1,5 +1,15 @@
 ﻿# Відомості про ОС і залізо, від яких залежать придатність твіків і рекомендації.
 
+# Числове значення властивості CIM напряму, повз надбудови модулів. Модуль Storage, якщо його
+# завантажено в сесії (Get-PhysicalDisk тощо), підміняє MediaType/BusType/HealthStatus/PartitionStyle
+# текстом («SSD», «Healthy») — і [int]$x.MediaType падає.
+function Get-D9CimInt {
+    param($Instance, [string]$Name)
+    $p = $Instance.CimInstanceProperties[$Name]
+    if ($p -and $null -ne $p.Value) { return [int]$p.Value }
+    return $null
+}
+
 # Напряму через CIM-класи Storage: модуль Storage (Get-PhysicalDisk) вантажиться кілька секунд
 function Get-D9SystemDisk {
     $ns = 'root\Microsoft\Windows\Storage'
@@ -9,12 +19,12 @@ function Get-D9SystemDisk {
         $partition = Get-CimInstance -Namespace $ns -ClassName MSFT_Partition -Filter "DriveLetter = '$letter'" -ErrorAction Stop | Select-Object -First 1
         if (-not $partition) { return $result }
         $disk = Get-CimInstance -Namespace $ns -ClassName MSFT_Disk -Filter "Number = $($partition.DiskNumber)" -ErrorAction Stop
-        $result.PartitionStyle = @{ 1 = 'MBR'; 2 = 'GPT' }[[int]$disk.PartitionStyle]
+        $result.PartitionStyle = @{ 1 = 'MBR'; 2 = 'GPT' }[(Get-D9CimInt $disk PartitionStyle)]
         $physical = Get-CimInstance -Namespace $ns -ClassName MSFT_PhysicalDisk -Filter "DeviceId = '$($partition.DiskNumber)'" -ErrorAction Stop
         if (-not $physical) { return $result }
-        $result.Type = if ([int]$physical.BusType -eq 17) { 'nvme' }       # 17 = NVMe
-                       elseif ([int]$physical.MediaType -eq 3) { 'hdd' }  # 3 = HDD
-                       elseif ([int]$physical.MediaType -eq 4) { 'ssd' }  # 4 = SSD
+        $result.Type = if ((Get-D9CimInt $physical BusType) -eq 17) { 'nvme' }       # 17 = NVMe
+                       elseif ((Get-D9CimInt $physical MediaType) -eq 3) { 'hdd' }  # 3 = HDD
+                       elseif ((Get-D9CimInt $physical MediaType) -eq 4) { 'ssd' }  # 4 = SSD
                        else { 'unknown' }
     } catch { }
     return $result

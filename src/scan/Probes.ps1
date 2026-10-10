@@ -372,7 +372,7 @@ function Test-D9KnownBloat {
     $found = @($found | Sort-Object Name -Unique)
     if (-not $found.Count) { return }
     $details = ($found | ForEach-Object { "$($_.Name) — $($_.Reason)" }) -join '; '
-    New-D9Finding $Check warning "Знайдено небажані програми: $($found.Count)" "Видаліть через Параметри → Програми: $details" @{ type = 'manual' } @((New-D9Link 'Встановлені програми' 'ms-settings:appsfeatures')) -Data ([pscustomobject]@{ programs = @($found.Name) })
+    New-D9Finding $Check warning "Знайдено небажані програми: $($found.Count)" "Debloater9 видалить їх (перед цим — точка відновлення): $details" @{ type = 'uninstall'; names = @($found.Name) } @((New-D9Link 'Встановлені програми' 'ms-settings:appsfeatures')) -Data ([pscustomobject]@{ programs = @($found.Name) })
 }
 
 # Твіки рекомендованого профілю з указаних категорій, які ще не застосовано

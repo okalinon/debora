@@ -98,6 +98,10 @@ param(
     [ValidatePattern('^\d{1,2}:\d{2}$')]
     [string]$At = '12:00',
 
+    # Видалити встановлені програми за назвою (можна з *): -Uninstall "McAfee*","WildTangent*"
+    [Parameter(ParameterSetName = 'Uninstall', Mandatory)]
+    [string[]]$Uninstall,
+
     [Parameter(ParameterSetName = 'ExportDrivers', Mandatory)]
     [string]$ExportDrivers,
 
@@ -199,6 +203,7 @@ param(
     [Parameter(ParameterSetName = 'InstallApp')]
     [Parameter(ParameterSetName = 'UpgradeApps')]
     [Parameter(ParameterSetName = 'DriverUpdate')]
+    [Parameter(ParameterSetName = 'Uninstall')]
     [switch]$Yes,
 
     [ValidateSet('uk', 'en')]
@@ -222,7 +227,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.12.0-dev'
+$script:D9Version  = '0.13.0-dev'
 $script:D9Language = $Language
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
@@ -485,6 +490,18 @@ switch ($PSCmdlet.ParameterSetName) {
         $cfg.Day = $Schedule; $cfg.Time = $At
         try { Register-D9MaintenanceTask -SourceScript $PSCommandPath -Config $cfg; exit $ExitCodes.Ok }
         catch { Write-D9Log "Не вдалося створити розклад: $($_.Exception.Message)" Error; exit $ExitCodes.Partial }
+    }
+
+    'Uninstall' {
+        $all = @(Get-D9UninstallList)
+        $progs = @($all | Where-Object { $n = $_.Name; @($Uninstall | Where-Object { $n -like $_ }).Count })
+        if (-not $progs) { Write-D9Log "Не знайдено встановлених програм за назвою: $($Uninstall -join ', ')" Warn; exit $ExitCodes.BadArgs }
+        foreach ($pr in $progs) { $c = Get-D9UninstallCommand $pr; Write-Host ("  {0} {1}{2}" -f $pr.Name, $pr.Version, $(if ($c -and -not $c.Silent) { '  (з вікном деінсталятора)' })) }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора (запускайте через run.bat).' Error; exit $ExitCodes.NotAdmin }
+        if (-not (Confirm-D9 "Видалити $($progs.Count) програм(и)?")) { exit $ExitCodes.Cancelled }
+        [void](New-D9RestorePoint)
+        $res = @(Uninstall-D9Programs -Programs $progs)
+        exit $(if (@($res | Where-Object { $_.result -notin 'removed', 'reboot' })) { $ExitCodes.Partial } else { $ExitCodes.Ok })
     }
 
     'ExportDrivers' {

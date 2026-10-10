@@ -176,7 +176,7 @@ function Show-D9Gui {
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
                    'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
-                   'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
+                   'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'StartupSummary', 'StartupGrid',
@@ -188,7 +188,7 @@ function Show-D9Gui {
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
     $actionButtons = @('BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
                        'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
-                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow')
+                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'BtnUninstRefresh', 'BtnUninstall')
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -226,6 +226,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $ui.BtnInstallDrivers.IsEnabled = [bool]$state.Packages
             $ui.BtnDriverOnlineInstall.IsEnabled = [bool]$state.OnlineCands
             if ($updateAppSelection) { & $updateAppSelection }
+            if ($updateUninstSel) { & $updateUninstSel }
             $ui.BtnOpenReport.IsEnabled = [bool]$state.ReportPath
         }
     }
@@ -948,6 +949,69 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             }
         }
     })
+    # ---------- Видалення програм ----------
+    $fillUninst = {
+        param($list)
+        $state.UninstRows = @(@($list | Where-Object { $_ }) | Sort-Object @{ Expression = { [bool]$_.Bloat }; Descending = $true }, Name | ForEach-Object {
+            $cmd = Get-D9UninstallCommand $_
+            $note = if ($_.Bloat) { @("Рекомендуємо видалити: $($_.Bloat)", '#C62828') }
+                    elseif ($_.Keep) { @('Потрібна іншим програмам або обладнанню — краще не видаляти', '#B26A00') }
+                    elseif ($cmd -and -not $cmd.Silent) { @('відкриється вікно деінсталятора', '#5D6675') }
+                    else { @('', '#5D6675') }
+            New-D9Row @{ Title = $_.Name; Detail = "Версія: $($_.Version)$(if ($cmd) { '; видалення: ' + $(if ($cmd.Silent) { 'тихо' } else { 'з вікном деінсталятора' }) })"
+                         Group = $_.Publisher; Note = $(if ($_.Size) { Format-D9Size $_.Size } else { '' }); Kind = $(if ($_.InstallDate) { ([datetime]$_.InstallDate).ToString('dd.MM.yyyy') } else { '' })
+                         Status = $note[0]; Color = $note[1]; Tag = $_ }
+        })
+        & $showUninst
+        $bloat = @($state.UninstRows | Where-Object { $_.Tag.Bloat }).Count
+        $ui.UninstSummary.Text = "Встановлено програм: $(@($state.UninstRows).Count)$(if ($bloat) { ", з них рекомендуємо видалити: $bloat (вгорі списку)" }). Більшість видаляється тихо; для решти відкриється звичайний деінсталятор."
+        & $updateUninstSel
+    }
+    $showUninst = {
+        $q = $ui.UninstSearch.Text.Trim()
+        $onlyBloat = [bool]$ui.ChkUninstBloat.IsChecked
+        Set-D9Items $ui.UninstGrid @($state.UninstRows | Where-Object { (-not $onlyBloat -or $_.Tag.Bloat) -and (-not $q -or $_.Title -like "*$q*" -or $_.Group -like "*$q*") })
+    }
+    $updateUninstSel = {
+        $sel = @($state.UninstRows | Where-Object Selected)
+        $size = [long](($sel | ForEach-Object { $_.Tag.Size } | Measure-Object -Sum).Sum)
+        $ui.UninstSelectedText.Text = if ($sel) { "Вибрано: $($sel.Count)$(if ($size) { ", звільниться ≈ $(Format-D9Size $size)" })" } else { 'Нічого не вибрано' }
+        $ui.BtnUninstall.Content = if ($sel) { "Видалити вибрані ($($sel.Count))" } else { 'Видалити вибрані' }
+        $ui.BtnUninstall.IsEnabled = [bool]$sel -and -not $state.Job
+    }
+    $loadUninst = { & $startJob 'Читання списку програм' { @(Get-D9UninstallList) } $null { param($r) & $fillUninst @($r) } }
+    $ui.UninstSearch.Add_TextChanged({ $ui.UninstSearchHint.Visibility = if ($ui.UninstSearch.Text) { 'Collapsed' } else { 'Visible' }; & $showUninst })
+    $ui.ChkUninstBloat.Add_Click({ & $showUninst })
+    $ui.UninstGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateUninstSel })
+    $ui.BtnUninstRefresh.Add_Click($loadUninst)
+    $ui.BtnUninstall.Add_Click({
+        $sel = @($state.UninstRows | Where-Object Selected)
+        if (-not $sel) { return }
+        if (-not (& $needAdmin)) { return }
+        $lines = @($sel | ForEach-Object {
+            $c = Get-D9UninstallCommand $_.Tag
+            "• $($_.Title)$(if ($c -and -not $c.Silent) { '  (відкриється вікно деінсталятора)' })$(if ($_.Tag.Keep) { '  ⚠ потрібна іншим програмам' })"
+        })
+        if (-not (Show-D9TextDialog $win 'Видалення програм' "Буде видалено $($sel.Count) програм(и). Перед цим створюється точка відновлення; повернути програму — встановити знову (вкладка «Програми»)." ($lines -join "`r`n") 'Видалити')) { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Видалення програм' {
+            param($a)
+            Write-D9Log 'Створення точки відновлення...'
+            [void](New-D9RestorePoint)
+            @(Uninstall-D9Programs -Programs $a.Programs)
+        } @{ Programs = @($sel | ForEach-Object Tag) } {
+            param($res)
+            $res = @($res | Where-Object { $_ })
+            $ok = @($res | Where-Object { $_.result -in 'removed', 'reboot' })
+            $bad = @($res | Where-Object { $_.result -notin 'removed', 'reboot' })
+            $msg = "Видалено: $($ok.Count) з $($res.Count)."
+            if ($bad) { $msg += "`n" + (($bad | ForEach-Object { "• $($_.name): $($_.message)" }) -join "`n") }
+            if (@($res | Where-Object result -eq 'reboot')) { $msg += "`nДля завершення потрібне перезавантаження." }
+            [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'OK', $(if ($bad) { 'Warning' } else { 'Information' }))
+            & $loadUninst
+        }
+    })
+
     # ---------- Автоматичне обслуговування ----------
     $dayNames = [ordered]@{ Monday = 'понеділок'; Tuesday = 'вівторок'; Wednesday = 'середа'; Thursday = 'четвер'; Friday = 'п''ятниця'; Saturday = 'субота'; Sunday = 'неділя' }
     foreach ($d in $dayNames.Values) { [void]$ui.MtDay.Items.Add($d) }
@@ -1074,6 +1138,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($e.OriginalSource -ne $ui.Tabs) { return }
         if ($ui.Tabs.SelectedItem.Header -eq 'Автозавантаження' -and -not $state.StartupRows -and -not $state.Job) { & $loadStartup }
         if ($ui.Tabs.SelectedItem.Header -eq 'Програми' -and -not $state.AppsLoaded -and -not $state.Job) { & $loadApps }
+        if ($ui.Tabs.SelectedItem.Header -eq 'Видалення' -and $null -eq $state.UninstRows -and -not $state.Job) { & $loadUninst }
         if ($ui.Tabs.SelectedItem.Header -eq 'Перевстановлення' -and $null -eq $state.UsbMedia) { & $fillUsb }
     })
     $win.Add_Closing({ param($sender, $e)

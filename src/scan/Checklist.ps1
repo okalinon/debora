@@ -85,8 +85,13 @@ function New-D9Checklist {
     }
     # 52 — очищення вручну (Windows.old, кеш браузерів, «Завантаження»...)
     foreach ($x in (& $free | Where-Object { $_.category -eq 'cleanliness' -and $_.fix.type -eq 'manual' })) { & $manual 52 $x }
-    # 55 — небажані сторонні програми
-    foreach ($x in (& $free | Where-Object checkId -eq 'perf.known-bloat')) { & $manual 55 $x }
+    # 55 — небажані сторонні програми: видалення деінсталяторами (тихо, де можливо)
+    foreach ($x in (& $free | Where-Object checkId -eq 'perf.known-bloat')) {
+        if ($x.fix.type -eq 'uninstall') {
+            & $add (New-D9ChecklistItem 55 'uninstall' "Видалити небажані програми ($(@($x.fix.names).Count))" $x.details $x.links @{ type = 'uninstall'; names = @($x.fix.names) } (& $checkVerify $x)) | Out-Null
+            $used[$x.key] = $true
+        } else { & $manual 55 $x }
+    }
 
     # 41, 60-63 — автоматичні налаштування з каталогу твіків, згруповані за змістом
     $tweakGroups = @(
@@ -144,7 +149,7 @@ function New-D9Checklist {
     }
 
     # 20 — точка відновлення перед першою автоматичною зміною
-    $autoChanges = @($items | Where-Object { $_.action.type -in 'tweaks', 'maintenance', 'actions' })
+    $autoChanges = @($items | Where-Object { $_.action.type -in 'tweaks', 'maintenance', 'actions', 'uninstall' })
     $rpFindings = @(& $free | Where-Object { $_.fix.type -eq 'maintenance' -and $_.fix.action -eq 'restorePoint' })
     if ($autoChanges -or $rpFindings) {
         $why = if ($rpFindings) { ($rpFindings.title) -join '; ' } else { 'Щоб будь-яку зміну можна було скасувати.' }
@@ -264,6 +269,15 @@ function Invoke-D9ChecklistStep {
             $session = Invoke-D9Plan -Plan $plan -SystemInfo $Context.System -Selection "checklist: $($Item.title)" -NoRestorePoint:$restoreDone
             $err = @($session.entries | Where-Object result -eq 'error').Count
             $Item.note = "сесія $($session.id)$(if ($err) { ", помилок: $err" })"
+        }
+        'uninstall' {
+            $progs = @(Get-D9UninstallList | Where-Object { @($Item.action.names) -contains $_.Name })
+            if (-not $progs) { Write-D9Log '  Ці програми вже видалено.' Ok }
+            else {
+                $res = @(Uninstall-D9Programs -Programs $progs)
+                $bad = @($res | Where-Object { $_.result -notin 'removed', 'reboot' })
+                if ($bad) { $Item.note = "не видалено: $(($bad.name) -join ', ')" }
+            }
         }
         'apps' {
             $res = @(Update-D9Apps -Ids @($Item.action.ids))

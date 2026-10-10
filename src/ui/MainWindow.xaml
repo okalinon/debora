@@ -391,6 +391,48 @@
           </Border>
         </Grid>
       </TabItem>
+      <!-- ================= Видалення програм ================= -->
+      <TabItem Header="Видалення">
+        <Grid Margin="20">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <Grid>
+            <TextBox x:Name="UninstSearch" FontSize="14" Padding="10,7" VerticalContentAlignment="Center"/>
+            <TextBlock x:Name="UninstSearchHint" Text="🔍  Пошук серед встановлених програм" Foreground="#5D6675" FontSize="14" Margin="13,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+          </Grid>
+          <DockPanel Grid.Row="1" Margin="0,10,0,8">
+            <CheckBox x:Name="ChkUninstBloat" DockPanel.Dock="Right" Content="Лише рекомендовані до видалення" VerticalAlignment="Center"/>
+            <TextBlock x:Name="UninstSummary" Foreground="#5D6675" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="Позначте програми, які більше не потрібні. Більшість видаляється тихо; для решти відкриється звичайний деінсталятор."/>
+          </DockPanel>
+          <DataGrid x:Name="UninstGrid" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" RowHeaderWidth="0">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="" Width="36">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Програма" Binding="{Binding Title}" Width="3*" MinWidth="220" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
+              </DataGridTextColumn>
+              <DataGridTextColumn Header="Видавець" Binding="{Binding Group}" Width="2*" MinWidth="120" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Розмір" Binding="{Binding Note}" Width="80" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Встановлено" Binding="{Binding Kind}" Width="95" IsReadOnly="True"/>
+              <DataGridTemplateColumn Header="Примітка" Width="3*" MinWidth="200">
+                <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding Color}" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+          <Border Grid.Row="3" BorderBrush="#E1E4EA" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="BtnUninstRefresh" Content="Оновити список"/>
+                <Button x:Name="BtnUninstall" Style="{StaticResource Primary}" Content="Видалити вибрані" IsEnabled="False"/>
+              </StackPanel>
+              <TextBlock x:Name="UninstSelectedText" VerticalAlignment="Center" Foreground="#5D6675" Text="Нічого не вибрано"/>
+            </DockPanel>
+          </Border>
+        </Grid>
+      </TabItem>
       <!-- ================= Автозавантаження ================= -->
       <TabItem Header="Автозавантаження">
         <Grid Margin="20">

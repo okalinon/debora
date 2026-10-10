@@ -25,6 +25,8 @@
 | `-Undo <id>` | Відкотити сесію |
 | `-LogPath` | Журнал роботи в інший файл (типово — `%ProgramData%\Debloater9\logs\РРРР-ММ.log`) |
 | `-DriverUpdate [-WhatIf] [-IncludeOptional] [-Yes]` | Знайти в інтернеті (Microsoft Update Catalog + Windows Update) драйвери для пристроїв без драйвера й новіші версії, завантажити з перевіркою SHA-256 і встановити з відкатом; на Dell / Lenovo / HP — ще й утиліта виробника |
+| `-Maintain` | Автоматичне обслуговування зараз: точка відновлення, очищення, бази Захисника, програми (winget), драйвери (каталог Microsoft), за бажанням — оновлення Windows; швидке сканування й сповіщення. Кроки — з `%ProgramData%\Debloater9\maintenance.json` |
+| `-Schedule <день>\|Off [-At 12:00]` | Щотижневий запуск `-Maintain` через Планувальник (від поточного користувача з найвищими правами); копія програми — у `%ProgramData%\Debloater9\app` із доступом на запис лише для SYSTEM і адміністраторів |
 | `-ExportDrivers <папка>` | Зберегти всі сторонні драйвери цього ПК (`pnputil /export-driver *`) |
 | `-PrepareUsb <диск> [-UserName] [-AccountPassword] [-Edition Home\|Pro] [-Preset] [-KeepRequirements] [-NoDrivers]` | Доповнити флешку з Windows: `autounattend.xml` (без запитань, локальний акаунт, обхід вимог Windows 11), драйвери цього ПК у `$WinpeDriver$`, Debloater9 для налаштування після першого входу |
 | `-Apps` | Каталог програм (`config/apps.json`) і що вже встановлено |

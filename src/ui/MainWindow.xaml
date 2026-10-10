@@ -459,6 +459,29 @@
                   <TextBlock x:Name="WuDriversState" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/></StackPanel>
               </DockPanel>
             </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="Автоматичне обслуговування за розкладом" FontWeight="SemiBold" FontSize="14"/>
+                <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,2,0,8"
+                           Text="Раз на тиждень Debloater9 сам створить точку відновлення й виконає вибране, потім просканує ПК і покаже сповіщення з підсумком. Працює, коли ви увійшли в Windows; пропущений запуск виконається при наступному вході."/>
+                <CheckBox x:Name="ChkMtCleanup" Content="Очищення диска (тимчасові файли, кеш оновлень, залишки інсталяторів)" Margin="0,2"/>
+                <CheckBox x:Name="ChkMtDefender" Content="Антивірусні бази Захисника" Margin="0,2"/>
+                <CheckBox x:Name="ChkMtApps" Content="Оновлення програм (winget)" Margin="0,2"/>
+                <CheckBox x:Name="ChkMtDrivers" Content="Новіші драйвери з каталогу Microsoft (лише рекомендовані)" Margin="0,2"/>
+                <CheckBox x:Name="ChkMtWindows" Content="Оновлення Windows (зазвичай Windows ставить їх сама)" Margin="0,2"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <TextBlock Text="Коли:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <ComboBox x:Name="MtDay" Width="140" Margin="0,0,8,0"/>
+                  <TextBox x:Name="MtTime" Width="60" Text="12:00" VerticalContentAlignment="Center" Padding="4,3"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button x:Name="BtnScheduleOn" Style="{StaticResource Primary}" Content="Увімкнути розклад"/>
+                  <Button x:Name="BtnScheduleOff" Content="Вимкнути"/>
+                  <Button x:Name="BtnMaintainNow" Content="Виконати зараз"/>
+                </StackPanel>
+                <TextBlock x:Name="ScheduleState" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

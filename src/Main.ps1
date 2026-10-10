@@ -42,6 +42,10 @@
 .EXAMPLE
     .\Debloater9.ps1 -PrepareUsb E: -UserName Оля       # флешка з Windows → встановлення без запитань + драйвери
 .EXAMPLE
+    .\Debloater9.ps1 -Schedule Sunday -At 12:00     # щотижневе автоматичне обслуговування
+.EXAMPLE
+    .\Debloater9.ps1 -Maintain                      # обслуговування зараз (його ж запускає розклад)
+.EXAMPLE
     .\Debloater9.ps1 -Apps                        # каталог програм і що вже встановлено
 .EXAMPLE
     .\Debloater9.ps1 -InstallApp Google.Chrome,7zip.7zip -Yes
@@ -75,6 +79,19 @@ param(
     # Разом із необов'язковими: заміна робочих драйверів Windows на системних пристроях
     [Parameter(ParameterSetName = 'DriverUpdate')]
     [switch]$IncludeOptional,
+
+    # Автоматичне обслуговування зараз: точка відновлення, очищення, бази Захисника, програми, драйвери (кроки — з налаштувань розкладу)
+    [Parameter(ParameterSetName = 'Maintain', Mandatory)]
+    [switch]$Maintain,
+
+    # Щотижневий розклад обслуговування (день тижня) або Off — вимкнути
+    [Parameter(ParameterSetName = 'Schedule', Mandatory)]
+    [ValidateSet('Off', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')]
+    [string]$Schedule,
+
+    [Parameter(ParameterSetName = 'Schedule')]
+    [ValidatePattern('^\d{1,2}:\d{2}$')]
+    [string]$At = '12:00',
 
     [Parameter(ParameterSetName = 'ExportDrivers', Mandatory)]
     [string]$ExportDrivers,
@@ -200,7 +217,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.9.0-dev'
+$script:D9Version  = '0.10.0-dev'
 $script:D9Language = $Language
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
@@ -447,6 +464,23 @@ switch ($PSCmdlet.ParameterSetName) {
         exit $(if ($errors) { $ExitCodes.Partial } else { $ExitCodes.Reboot })
     }
 
+    'Maintain' {
+        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора.' Error; exit $ExitCodes.NotAdmin }
+        $summary = Invoke-D9Maintenance -Catalog $catalog -SystemInfo $sys
+        Show-D9Toast 'Debloater9: обслуговування завершено' (Format-D9MaintenanceSummary $summary)
+        exit $(if (@($summary.results | Where-Object { -not $_.ok })) { $ExitCodes.Partial } elseif ($summary.reboot) { $ExitCodes.Reboot } else { $ExitCodes.Ok })
+    }
+
+    'Schedule' {
+        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора (запускайте через run.bat).' Error; exit $ExitCodes.NotAdmin }
+        if ($Schedule -eq 'Off') { Unregister-D9MaintenanceTask; exit $ExitCodes.Ok }
+        if (-not $script:D9Embedded) { Write-D9Log 'Розклад працює лише зі зібраним Debloater9.ps1 (build\Compile.ps1).' Error; exit $ExitCodes.BadArgs }
+        $cfg = Get-D9MaintenanceConfig
+        $cfg.Day = $Schedule; $cfg.Time = $At
+        try { Register-D9MaintenanceTask -SourceScript $PSCommandPath -Config $cfg; exit $ExitCodes.Ok }
+        catch { Write-D9Log "Не вдалося створити розклад: $($_.Exception.Message)" Error; exit $ExitCodes.Partial }
+    }
+
     'ExportDrivers' {
         if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора (запускайте через run.bat).' Error; exit $ExitCodes.NotAdmin }
         try { $r = Export-D9Drivers -Folder $ExportDrivers; Write-D9Log "Щоб поставити їх на іншу (таку саму) систему: -DriverInstall `"$ExportDrivers`"" Detail; exit $ExitCodes.Ok }
@@ -666,6 +700,7 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host "  -Apps / -InstallApp / -UpgradeApps   програми через winget"
         Write-Host "  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити"
         Write-Host "  -PrepareUsb E: -UserName Ім'я   флешка для перевстановлення Windows без запитань і з драйверами"
+        Write-Host "  -Schedule Sunday -At 12:00      щотижневе автоматичне обслуговування (-Schedule Off — вимкнути)"
         Write-Host "  -ListTweaks                     каталог твіків і їхній стан"
         Write-Host "  -Preset Recommended -WhatIf     що зміниться за рекомендованим профілем"
         Write-Host "  -Preset Recommended -Yes        застосувати"

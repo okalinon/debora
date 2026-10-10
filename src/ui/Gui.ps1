@@ -116,6 +116,7 @@ function Show-D9Gui {
                    'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore', 'AppGrid',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
+                   'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState') {
         $ui[$n] = $win.FindName($n)
@@ -125,7 +126,7 @@ function Show-D9Gui {
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
     $actionButtons = @('BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
                        'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
-                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers')
+                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow')
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -801,6 +802,61 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
     })
 
+    # ---------- Автоматичне обслуговування ----------
+    $dayNames = [ordered]@{ Monday = 'понеділок'; Tuesday = 'вівторок'; Wednesday = 'середа'; Thursday = 'четвер'; Friday = 'п''ятниця'; Saturday = 'субота'; Sunday = 'неділя' }
+    foreach ($d in $dayNames.Values) { [void]$ui.MtDay.Items.Add($d) }
+    $mtBoxes = [ordered]@{ cleanup = 'ChkMtCleanup'; defender = 'ChkMtDefender'; apps = 'ChkMtApps'; drivers = 'ChkMtDrivers'; windowsUpdate = 'ChkMtWindows' }
+    $readSchedule = {
+        [pscustomobject]@{
+            Steps = @($mtBoxes.Keys | Where-Object { $ui[$mtBoxes[$_]].IsChecked })
+            Day   = @($dayNames.Keys)[[math]::Max(0, $ui.MtDay.SelectedIndex)]
+            Time  = $ui.MtTime.Text.Trim()
+        }
+    }
+    $refreshSchedule = {
+        $cfg = Get-D9MaintenanceConfig
+        foreach ($k in $mtBoxes.Keys) { $ui[$mtBoxes[$k]].IsChecked = @($cfg.Steps) -contains $k }
+        $ui.MtDay.SelectedIndex = [math]::Max(0, [array]::IndexOf(@($dayNames.Keys), [string]$cfg.Day))
+        $ui.MtTime.Text = $cfg.Time
+        $task = try { Get-D9MaintenanceTask } catch { $null }
+        $last = Get-D9MaintenanceLast
+        $lines = @()
+        $lines += if ($task) { "Розклад увімкнено: щотижня, $($dayNames[[string]$cfg.Day]) о $($cfg.Time)$(if ($task.NextRun) { '; наступний запуск ' + ([datetime]$task.NextRun).ToString('dd.MM.yyyy HH:mm') })." } else { 'Розклад вимкнено.' }
+        if ($last) { $lines += "Останнє обслуговування $(([datetime]$last.finished).ToString('dd.MM.yyyy HH:mm')): $(Format-D9MaintenanceSummary $last)." }
+        $ui.ScheduleState.Text = $lines -join "`n"
+        $ui.BtnScheduleOn.Content = if ($task) { 'Зберегти розклад' } else { 'Увімкнути розклад' }
+    }
+    $ui.BtnScheduleOn.Add_Click({
+        if (-not (& $needAdmin)) { return }
+        $src = Join-Path (Split-Path $DriverDir) 'Debloater9.ps1'
+        if (-not $script:D9Embedded -or -not (Test-Path $src)) { [void][Windows.MessageBox]::Show($win, 'Розклад працює лише зі зібраним Debloater9.ps1 (запуск через run.bat).', 'Debloater9', 'OK', 'Warning'); return }
+        $cfg = & $readSchedule
+        if (-not $cfg.Steps) { [void][Windows.MessageBox]::Show($win, 'Позначте хоча б одну дію.', 'Debloater9'); return }
+        if ($cfg.Time -notmatch '^\d{1,2}:\d{2}$') { [void][Windows.MessageBox]::Show($win, 'Час — у форматі 12:00.', 'Debloater9'); return }
+        try { Register-D9MaintenanceTask -SourceScript $src -Config $cfg; & $refreshSchedule }
+        catch { [void][Windows.MessageBox]::Show($win, "Не вдалося створити розклад: $($_.Exception.Message)", 'Debloater9', 'OK', 'Error') }
+    })
+    $ui.BtnScheduleOff.Add_Click({
+        if (-not (& $needAdmin)) { return }
+        try { Unregister-D9MaintenanceTask } catch { }
+        & $refreshSchedule
+    })
+    $ui.BtnMaintainNow.Add_Click({
+        if (-not (& $needAdmin)) { return }
+        $cfg = & $readSchedule
+        if (-not $cfg.Steps) { [void][Windows.MessageBox]::Show($win, 'Позначте хоча б одну дію.', 'Debloater9'); return }
+        if ([Windows.MessageBox]::Show($win, "Виконати обслуговування зараз?`n$(($cfg.Steps | ForEach-Object { '• ' + $script:D9MaintenanceSteps[$_] }) -join "`n")`n`nСпершу буде створено точку відновлення. Може тривати від кількох хвилин до години.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        Save-D9MaintenanceConfig $cfg
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Автоматичне обслуговування' { param($a) Invoke-D9Maintenance -Catalog $a.Catalog -SystemInfo $a.Sys -Steps $a.Steps } @{ Catalog = $Catalog; Sys = $SystemInfo; Steps = $cfg.Steps } {
+            param($s)
+            & $refreshSchedule; & $fillSessions
+            $msg = "Готово. $(Format-D9MaintenanceSummary $s)."
+            if ($s.reboot) { if ([Windows.MessageBox]::Show($win, "$msg`n`nПерезавантажити комп'ютер зараз?", 'Debloater9', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force } }
+            else { [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9') }
+        }
+    })
+
     # ---------- Перевстановлення Windows ----------
     $fillUsb = {
         $state.UsbMedia = @(Get-D9InstallMedia)
@@ -863,6 +919,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             } catch { }
         }
         & $refreshMaintenance
+        & $refreshSchedule
         & $loadTweakStates
     })
     # Список автозавантаження читаємо при першому відкритті вкладки (щоб не займати фоновий потік на старті)

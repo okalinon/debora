@@ -127,7 +127,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.6.0-dev'
+$script:D9Version  = '0.6.1-dev'
 $script:D9Language = $Language
 $script:D9LogPath  = $LogPath
 Initialize-D9Console
@@ -379,11 +379,15 @@ switch ($PSCmdlet.ParameterSetName) {
             $date = if ($p.Package.Inf.Date) { $p.Package.Inf.Date.ToString('dd.MM.yyyy') } else { '?' }
             Write-Host ("      зараз: {0}; у папці: {1} ({2}) — {3}" -f $(if ($cur) { $cur } else { 'немає' }), $p.Package.Inf.Version, $date, (Split-Path $p.Package.Inf.Path -Leaf)) -ForegroundColor DarkGray
         }
+        if ($found.Installers) {
+            Write-Host ""
+            Write-Host "Пакети лише з інсталятором — запустіть вручну, якщо цей пристрій є в ПК ($(@($found.Installers).Count)):" -ForegroundColor Yellow
+            foreach ($i in $found.Installers) { Write-Host "  - $($i.Package): $($i.Path)" -ForegroundColor DarkGray }
+        }
         $todo = @($found.Packages | Where-Object Status -ne 'current')
         if (-not $todo) {
             Write-Host ""
             Write-D9Log "Нічого встановлювати: усе з папки вже стоїть або новіше." Ok
-            if ($found.Installers) { Write-Host "Інсталятори (.exe/.msi) у папці не аналізуються — їх можна запустити вручну: $(($found.Installers | Select-Object -First 5).Name -join ', ')" -ForegroundColor DarkGray }
             exit $ExitCodes.Ok
         }
         if (-not (Test-D9IsAdmin)) { Write-D9Log "Для встановлення потрібні права адміністратора (запускайте через run.bat)." Error; exit $ExitCodes.NotAdmin }

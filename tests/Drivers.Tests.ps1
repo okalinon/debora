@@ -126,6 +126,40 @@ Describe 'Підбір драйверів з папки' {
     }
 }
 
+Describe 'Захист від чужих драйверів (загальні ID)' {
+    It '<id> → конкретний: <specific>' -TestCases @(
+        @{ id = 'PCI\VEN_1002&DEV_9850&SUBSYS_08651025'; specific = $true }
+        @{ id = 'USB\VID_0489&PID_E032'; specific = $true }
+        @{ id = 'HDAUDIO\FUNC_01&VEN_10EC&DEV_0255'; specific = $true }
+        @{ id = 'ACPI\ENE0300'; specific = $true }
+        @{ id = 'HID\VEN_ELAN&DEV_0501'; specific = $true }
+        @{ id = 'HID\SYN1B7B&Col04'; specific = $true }
+        @{ id = 'ACPI\PNP0A08'; specific = $false }
+        @{ id = 'ACPI\VEN_PNP&DEV_0A08'; specific = $false }
+        @{ id = '*PNP0C50'; specific = $false }
+        @{ id = 'PCI\CC_0C0330'; specific = $false }
+        @{ id = 'USB\Class_09'; specific = $false }
+    ) {
+        param($id, $specific)
+        Test-D9SpecificId $id | Should -Be $specific
+    }
+    It 'INF лише із загальним ID (шина PCI Express) не підходить жодному пристрою' {
+        $dir = Join-Path $TestDrive 'generic'
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        $inf = "[Version]`r`nClass=System`r`nDriverVer=01/01/2030,99.0.0.0`r`n[Manufacturer]`r`n%M%=Models,NTamd64`r`n[Models.NTamd64]`r`n%D%=Install, ACPI\PNP0A08`r`n%D%=Install, ACPI\PNP0A03`r`n"
+        [IO.File]::WriteAllText("$dir\amdkmpfd.inf", $inf, [Text.Encoding]::ASCII)
+        @((Find-D9DriverPackages -Folder $dir).Packages).Count | Should -Be 0
+    }
+    It 'пакет лише з інсталятором потрапляє в список «запустити вручну»' {
+        $dir = Join-Path $TestDrive 'exeonly'
+        New-Item -ItemType Directory -Path "$dir\Bluetooth_X\sub" -Force | Out-Null
+        [IO.File]::WriteAllText("$dir\Bluetooth_X\sub\Bluetooth_Setup.EXE", 'MZ', [Text.Encoding]::ASCII)
+        $f = Find-D9DriverPackages -Folder $dir
+        @($f.Installers).Count | Should -Be 1
+        $f.Installers[0].Name | Should -Be 'Bluetooth_Setup.EXE'
+    }
+}
+
 Describe 'Звіт про драйвери' {
     It 'будується на цьому ПК' {
         $rep = Get-D9DriverReport (Get-D9SystemInfo)

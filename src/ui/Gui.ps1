@@ -318,8 +318,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         })
         $ui.BtnInstallDrivers.IsEnabled = [bool]$state.Packages
         $msg = "INF-файлів у папці: $($found.Infs), підходять до цього ПК: $(@($found.Packages).Count)."
-        if ($found.Installers) { $msg += " Інсталятори .exe/.msi ($(@($found.Installers).Count)) програма не запускає — їх можна відкрити вручну." }
         & $log $msg
+        if ($found.Installers) {
+            $msg += " Пакетів лише з інсталятором: $(@($found.Installers).Count) — див. журнал виконання."
+            & $log 'Пакети лише з інсталятором (.exe/.msi) — запустіть вручну, якщо цей пристрій є в ПК:'
+            foreach ($i in $found.Installers) { & $log "  • $($i.Package): $($i.Path)" }
+            $ui.LogExpander.IsExpanded = $true
+        }
         $ui.StatusText.Text = $msg
     }
 

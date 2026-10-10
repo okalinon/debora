@@ -60,12 +60,35 @@ function Get-D9InfInfo {
     [pscustomobject]@{ Path = $Path; Class = $class; Provider = $provider; Version = $version; Date = $date; Ids = $ids; Is64 = $is64 }
 }
 
+# Чи ідентифікує ID конкретне обладнання виробника. Загальні ID (ACPI\PNP0A08 — шина PCI Express,
+# *PNP0C50, PCI\CC_0C03 — клас пристрою) є в кожному ПК: за ними драйвер іншого виробника «підійшов» би
+# до чужого заліза (наприклад, фільтр шини AMD — до ПК з Intel). Такі збіги не враховуємо.
+function Test-D9SpecificId {
+    param([string]$Id)
+    $u = "$Id".ToUpper()
+    if ($u -match '^PCI\\VEN_[0-9A-F]{4}&DEV_[0-9A-F]{4}') { return $true }
+    if ($u -match '^USB\\VID_[0-9A-F]{4}&PID_[0-9A-F]{4}') { return $true }
+    if ($u -match '^(HDAUDIO|INTELAUDIO)\\FUNC_[0-9A-F]+&VEN_[0-9A-F]{4}&DEV_[0-9A-F]{4}') { return $true }
+    if ($u -match '^HID\\(VID|VEN)_[0-9A-F]{4}&(PID|DEV)_[0-9A-F]{4}') { return $true }
+    if ($u -match '^(ACPI|HID)\\VEN_([A-Z0-9]+)&DEV_') { return $Matches[2] -ne 'PNP' }
+    if ($u -match '^(ACPI|HID)\\([A-Z]{3,4})[0-9A-F]{4}\b') { return $Matches[2] -notin 'PNP', 'VEN' }
+    if ($u -match '^(BTHENUM|BTHLEDEVICE)\\.*(VID|VEN)&?[_]?[0-9A-F]{4}') { return $true }
+    return $false
+}
+
 function Expand-D9DriverArchives {
     param([string]$Folder)
-    foreach ($zip in Get-ChildItem $Folder -Filter '*.zip' -Recurse -File -ErrorAction SilentlyContinue) {
-        $target = Join-Path $zip.DirectoryName ("_розпаковано\" + $zip.BaseName)
-        if (Test-Path $target) { continue }
-        try { Expand-Archive -LiteralPath $zip.FullName -DestinationPath $target -Force } catch { Write-D9Log "  Не вдалося розпакувати $($zip.Name): $($_.Exception.Message)" Warn }
+    # Кілька проходів: архіви бувають усередині архівів
+    for ($pass = 0; $pass -lt 3; $pass++) {
+        $new = 0
+        foreach ($zip in Get-ChildItem $Folder -Filter '*.zip' -Recurse -File -ErrorAction SilentlyContinue) {
+            $target = Join-Path $zip.DirectoryName ("_розпаковано\" + $zip.BaseName)
+            if (Test-Path $target) { continue }
+            Write-D9Log "  Розпаковую $($zip.Name)..." Detail
+            try { Expand-Archive -LiteralPath $zip.FullName -DestinationPath $target -Force; $new++ }
+            catch { Write-D9Log "  Не вдалося розпакувати $($zip.Name): $($_.Exception.Message)" Warn }
+        }
+        if (-not $new) { break }
     }
 }
 
@@ -86,14 +109,15 @@ function Find-D9DriverPackages {
         $inf = Get-D9InfInfo $f.FullName
         if (-not $inf -or -not $inf.Ids) { continue }
         if ([Environment]::Is64BitOperatingSystem -and -not $inf.Is64) { continue }
-        $hits = @($inf.Ids | ForEach-Object { $index[$_.ToUpper()] } | Where-Object { $_ })
+        $specific = @($inf.Ids | Where-Object { Test-D9SpecificId $_ })
+        $hits = @($specific | ForEach-Object { $index[$_.ToUpper()] } | Where-Object { $_ })
         if (-not $hits) { continue }
         $matchedDevices = @($hits.Device | Sort-Object PNPDeviceID -Unique)
         [pscustomobject]@{
             Inf     = $inf
             Devices = $matchedDevices
             Exact   = [bool]($hits | Where-Object Exact)
-            Ids     = @($inf.Ids | Where-Object { $index.ContainsKey($_.ToUpper()) })
+            Ids     = @($specific | Where-Object { $index.ContainsKey($_.ToUpper()) })
         }
     }
     # На кожен пристрій — найкращий пакет: точний збіг > загальний, потім новіша дата/версія
@@ -118,8 +142,18 @@ function Find-D9DriverPackages {
             Order    = $(if ($script:D9DriverClassOrder.ContainsKey([string]$c.Inf.Class)) { $script:D9DriverClassOrder[[string]$c.Inf.Class] } else { 7 })
         }
     }
-    $installers = @(Get-ChildItem $Folder -Recurse -File -Include 'setup.exe', 'install.exe', '*.msi' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notlike '*\_розпаковано\*\_розпаковано\*' })
-    [pscustomobject]@{ Folder = $Folder; Infs = $infs.Count; Packages = @($result | Sort-Object Order, Name); Installers = $installers }
+    # Пакети, з яких не підійшов жоден INF, але є інсталятор (.exe/.msi) — їх людина запускає вручну
+    $used = @($chosen | ForEach-Object { $_.Inf.Path })
+    $roots = @(Get-ChildItem (Join-Path $Folder '_розпаковано') -Directory -ErrorAction SilentlyContinue) +
+             @(Get-ChildItem $Folder -Directory -ErrorAction SilentlyContinue | Where-Object Name -ne '_розпаковано')
+    $installers = foreach ($r in $roots) {
+        if ($used | Where-Object { $_.StartsWith($r.FullName + '\', [StringComparison]::OrdinalIgnoreCase) }) { continue }
+        $exe = Get-ChildItem $r.FullName -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '(?i)(setup|install)[^\\]*\.exe$|\.msi$' } |
+            Sort-Object { ($_.FullName.Split('\')).Count }, { -$_.Length } | Select-Object -First 1
+        if ($exe) { [pscustomobject]@{ Package = $r.Name; Path = $exe.FullName; Name = $exe.Name } }
+    }
+    [pscustomobject]@{ Folder = $Folder; Infs = $infs.Count; Packages = @($result | Sort-Object Order, Name); Installers = @($installers) }
 }
 
 # Перетворює вибрані пакети на «твіки» з дією driver — далі їх виконує той самий рушій (точка відновлення, журнал, відкат)

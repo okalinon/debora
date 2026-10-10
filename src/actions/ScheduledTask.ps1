@@ -40,9 +40,9 @@ function Test-D9ScheduledTask {
 function Set-D9ScheduledTaskState {
     param([string]$Path, [string]$State)
     $task = Get-D9RegisteredTask $Path
-    if (-not $task) { throw "Завдання не знайдено: $Path" }
+    if (-not $task) { throw (T-D9 'Завдання не знайдено: {0}' "$Path") }
     try { $task.Enabled = ($State -eq 'Enabled') }
-    catch { throw "Не вдалося змінити завдання $Path (потрібні права адміністратора?): $($_.Exception.Message)" }
+    catch { throw (T-D9 'Не вдалося змінити завдання {0} (потрібні права адміністратора?): {1}' $Path $_.Exception.Message) }
 }
 
 function Invoke-D9ScheduledTask {
@@ -58,7 +58,7 @@ function Restore-D9ScheduledTask {
 
 function Get-D9ScheduledTaskDescription {
     param([Parameter(Mandatory)]$Action, $State)
-    if ($State -and -not $State.exists) { return "Завдання $($Action.path): немає в системі" }
+    if ($State -and -not $State.exists) { return (T-D9 'Завдання {0}: немає в системі' "$($Action.path)") }
     $old = if ($State) { $State.state } else { '?' }
-    return "Завдання $($Action.path): $old -> $($Action.state)"
+    return (T-D9 'Завдання {0}: {1} -> {2}' "$($Action.path)" "$old" "$($Action.state)")
 }

@@ -65,23 +65,23 @@ function Test-D9Applicable {
     if (-not $Requires) { return & $ok $null }
 
     if ($Requires.os -and @($Requires.os) -notcontains $SystemInfo.OsFamily) {
-        return & $ok ("лише " + ((@($Requires.os) | ForEach-Object { $_ -replace 'win', 'Windows ' }) -join ' / '))
+        return & $ok (T-D9 'лише {0}' ((@($Requires.os) | ForEach-Object { $_ -replace 'win', 'Windows ' }) -join ' / '))
     }
-    if ($Requires.minBuild -and $SystemInfo.Build -lt $Requires.minBuild) { return & $ok "потрібна збірка $($Requires.minBuild)+" }
-    if ($Requires.maxBuild -and $SystemInfo.Build -gt $Requires.maxBuild) { return & $ok "лише до збірки $($Requires.maxBuild)" }
+    if ($Requires.minBuild -and $SystemInfo.Build -lt $Requires.minBuild) { return & $ok (T-D9 'потрібна збірка {0}+' "$($Requires.minBuild)") }
+    if ($Requires.maxBuild -and $SystemInfo.Build -gt $Requires.maxBuild) { return & $ok (T-D9 'лише до збірки {0}' "$($Requires.maxBuild)") }
 
     $hw = $Requires.hardware
     if ($hw) {
         if ($hw.systemDisk -and @($hw.systemDisk) -notcontains $SystemInfo.SystemDisk) {
             $names = @{ hdd = 'HDD'; ssd = 'SSD'; nvme = 'NVMe' }
             $need = (@($hw.systemDisk) | ForEach-Object { $names[$_] }) -join '/'
-            if ($SystemInfo.SystemDisk -eq 'unknown') { return & $ok "лише для $need (тип диска не визначено)" }
-            return & $ok "лише для $need"
+            if ($SystemInfo.SystemDisk -eq 'unknown') { return & $ok (T-D9 'лише для {0} (тип диска не визначено)' $need) }
+            return & $ok (T-D9 'лише для {0}' $need)
         }
-        if ($hw.maxRamGB -and $SystemInfo.RamGB -gt $hw.maxRamGB) { return & $ok "лише для ПК з RAM до $($hw.maxRamGB) ГБ" }
-        if ($hw.minRamGB -and $SystemInfo.RamGB -lt $hw.minRamGB) { return & $ok "потрібно від $($hw.minRamGB) ГБ RAM" }
+        if ($hw.maxRamGB -and $SystemInfo.RamGB -gt $hw.maxRamGB) { return & $ok (T-D9 'лише для ПК з RAM до {0} ГБ' "$($hw.maxRamGB)") }
+        if ($hw.minRamGB -and $SystemInfo.RamGB -lt $hw.minRamGB) { return & $ok (T-D9 'потрібно від {0} ГБ RAM' "$($hw.minRamGB)") }
         if ($null -ne $hw.battery -and [bool]$hw.battery -ne $SystemInfo.HasBattery) {
-            if ($hw.battery) { return & $ok "лише для ноутбуків" } else { return & $ok "лише для ПК без батареї" }
+            if ($hw.battery) { return & $ok (T-D9 'лише для ноутбуків') } else { return & $ok (T-D9 'лише для ПК без батареї') }
         }
     }
     return & $ok $null

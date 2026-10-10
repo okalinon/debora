@@ -68,14 +68,14 @@ function Resolve-D9Device {
         if ($u -match '^(HDAUDIO|INTELAUDIO)\\FUNC_\d+&VEN_([0-9A-F]{4})&DEV_([0-9A-F]{4})') {
             $v = $Matches[2]; $d = $Matches[3]
             $vendor = $ids["PCI:$v"]
-            $name = if ($v -eq '10EC') { "Realtek ALC$($d.TrimStart('0')) (аудіокодек)" } else { "аудіокодек $vendor $d" }
+            $name = if ($v -eq '10EC') { T-D9 'Realtek ALC{0} (аудіокодек)' $d.TrimStart('0') } else { T-D9 'аудіокодек {0} {1}' $vendor $d }
             return [pscustomobject]@{ Bus = 'HDAUDIO'; VendorId = $v; DeviceId = $d; Vendor = $vendor; Name = $name; HardwareId = $hwid }
         }
         if ($u -match '^ACPI\\([A-Z]{2,4}?)([0-9A-F]{4})$' -or $u -match '^ACPI\\([A-Z]{3,4})([0-9A-F]{4})') {
             $prefix = $Matches[1]
             $vendor = $src.acpiVendors.$prefix
             if (-not $vendor) { $vendor = $src.acpiVendors.($prefix.Substring(0, 3)) }
-            return [pscustomobject]@{ Bus = 'ACPI'; VendorId = $prefix; DeviceId = $Matches[2]; Vendor = $vendor; Name = $(if ($vendor) { "пристрій $vendor ($($hwid.Split('\')[1]))" }); HardwareId = $hwid }
+            return [pscustomobject]@{ Bus = 'ACPI'; VendorId = $prefix; DeviceId = $Matches[2]; Vendor = $vendor; Name = $(if ($vendor) { T-D9 'пристрій {0} ({1})' $vendor $hwid.Split('\')[1] }); HardwareId = $hwid }
         }
     }
     return [pscustomobject]@{ Bus = $null; VendorId = $null; DeviceId = $null; Vendor = $null; Name = $null; HardwareId = (@($HardwareIds) | Select-Object -First 1) }
@@ -85,9 +85,9 @@ function Get-D9DeviceDisplayName {
     param($Info, [string]$WindowsName)
     if ($Info.Name -and $Info.Vendor -and $Info.Name -notlike "*$($Info.Vendor.Split(' ')[0])*") { return "$($Info.Vendor) $($Info.Name)" }
     if ($Info.Name) { return $Info.Name }
-    if ($Info.Vendor) { return "пристрій $($Info.Vendor)" }
+    if ($Info.Vendor) { return (T-D9 'пристрій {0}' $Info.Vendor) }
     if ($WindowsName) { return $WindowsName }
-    return 'Невідомий пристрій'
+    return (T-D9 'Невідомий пристрій')
 }
 
 # Сторінка драйверів виробника ПК для цієї моделі
@@ -115,18 +115,18 @@ function Get-D9DriverLinks {
     $links = @()
     $chip = if ($Info.VendorId) { (Get-D9DriverSources).chipVendors.($Info.VendorId) } else { $null }
     if ($Oem) {
-        $label = "Драйвери $($Oem.Name) для цієї моделі"
+        $label = T-D9 'Драйвери {0} для цієї моделі' $Oem.Name
         if ($Oem.Note) { $label += " ($($Oem.Note))" }
         $links += New-D9Link $label $Oem.Url
     }
     if ($chip -and $chip.url) {
-        $label = "Сайт $($chip.name)"
+        $label = T-D9 'Сайт {0}' $chip.name
         if ($chip.tool) { $label += " — $($chip.tool)" }
         $links += New-D9Link $label $chip.url
     }
     if ($Info.HardwareId) {
         $q = ($Info.HardwareId -split '&REV_|&SUBSYS_')[0]
-        $links += New-D9Link 'Microsoft Update Catalog (пошук за ID пристрою)' ("https://www.catalog.update.microsoft.com/Search.aspx?q=" + [uri]::EscapeDataString($q))
+        $links += New-D9Link (T-D9 'Microsoft Update Catalog (пошук за ID пристрою)') ("https://www.catalog.update.microsoft.com/Search.aspx?q=" + [uri]::EscapeDataString($q))
     }
     return $links
 }

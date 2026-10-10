@@ -34,6 +34,65 @@ function Initialize-D9LogFile {
     } catch { $script:D9LogPath = $null }
 }
 
+# ---------- Мова інтерфейсу ----------
+# Тексти в коді пишуться українською й обгортаються T-D9: (T-D9 <шаблон з {0}> $n). Ключ словника — сам український
+# шаблон; переклади — у config/lang-<мова>-*.json ({ "strings": { "uk": "переклад" } }). Немає перекладу — лишається українська.
+$script:D9LangTable = $null
+
+function Get-D9LangTable {
+    if ($null -ne $script:D9LangTable) { return , $script:D9LangTable }
+    # Чутливий до регістру: «Встановлено» (заголовок) і «встановлено» (стан) — різні рядки
+    $table = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    if ($script:D9Language -and $script:D9Language -ne 'uk') {
+        $names = if ($script:D9Embedded) { @($script:D9Embedded.Keys | Where-Object { $_ -like "lang-$($script:D9Language)-*.json" }) }
+                 elseif ($script:D9ConfigDir) { @(Get-ChildItem $script:D9ConfigDir -Filter "lang-$($script:D9Language)-*.json" -ErrorAction SilentlyContinue | ForEach-Object Name) }
+                 else { @() }
+        # ConvertFrom-Json у PowerShell 5 не приймає ключів, що відрізняються лише регістром, — тому JavaScriptSerializer
+        Add-Type -AssemblyName System.Web.Extensions
+        $serializer = New-Object Web.Script.Serialization.JavaScriptSerializer
+        $serializer.MaxJsonLength = 64MB
+        foreach ($n in $names | Sort-Object) {
+            $json = $serializer.DeserializeObject((Get-D9ConfigText $n))
+            foreach ($kv in $json['strings'].GetEnumerator()) { if ($kv.Value) { $table[$kv.Key] = [string]$kv.Value } }
+        }
+    }
+    $script:D9LangTable = $table
+    return , $table
+}
+
+# Переклад шаблону й підстановка {0}, {1}… (фігурні дужки в самому тексті — {{ і }})
+function T-D9 {
+    param([Parameter(Mandatory, Position = 0)][AllowEmptyString()][string]$Text, [Parameter(Position = 1, ValueFromRemainingArguments)][object[]]$Values)
+    $s = $Text
+    if ($script:D9Language -ne 'uk') { $tr = $null; if ((Get-D9LangTable).TryGetValue($Text, [ref]$tr) -and $tr) { $s = $tr } }
+    if ($PSBoundParameters.ContainsKey('Values')) { $s = $s -f $Values }   # навіть коли значення — 0 або порожній рядок
+    return $s
+}
+
+# Мова: явно (uk|en) → збережений вибір користувача → мова Windows (uk/ru/be — українська, інакше англійська)
+function Resolve-D9Language {
+    param([string]$Requested = 'auto')
+    if ($Requested -in 'uk', 'en') { return $Requested }
+    $saved = (Get-ItemProperty 'HKCU:\Software\Debora' -Name Language -ErrorAction SilentlyContinue).Language
+    if ($saved -in 'uk', 'en') { return $saved }
+    # Українська, якщо вона мова Windows, регіональних форматів або є серед мов введення (часто Windows англійська, а людина — з України)
+    $codes = @([Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName, [Globalization.CultureInfo]::CurrentCulture.TwoLetterISOLanguageName)
+    if ($codes | Where-Object { $_ -in 'uk', 'ru', 'be' }) { return 'uk' }
+    $langs = try { @(Get-WinUserLanguageList -ErrorAction Stop | ForEach-Object LanguageTag) } catch { @() }
+    if ($langs | Where-Object { $_ -match '^(uk|ru|be)(-|$)' }) { return 'uk' }
+    return 'en'
+}
+
+function Set-D9Language {
+    param([Parameter(Mandatory)][ValidateSet('uk', 'en')][string]$Language, [switch]$Save)
+    $script:D9Language = $Language
+    $script:D9LangTable = $null
+    if ($Save) {
+        if (-not (Test-Path 'HKCU:\Software\Debora')) { New-Item -Path 'HKCU:\Software\Debora' -Force | Out-Null }
+        Set-ItemProperty 'HKCU:\Software\Debora' -Name Language -Value $Language
+    }
+}
+
 # Повертає текст потрібною мовою з об'єкта виду { "uk": "...", "en": "..." }
 function Get-D9Text {
     param($Text)

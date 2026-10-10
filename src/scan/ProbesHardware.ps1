@@ -56,17 +56,17 @@ public static class D9Display {
 
 function Test-D9Display {
     param($Check, $Ctx)
-    try { Initialize-D9DisplayApi; $screens = [D9Display]::Describe() } catch { return New-D9Skip $Check 'Не вдалося прочитати режими екрана' }
-    $link = New-D9Link 'Параметри дисплея' 'ms-settings:display-advanced'
+    try { Initialize-D9DisplayApi; $screens = [D9Display]::Describe() } catch { return New-D9Skip $Check (T-D9 'Не вдалося прочитати режими екрана') }
+    $link = New-D9Link (T-D9 'Параметри дисплея') 'ms-settings:display-advanced'
     $i = 0
     foreach ($s in $screens) {
         $i++
         $name, $w, $h, $hz, $maxHz, $maxW, $maxH = $s
         if ($maxHz -ge $hz + 10) {
-            New-D9Finding $Check suggestion "Екран $i працює на $hz Гц, хоча підтримує $maxHz Гц" "Вища частота оновлення — плавніше прокручування й рух мишки. Параметри → Дисплей → Розширені параметри → Частота оновлення. Відеоадаптер: $name." @{ type = 'manual' } @($link) -Key "$($Check.id):hz:$i"
+            New-D9Finding $Check suggestion (T-D9 'Екран {0} працює на {1} Гц, хоча підтримує {2} Гц' $i $hz $maxHz) (T-D9 'Вища частота оновлення — плавніше прокручування й рух мишки. Параметри → Дисплей → Розширені параметри → Частота оновлення. Відеоадаптер: {0}.' $name) @{ type = 'manual' } @($link) -Key "$($Check.id):hz:$i"
         }
         if ([long]$maxW * $maxH -gt [long]$w * $h * 1.2) {
-            New-D9Finding $Check suggestion "Екран ${i}: роздільна здатність ${w}×${h}, рідна — ${maxW}×${maxH}" 'Нерідна роздільна здатність дає розмите зображення. Щоб збільшити текст, краще змінити масштаб (125%, 150%), а не роздільну здатність.' @{ type = 'manual' } @($link) -Key "$($Check.id):res:$i"
+            New-D9Finding $Check suggestion (T-D9 'Екран {0}: роздільна здатність {1}×{2}, рідна — {3}×{4}' $i $w $h $maxW $maxH) (T-D9 'Нерідна роздільна здатність дає розмите зображення. Щоб збільшити текст, краще змінити масштаб (125%, 150%), а не роздільну здатність.') @{ type = 'manual' } @($link) -Key "$($Check.id):res:$i"
         }
     }
 }
@@ -74,15 +74,15 @@ function Test-D9Display {
 function Test-D9RamConfig {
     param($Check, $Ctx)
     $sticks = @(Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue)
-    if (-not $sticks) { return New-D9Skip $Check 'Дані про модулі пам''яті недоступні' }
+    if (-not $sticks) { return New-D9Skip $Check (T-D9 'Дані про модулі пам''яті недоступні') }
     $slots = (Get-CimInstance Win32_PhysicalMemoryArray -ErrorAction SilentlyContinue | Measure-Object MemoryDevices -Sum).Sum
     $total = [math]::Round(($sticks | Measure-Object Capacity -Sum).Sum / 1GB)
     if ($sticks.Count -eq 1 -and $slots -ge 2) {
-        New-D9Finding $Check suggestion "Пам'ять працює в одноканальному режимі (1 модуль на $total ГБ, слотів: $slots)" 'Другий такий самий модуль увімкне двоканальний режим: до +20–40% швидкості пам''яті, особливо помітно на вбудованій графіці.' @{ type = 'manual' } -Key "$($Check.id):single"
+        New-D9Finding $Check suggestion (T-D9 'Пам''ять працює в одноканальному режимі (1 модуль на {0} ГБ, слотів: {1})' $total $slots) (T-D9 'Другий такий самий модуль увімкне двоканальний режим: до +20–40% швидкості пам''яті, особливо помітно на вбудованій графіці.') @{ type = 'manual' } -Key "$($Check.id):single"
     }
     $sizes = @($sticks | ForEach-Object { [math]::Round($_.Capacity / 1GB) } | Sort-Object -Unique)
     if ($sticks.Count -ge 2 -and $sizes.Count -gt 1) {
-        New-D9Finding $Check info "Встановлено модулі різного обсягу: $($sizes -join ' + ') ГБ" 'Частина пам''яті може працювати в одноканальному режимі. Для найкращої швидкості — однакові модулі.' -Key "$($Check.id):mixed"
+        New-D9Finding $Check info (T-D9 'Встановлено модулі різного обсягу: {0} ГБ' ($sizes -join ' + ')) (T-D9 'Частина пам''яті може працювати в одноканальному режимі. Для найкращої швидкості — однакові модулі.') -Key "$($Check.id):mixed"
     }
     $rated = ($sticks | Measure-Object Speed -Maximum).Maximum
     $actual = ($sticks | Where-Object ConfiguredClockSpeed | Measure-Object ConfiguredClockSpeed -Minimum).Minimum
@@ -90,10 +90,10 @@ function Test-D9RamConfig {
     if ($rated -and $actual -and $actual -lt $rated * 0.55) { $actual *= 2 }
     # На ноутбуках частоту обмежує процесор або BIOS — користувач нічого не змінить, не шумимо
     if ($rated -and $actual -and $actual -lt $rated * 0.9 -and -not $Ctx.System.HasBattery) {
-        New-D9Finding $Check suggestion "Пам'ять працює на $actual МГц замість $rated МГц" 'На настільних ПК увімкніть профіль XMP / EXPO / DOCP в BIOS. На ноутбуках частоту зазвичай обмежує процесор — тоді нічого робити не треба.' @{ type = 'manual' } -Key "$($Check.id):speed"
+        New-D9Finding $Check suggestion (T-D9 'Пам''ять працює на {0} МГц замість {1} МГц' $actual $rated) (T-D9 'На настільних ПК увімкніть профіль XMP / EXPO / DOCP в BIOS. На ноутбуках частоту зазвичай обмежує процесор — тоді нічого робити не треба.') @{ type = 'manual' } -Key "$($Check.id):speed"
     }
     if ($Ctx.System.OsFamily -eq 'win11' -and $total -lt 8) {
-        New-D9Finding $Check info "Оперативної пам'яті $total ГБ" 'Для комфортної роботи Windows 11 з браузером потрібно від 8 ГБ. Якщо є вільний слот — це найдешевше покращення.' -Key "$($Check.id):amount"
+        New-D9Finding $Check info (T-D9 'Оперативної пам''яті {0} ГБ' $total) (T-D9 'Для комфортної роботи Windows 11 з браузером потрібно від 8 ГБ. Якщо є вільний слот — це найдешевше покращення.') -Key "$($Check.id):amount"
     }
 }
 
@@ -105,15 +105,15 @@ function Test-D9CpuLimits {
     if ($hex.Count -ge 2) {
         $ac = $hex[$hex.Count - 2]
         if ($ac -eq 99) {
-            New-D9Finding $Check info 'Turbo Boost вимкнено (максимальний стан процесора 99%)' 'Так часто роблять навмисно, щоб ноутбук менше грівся. Якщо потрібна максимальна швидкість — поставте 100% у додаткових параметрах схеми живлення.' -Key "$($Check.id):turbo"
+            New-D9Finding $Check info (T-D9 'Turbo Boost вимкнено (максимальний стан процесора 99%)') (T-D9 'Так часто роблять навмисно, щоб ноутбук менше грівся. Якщо потрібна максимальна швидкість — поставте 100% у додаткових параметрах схеми живлення.') -Key "$($Check.id):turbo"
         } elseif ($ac -lt 99) {
-            New-D9Finding $Check warning "Максимальна частота процесора обмежена до $ac% (від мережі)" 'Схема живлення не дає процесору працювати на повну. Панель керування → Електроживлення → Змінити додаткові параметри → Керування живленням процесора → Максимальний стан процесора = 100%.' @{ type = 'tweaks'; ids = @('perf.power-high') } -Key "$($Check.id):max"
+            New-D9Finding $Check warning (T-D9 'Максимальна частота процесора обмежена до {0}% (від мережі)' $ac) (T-D9 'Схема живлення не дає процесору працювати на повну. Панель керування → Електроживлення → Змінити додаткові параметри → Керування живленням процесора → Максимальний стан процесора = 100%.') @{ type = 'tweaks'; ids = @('perf.power-high') } -Key "$($Check.id):max"
         }
     }
     if ($Ctx.System.OsFamily -eq 'win11') {
         $overlay = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes' -ErrorAction SilentlyContinue).ActiveOverlayAcPowerScheme
         if ($overlay -eq '961cc777-2547-4f9d-8174-7d86181b8a7a') {
-            New-D9Finding $Check suggestion 'Режим живлення від мережі — «Найкраща енергоефективність»' 'Коли ноутбук на зарядці, режим «Збалансований» або «Найкраща продуктивність» помітно швидший. Параметри → Система → Живлення → Режим живлення.' @{ type = 'manual' } @((New-D9Link 'Живлення' 'ms-settings:powersleep')) -Key "$($Check.id):overlay"
+            New-D9Finding $Check suggestion (T-D9 'Режим живлення від мережі — «Найкраща енергоефективність»') (T-D9 'Коли ноутбук на зарядці, режим «Збалансований» або «Найкраща продуктивність» помітно швидший. Параметри → Система → Живлення → Режим живлення.') @{ type = 'manual' } @((New-D9Link (T-D9 'Живлення') 'ms-settings:powersleep')) -Key "$($Check.id):overlay"
         }
     }
 }
@@ -125,7 +125,7 @@ function Test-D9Thermal {
     if ($events.Count -ge $Check.thresholds.minEvents) {
         # На ноутбуках прошивка регулярно обмежує частоту при живленні від батареї — це не завжди проблема
         $severity = if ($Ctx.System.HasBattery) { 'suggestion' } else { 'warning' }
-        New-D9Finding $Check $severity "Процесор примусово сповільнювався: $($events.Count) разів за $($Check.thresholds.days) днів" 'Прошивка обмежувала частоту — найчастіше через перегрів або слабке живлення. Почистіть систему охолодження, замініть термопасту, перевірте блок живлення / зарядку.' @{ type = 'manual' }
+        New-D9Finding $Check $severity (T-D9 'Процесор примусово сповільнювався: {0} разів за {1} днів' $events.Count $Check.thresholds.days) (T-D9 'Прошивка обмежувала частоту — найчастіше через перегрів або слабке живлення. Почистіть систему охолодження, замініть термопасту, перевірте блок живлення / зарядку.') @{ type = 'manual' }
     }
 }
 
@@ -136,11 +136,11 @@ function Test-D9HardwareErrors {
     if ($whea.Count) {
         $fatal = @($whea | Where-Object { $_.Level -le 2 -and $_.Id -in 1, 18, 20, 46 })
         $severity = if ($fatal.Count) { 'critical' } else { 'warning' }
-        New-D9Finding $Check $severity "Апаратні помилки (WHEA): $($whea.Count) за $($Check.thresholds.days) днів" 'Процесор, пам''ять або шина PCIe повідомляють про збої. Часті причини: розгін або андервольт, нестабільна пам''ять (перевірте mdsched.exe), перегрів, погано вставлена відеокарта чи SSD.' @{ type = 'manual' } @((New-D9Link 'Перевірка пам''яті Windows' 'mdsched.exe')) -Key "$($Check.id):whea"
+        New-D9Finding $Check $severity (T-D9 'Апаратні помилки (WHEA): {0} за {1} днів' $whea.Count $Check.thresholds.days) (T-D9 'Процесор, пам''ять або шина PCIe повідомляють про збої. Часті причини: розгін або андервольт, нестабільна пам''ять (перевірте mdsched.exe), перегрів, погано вставлена відеокарта чи SSD.') @{ type = 'manual' } @((New-D9Link (T-D9 'Перевірка пам''яті Windows') 'mdsched.exe')) -Key "$($Check.id):whea"
     }
     $tdr = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Display'; Id = 4101; StartTime = $since })
     if ($tdr.Count) {
-        New-D9Finding $Check warning "Відеодрайвер аварійно перезапускався: $($tdr.Count) разів за $($Check.thresholds.days) днів" 'Мерехтіння або чорний екран на секунду — ознака збою відеодрайвера. Встановіть драйвер з сайту виробника відеокарти, перевірте температуру, приберіть розгін.' @{ type = 'drivers' } -Key "$($Check.id):tdr"
+        New-D9Finding $Check warning (T-D9 'Відеодрайвер аварійно перезапускався: {0} разів за {1} днів' $tdr.Count $Check.thresholds.days) (T-D9 'Мерехтіння або чорний екран на секунду — ознака збою відеодрайвера. Встановіть драйвер з сайту виробника відеокарти, перевірте температуру, приберіть розгін.') @{ type = 'drivers' } -Key "$($Check.id):tdr"
     }
 }
 
@@ -153,10 +153,10 @@ function Test-D9GpuDriver {
         $discrete = $g.Name -match 'NVIDIA|Radeon RX|Radeon Pro|Arc '
         $limit = if ($discrete) { $Check.thresholds.discreteDays } else { $Check.thresholds.integratedDays }
         if ($g.Name -match 'Microsoft Basic Display') {
-            New-D9Finding $Check warning "Відеокарта працює без драйвера ($($g.Name))" 'Без драйвера немає апаратного прискорення, нормальної частоти екрана й енергозбереження.' @{ type = 'drivers' } -Key "$($Check.id):$($g.PNPDeviceID)"
+            New-D9Finding $Check warning (T-D9 'Відеокарта працює без драйвера ({0})' $g.Name) (T-D9 'Без драйвера немає апаратного прискорення, нормальної частоти екрана й енергозбереження.') @{ type = 'drivers' } -Key "$($Check.id):$($g.PNPDeviceID)"
         } elseif ($age -gt $limit) {
             $years = [math]::Round($age / 365, 1)
-            New-D9Finding $Check suggestion "Драйверу відеокарти $($g.Name) вже $years р. (версія $($g.DriverVersion))" 'Нові драйвери виправляють збої та додають продуктивність в іграх і браузерах. Debora пошукає новіший у каталозі Microsoft; найсвіжіші версії — також у NVIDIA App, AMD Adrenalin, Intel Driver & Support Assistant (вкладка «Програми» / сайт виробника).' @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):$($g.PNPDeviceID)"
+            New-D9Finding $Check suggestion (T-D9 'Драйверу відеокарти {0} вже {1} р. (версія {2})' $g.Name $years $g.DriverVersion) (T-D9 'Нові драйвери виправляють збої та додають продуктивність в іграх і браузерах. Debora пошукає новіший у каталозі Microsoft; найсвіжіші версії — також у NVIDIA App, AMD Adrenalin, Intel Driver & Support Assistant (вкладка «Програми» / сайт виробника).') @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):$($g.PNPDeviceID)"
         }
     }
 }
@@ -168,7 +168,7 @@ function Test-D9DiskLayout {
     $fast = @($physical | Where-Object { (Get-D9CimInt $_ MediaType) -eq 4 -or (Get-D9CimInt $_ BusType) -eq 17 })
     if ($Ctx.System.SystemDisk -eq 'hdd' -and $fast) {
         $sizeGB = [math]::Round(($fast | Select-Object -First 1).Size / 1GB)
-        New-D9Finding $Check suggestion "Windows стоїть на HDD, хоча в комп'ютері є SSD ($sizeGB ГБ)" 'Перенесення Windows на SSD — найбільше можливе прискорення: запуск у 3–5 разів швидший. Перенести можна безкоштовними програмами клонування або перевстановленням.' @{ type = 'manual' } -Key "$($Check.id):system-on-hdd"
+        New-D9Finding $Check suggestion (T-D9 'Windows стоїть на HDD, хоча в комп''ютері є SSD ({0} ГБ)' $sizeGB) (T-D9 'Перенесення Windows на SSD — найбільше можливе прискорення: запуск у 3–5 разів швидший. Перенести можна безкоштовними програмами клонування або перевстановленням.') @{ type = 'manual' } -Key "$($Check.id):system-on-hdd"
     }
     # Вирівнювання розділів на SSD: зсув має бути кратним 4 КБ
     foreach ($d in $fast) {
@@ -177,7 +177,7 @@ function Test-D9DiskLayout {
         $msr = '{e3c9e316-0b5c-4db8-817d-f92df00215ae}'
         $bad = @($parts | Where-Object { $_.Offset % 4096 -ne 0 -and $_.GptType -ne $msr -and $_.Size -ge 64MB })
         if ($bad) {
-            New-D9Finding $Check warning "Розділи на SSD $($d.FriendlyName) не вирівняні" 'Невирівняні розділи сповільнюють SSD і прискорюють знос. Зазвичай наслідок клонування старою програмою; виправляється програмами для роботи з розділами (з резервною копією!).' @{ type = 'manual' } -Key "$($Check.id):align:$($d.DeviceId)"
+            New-D9Finding $Check warning (T-D9 'Розділи на SSD {0} не вирівняні' $d.FriendlyName) (T-D9 'Невирівняні розділи сповільнюють SSD і прискорюють знос. Зазвичай наслідок клонування старою програмою; виправляється програмами для роботи з розділами (з резервною копією!).') @{ type = 'manual' } -Key "$($Check.id):align:$($d.DeviceId)"
         }
     }
 }
@@ -188,6 +188,6 @@ function Test-D9Bios {
     if (-not $bios.ReleaseDate) { return }
     $years = [math]::Round(($Ctx.Now - $bios.ReleaseDate).TotalDays / 365, 1)
     if ($years -ge $Check.thresholds.years) {
-        New-D9Finding $Check info "BIOS/UEFI версії $($bios.SMBIOSBIOSVersion) від $($bios.ReleaseDate.ToString('dd.MM.yyyy')) ($years р.)" 'Перевірте на сайті виробника, чи є новіша версія: оновлення BIOS виправляють стабільність і вразливості. Оновлюйте лише від мережі й не вимикайте ПК під час прошивки.'
+        New-D9Finding $Check info (T-D9 'BIOS/UEFI версії {0} від {1} ({2} р.)' $bios.SMBIOSBIOSVersion $bios.ReleaseDate.ToString('dd.MM.yyyy') $years) (T-D9 'Перевірте на сайті виробника, чи є новіша версія: оновлення BIOS виправляють стабільність і вразливості. Оновлюйте лише від мережі й не вимикайте ПК під час прошивки.')
     }
 }

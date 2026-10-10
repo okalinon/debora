@@ -86,23 +86,23 @@ function Install-D9GithubApp {
     try {
         $rel = Get-D9GithubRelease $App.repo
         $asset = Select-D9GithubAsset $rel
-        if (-not $asset) { Write-D9Log "  $($App.name): у релізі $($rel.tag_name) немає інсталятора для Windows $(Get-D9OsArch)" Error; return & $row 'notFound' -1 }
+        if (-not $asset) { Write-D9Log "  $($App.name): $(T-D9 'у релізі {0} немає інсталятора для Windows {1}' $rel.tag_name (Get-D9OsArch))" Error; return & $row 'notFound' -1 }
         $version = ConvertFrom-D9ReleaseTag $rel.tag_name
         $installed = Get-D9GithubAppVersion $App
-        if ($installed -and -not (Test-D9VersionNewer $version $installed)) { Write-D9Log "  $($App.name): уже встановлено версію $installed" Ok; return & $row 'already' 0 }
+        if ($installed -and -not (Test-D9VersionNewer $version $installed)) { Write-D9Log "  $($App.name): $(T-D9 'уже встановлено версію {0}' $installed)" Ok; return & $row 'already' 0 }
         $dir = Join-Path ([IO.Path]::GetTempPath()) 'debora-apps'
         if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
         $file = Join-Path $dir $asset.name
-        Write-D9Log "  Завантаження $($asset.name) ($(Format-D9Size $asset.size)) з github.com/$($App.repo)..." Detail
+        Write-D9Log ('  ' + (T-D9 'Завантаження {0} ({1}) з github.com/{2}...' $asset.name (Format-D9Size $asset.size) $App.repo)) Detail
         Invoke-WebRequest $asset.browser_download_url -OutFile $file -UseBasicParsing -TimeoutSec 600
         $expected = Get-D9GithubAssetHash $rel $asset
         $actual = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
-        if ($expected -and $expected -ne $actual) { [IO.File]::Delete($file); Write-D9Log "  $($App.name): контрольна сума не збігається — файл пошкоджено або підмінено, не встановлюю" Error; return & $row 'failed' -2 }
-        if (-not $expected) { Write-D9Log "  Автор не опублікував контрольної суми — встановлюю без перевірки." Warn }
+        if ($expected -and $expected -ne $actual) { [IO.File]::Delete($file); Write-D9Log "  $($App.name): $(T-D9 'контрольна сума не збігається — файл пошкоджено або підмінено, не встановлюю')" Error; return & $row 'failed' -2 }
+        if (-not $expected) { Write-D9Log ('  ' + (T-D9 'Автор не опублікував контрольної суми — встановлюю без перевірки.')) Warn }
         $p = Start-Process msiexec.exe -ArgumentList "/i `"$file`" /qn /norestart" -Wait -PassThru
         [IO.File]::Delete($file)
         $result = switch ($p.ExitCode) { 0 { 'installed' } 3010 { 'reboot' } 1641 { 'reboot' } 1638 { 'already' } default { 'failed' } }
-        $text = @{ installed = "встановлено версію $version"; reboot = "встановлено $version, потрібне перезавантаження"; already = 'уже встановлено'; failed = "помилка msiexec (код $($p.ExitCode))" }[$result]
+        $text = @{ installed = (T-D9 'встановлено версію {0}' $version); reboot = (T-D9 'встановлено {0}, потрібне перезавантаження' $version); already = (T-D9 'уже встановлено'); failed = (T-D9 'помилка msiexec (код {0})' $p.ExitCode) }[$result]
         Write-D9Log "  $($App.name): $text" $(if ($result -eq 'failed') { 'Error' } elseif ($result -eq 'reboot') { 'Warn' } else { 'Ok' })
         return & $row $result $p.ExitCode
     } catch {

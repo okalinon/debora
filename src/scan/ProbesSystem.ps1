@@ -20,26 +20,26 @@ function Get-D9FilesSize {
 function Test-D9CleanTemp {
     param($Check, $Ctx)
     $b = (Get-D9FolderSize $env:TEMP 5000) + (Get-D9FolderSize "$env:SystemRoot\Temp")
-    New-D9SpaceFinding $Check $b 'Тимчасові файли займають {size}' 'Залишки інсталяторів і програм у папках TEMP. Безпечно видаляються (зайняті файли пропускаються).' @{ type = 'tweaks'; ids = @('cleanup.temp') }
+    New-D9SpaceFinding $Check $b (T-D9 'Тимчасові файли займають {size}') (T-D9 'Залишки інсталяторів і програм у папках TEMP. Безпечно видаляються (зайняті файли пропускаються).') @{ type = 'tweaks'; ids = @('cleanup.temp') }
 }
 
 function Test-D9CleanUpdateCache {
     param($Check, $Ctx)
     $b = Get-D9FolderSize "$env:SystemRoot\SoftwareDistribution\Download"
-    New-D9SpaceFinding $Check $b 'Кеш завантажених оновлень Windows: {size}' 'Уже встановлені оновлення. Windows за потреби завантажить їх знову.' @{ type = 'tweaks'; ids = @('cleanup.update-cache') }
+    New-D9SpaceFinding $Check $b (T-D9 'Кеш завантажених оновлень Windows: {size}') (T-D9 'Уже встановлені оновлення. Windows за потреби завантажить їх знову.') @{ type = 'tweaks'; ids = @('cleanup.update-cache') }
 }
 
 function Test-D9CleanRecycleBin {
     param($Check, $Ctx)
     $b = [long]0
     try { $b = [long](@((New-Object -ComObject Shell.Application).NameSpace(10).Items()) | ForEach-Object { $_.Size } | Measure-Object -Sum).Sum } catch { }
-    New-D9SpaceFinding $Check $b 'У кошику {size}' 'Перегляньте кошик і очистіть його, якщо нічого не потрібно.' @{ type = 'tweaks'; ids = @('cleanup.recycle-bin') }
+    New-D9SpaceFinding $Check $b (T-D9 'У кошику {size}') (T-D9 'Перегляньте кошик і очистіть його, якщо нічого не потрібно.') @{ type = 'tweaks'; ids = @('cleanup.recycle-bin') }
 }
 
 function Test-D9CleanWindowsOld {
     param($Check, $Ctx)
     $b = (Get-D9FolderSize "$env:SystemDrive\Windows.old" 4000) + (Get-D9FolderSize "$env:SystemDrive\`$WINDOWS.~BT" 2000) + (Get-D9FolderSize "$env:SystemDrive\`$Windows.~WS" 2000)
-    New-D9SpaceFinding $Check $b 'Попередня версія Windows займає {size}' 'Windows.old потрібна лише для відкату на попередню версію (10 днів після оновлення). Видалення: Параметри → Система → Сховище → Тимчасові файли → «Попередня інсталяція Windows».' @{ type = 'manual' } @((New-D9Link 'Тимчасові файли' 'ms-settings:storagepolicies'))
+    New-D9SpaceFinding $Check $b (T-D9 'Попередня версія Windows займає {size}') (T-D9 'Windows.old потрібна лише для відкату на попередню версію (10 днів після оновлення). Видалення: Параметри → Система → Сховище → Тимчасові файли → «Попередня інсталяція Windows».') @{ type = 'manual' } @((New-D9Link (T-D9 'Тимчасові файли') 'ms-settings:storagepolicies'))
 }
 
 function Test-D9CleanDumps {
@@ -47,20 +47,20 @@ function Test-D9CleanDumps {
     $win = $env:SystemRoot
     $b = (Get-D9FilesSize @("$win\MEMORY.DMP")) + (Get-D9FolderSize "$win\Minidump") + (Get-D9FolderSize "$win\LiveKernelReports") +
          (Get-D9FolderSize "$env:LOCALAPPDATA\CrashDumps") + (Get-D9FolderSize "$env:ProgramData\Microsoft\Windows\WER\ReportArchive") + (Get-D9FolderSize "$env:ProgramData\Microsoft\Windows\WER\ReportQueue")
-    New-D9SpaceFinding $Check $b 'Дампи збоїв і звіти про помилки: {size}' 'Файли для діагностики старих збоїв. Якщо їх ніхто не аналізує — можна видалити.' @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
+    New-D9SpaceFinding $Check $b (T-D9 'Дампи збоїв і звіти про помилки: {size}') (T-D9 'Файли для діагностики старих збоїв. Якщо їх ніхто не аналізує — можна видалити.') @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
 }
 
 function Test-D9CleanInstallerLeftovers {
     param($Check, $Ctx)
     $b = (Get-D9FolderSize "$env:SystemDrive\NVIDIA") + (Get-D9FolderSize "$env:SystemDrive\AMD")
-    New-D9SpaceFinding $Check $b 'Розпаковані інсталятори драйверів NVIDIA/AMD: {size}' 'Папки C:\NVIDIA і C:\AMD лишаються після встановлення відеодрайвера й більше не потрібні.' @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
+    New-D9SpaceFinding $Check $b (T-D9 'Розпаковані інсталятори драйверів NVIDIA/AMD: {size}') (T-D9 'Папки C:\NVIDIA і C:\AMD лишаються після встановлення відеодрайвера й більше не потрібні.') @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
 }
 
 function Test-D9CleanBrowserCache {
     param($Check, $Ctx)
     $dirs = @(Get-D9BrowserCacheDirs | ForEach-Object { $_.Dirs })
     $b = [long](($dirs | ForEach-Object { Get-D9FolderSize $_ 1500 } | Measure-Object -Sum).Sum)
-    New-D9SpaceFinding $Check $b 'Кеш браузерів: {size}' 'Браузери самі обмежують кеш, але на маленькому диску його варто почистити. Debora очистить кеш закритих браузерів; паролі, історію й вкладки не зачіпає.' @{ type = 'maintenance'; action = 'browserCache' }
+    New-D9SpaceFinding $Check $b (T-D9 'Кеш браузерів: {size}') (T-D9 'Браузери самі обмежують кеш, але на маленькому диску його варто почистити. Debora очистить кеш закритих браузерів; паролі, історію й вкладки не зачіпає.') @{ type = 'maintenance'; action = 'browserCache' }
 }
 
 function Test-D9CleanOldDownloads {
@@ -70,25 +70,25 @@ function Test-D9CleanOldDownloads {
     $cutoff = $Ctx.Now.AddDays(-$Check.thresholds.days)
     $files = @(Get-ChildItem $downloads -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.exe', '.msi', '.iso', '.zip', '.rar', '.7z', '.img' -and $_.LastWriteTime -lt $cutoff })
     $b = [long]($files | Measure-Object Length -Sum).Sum
-    New-D9SpaceFinding $Check $b "Старі інсталятори й архіви в «Завантаженнях»: {size} ($($files.Count) файлів)" "Файли .exe, .msi, .iso, .zip старші за $($Check.thresholds.days) днів. Перегляньте й видаліть непотрібні: $downloads" @{ type = 'manual' }
+    New-D9SpaceFinding $Check $b (T-D9 'Старі інсталятори й архіви в «Завантаженнях»: {{size}} ({0} файлів)' $files.Count) (T-D9 'Файли .exe, .msi, .iso, .zip старші за {0} днів. Перегляньте й видаліть непотрібні: {1}' $Check.thresholds.days $downloads) @{ type = 'manual' }
 }
 
 function Test-D9CleanThumbnails {
     param($Check, $Ctx)
     $b = [long](Get-ChildItem "$env:LOCALAPPDATA\Microsoft\Windows\Explorer" -Filter 'thumbcache_*.db' -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
-    New-D9SpaceFinding $Check $b 'Кеш мініатюр займає {size}' 'Видалити: «Очищення диска» → «Ескізи». Мініатюри відновляться самі.' @{ type = 'manual' } @((New-D9Link 'Очищення диска' 'cleanmgr.exe'))
+    New-D9SpaceFinding $Check $b (T-D9 'Кеш мініатюр займає {size}') (T-D9 'Видалити: «Очищення диска» → «Ескізи». Мініатюри відновляться самі.') @{ type = 'manual' } @((New-D9Link (T-D9 'Очищення диска') 'cleanmgr.exe'))
 }
 
 function Test-D9CleanDoCache {
     param($Check, $Ctx)
     $b = Get-D9FolderSize "$env:SystemRoot\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache"
-    New-D9SpaceFinding $Check $b 'Кеш оптимізації доставки оновлень: {size}' 'Копії оновлень для роздачі іншим ПК. Безпечно видаляються.' @{ type = 'tweaks'; ids = @('cleanup.do-cache') }
+    New-D9SpaceFinding $Check $b (T-D9 'Кеш оптимізації доставки оновлень: {size}') (T-D9 'Копії оновлень для роздачі іншим ПК. Безпечно видаляються.') @{ type = 'tweaks'; ids = @('cleanup.do-cache') }
 }
 
 function Test-D9CleanCbsLogs {
     param($Check, $Ctx)
     $b = Get-D9FolderSize "$env:SystemRoot\Logs\CBS"
-    New-D9SpaceFinding $Check $b 'Журнали обслуговування Windows (CBS): {size}' 'Великий розмір — ознака проблем з оновленнями. Видаляються через «Очищення диска» → «Очистити системні файли» → «Файли журналу Windows Update».' @{ type = 'manual' } @((New-D9Link 'Очищення диска' 'cleanmgr.exe'))
+    New-D9SpaceFinding $Check $b (T-D9 'Журнали обслуговування Windows (CBS): {size}') (T-D9 'Великий розмір — ознака проблем з оновленнями. Видаляються через «Очищення диска» → «Очистити системні файли» → «Файли журналу Windows Update».') @{ type = 'manual' } @((New-D9Link (T-D9 'Очищення диска') 'cleanmgr.exe'))
 }
 
 function Test-D9Hiberfile {
@@ -98,7 +98,7 @@ function Test-D9Hiberfile {
     $c = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID = '$env:SystemDrive'"
     $freePercent = $c.FreeSpace * 100 / $c.Size
     if ($file.Length -ge $Check.thresholds.minGB * 1GB -and $freePercent -lt 25) {
-        New-D9Finding $Check suggestion "Файл гібернації займає $(Format-D9Size $file.Length)" 'Можна зменшити приблизно вдвічі (режим «reduced»): швидкий запуск лишиться, зникне лише повна гібернація.' @{ type = 'tweaks'; ids = @('perf.reduced-hiberfile') } -Data ([pscustomobject]@{ bytes = [long]($file.Length / 2) })
+        New-D9Finding $Check suggestion (T-D9 'Файл гібернації займає {0}' (Format-D9Size $file.Length)) (T-D9 'Можна зменшити приблизно вдвічі (режим «reduced»): швидкий запуск лишиться, зникне лише повна гібернація.') @{ type = 'tweaks'; ids = @('perf.reduced-hiberfile') } -Data ([pscustomobject]@{ bytes = [long]($file.Length / 2) })
     }
 }
 
@@ -108,18 +108,18 @@ function Test-D9OldProfiles {
     $profiles = Get-CimInstance Win32_UserProfile -ErrorAction SilentlyContinue | Where-Object { -not $_.Special -and $_.LocalPath -and -not $_.Loaded -and $_.LastUseTime -and $_.LastUseTime -lt $cutoff }
     $old = @($profiles | ForEach-Object { Split-Path $_.LocalPath -Leaf })
     if ($old) {
-        New-D9Finding $Check info "Профілі, якими не користувались понад $($Check.thresholds.days) днів: $($old -join ', ')" 'Якщо ці облікові записи більше не потрібні — збережіть файли й видаліть їх (sysdm.cpl → Додатково → Профілі користувачів).' @{ type = 'manual' }
+        New-D9Finding $Check info (T-D9 'Профілі, якими не користувались понад {0} днів: {1}' $Check.thresholds.days ($old -join ', ')) (T-D9 'Якщо ці облікові записи більше не потрібні — збережіть файли й видаліть їх (sysdm.cpl → Додатково → Профілі користувачів).') @{ type = 'manual' }
     }
 }
 
 function Test-D9OldDrivers {
     param($Check, $Ctx)
-    $drivers = try { @(Get-WindowsDriver -Online -ErrorAction Stop) } catch { return New-D9Skip $Check 'потрібні права адміністратора' }
+    $drivers = try { @(Get-WindowsDriver -Online -ErrorAction Stop) } catch { return New-D9Skip $Check (T-D9 'потрібні права адміністратора') }
     $dups = @($drivers | Group-Object OriginalFileName | Where-Object Count -gt 1)
     $oldCount = ($dups | ForEach-Object { $_.Count - 1 } | Measure-Object -Sum).Sum
     if ($oldCount -ge $Check.thresholds.min) {
         $b = [long]($dups | ForEach-Object { $_.Group | Sort-Object Date -Descending | Select-Object -Skip 1 } | ForEach-Object { Get-D9FolderSize (Split-Path $_.OriginalFileName) 1000 } | Measure-Object -Sum).Sum
-        New-D9Finding $Check suggestion "Старі версії драйверів у сховищі: $oldCount (≈ $(Format-D9Size $b))" 'Після оновлень драйверів старі копії лишаються в DriverStore. Їх можна видалити утилітою pnputil /delete-driver (від адміністратора) — після цього відкат цих драйверів буде неможливий.' @{ type = 'manual' } -Data ([pscustomobject]@{ bytes = $b })
+        New-D9Finding $Check suggestion (T-D9 'Старі версії драйверів у сховищі: {0} (≈ {1})' $oldCount (Format-D9Size $b)) (T-D9 'Після оновлень драйверів старі копії лишаються в DriverStore. Їх можна видалити утилітою pnputil /delete-driver (від адміністратора) — після цього відкат цих драйверів буде неможливий.') @{ type = 'manual' } -Data ([pscustomobject]@{ bytes = $b })
     }
 }
 
@@ -130,14 +130,14 @@ function Test-D9Pagefile {
     $cs = Get-CimInstance Win32_ComputerSystem
     if ($cs.AutomaticManagedPagefile) { return }
     $files = @(Get-CimInstance Win32_PageFileSetting -ErrorAction SilentlyContinue)
-    $link = New-D9Link 'Параметри швидкодії → Віртуальна пам''ять' 'SystemPropertiesPerformance.exe'
+    $link = New-D9Link (T-D9 'Параметри швидкодії → Віртуальна пам''ять') 'SystemPropertiesPerformance.exe'
     if (-not $files) {
         $severity = if ($Ctx.System.RamGB -le 16) { 'warning' } else { 'suggestion' }
-        return New-D9Finding $Check $severity 'Файл підкачки вимкнено' "З $($Ctx.System.RamGB) ГБ пам'яті програми можуть аварійно закриватися при її нестачі, а Windows не збереже дамп збою. Debora поверне «Автоматично вибирати розмір файлу підкачки» (після перезавантаження)." (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'; name = 'PagingFiles'; value = @('?:\pagefile.sys'); kind = 'MultiString' }) -Reboot) @($link)
+        return New-D9Finding $Check $severity (T-D9 'Файл підкачки вимкнено') (T-D9 'З {0} ГБ пам''яті програми можуть аварійно закриватися при її нестачі, а Windows не збереже дамп збою. Debora поверне «Автоматично вибирати розмір файлу підкачки» (після перезавантаження).' $Ctx.System.RamGB) (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'; name = 'PagingFiles'; value = @('?:\pagefile.sys'); kind = 'MultiString' }) -Reboot) @($link)
     }
     $maxMB = ($files | Measure-Object MaximumSize -Sum).Sum
     if ($maxMB -gt 0 -and $maxMB -lt $Ctx.System.RamGB * 1024 / 2 -and $Ctx.System.RamGB -le 8) {
-        New-D9Finding $Check warning "Файл підкачки обмежено до $maxMB МБ" 'Для ПК з малим обсягом пам''яті це замало. Debora поверне автоматичний розмір (після перезавантаження).' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'; name = 'PagingFiles'; value = @('?:\pagefile.sys'); kind = 'MultiString' }) -Reboot) @($link)
+        New-D9Finding $Check warning (T-D9 'Файл підкачки обмежено до {0} МБ' $maxMB) (T-D9 'Для ПК з малим обсягом пам''яті це замало. Debora поверне автоматичний розмір (після перезавантаження).') (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'; name = 'PagingFiles'; value = @('?:\pagefile.sys'); kind = 'MultiString' }) -Reboot) @($link)
     }
 }
 
@@ -146,7 +146,7 @@ function Test-D9Commit {
     $os = Get-CimInstance Win32_OperatingSystem
     $used = 100 - $os.FreeVirtualMemory * 100 / $os.TotalVirtualMemorySize
     if ($used -ge $Check.thresholds.percent) {
-        New-D9Finding $Check warning ("Виділено {0:N0}% віртуальної пам'яті" -f $used) 'Ще трохи — і програми почнуть падати з помилкою «недостатньо пам''яті». Закрийте важкі програми, збільште файл підкачки або додайте оперативну пам''ять.' @{ type = 'manual' }
+        New-D9Finding $Check warning (T-D9 'Виділено {0:N0}% віртуальної пам''яті' $used) (T-D9 'Ще трохи — і програми почнуть падати з помилкою «недостатньо пам''яті». Закрийте важкі програми, збільште файл підкачки або додайте оперативну пам''ять.') @{ type = 'manual' }
     }
 }
 
@@ -163,7 +163,7 @@ function Test-D9CpuHogs {
         Where-Object { $_.Percent -ge $Check.thresholds.percent -and $_.Name -notin 'Idle', 'System', 'powershell', 'pwsh' } | Sort-Object Percent -Descending
     if ($hogs) {
         $list = ($hogs | Select-Object -First 5 | ForEach-Object { "{0} {1:N0}%" -f $_.Name, $_.Percent }) -join ', '
-        New-D9Finding $Check warning "Процеси навантажують процесор у фоні: $list" 'Якщо це не ваша активна програма — перевірте, що вона робить (Диспетчер завдань). Частий випадок: індексація, оновлення, антивірусна перевірка, майнер.' @{ type = 'manual' }
+        New-D9Finding $Check warning (T-D9 'Процеси навантажують процесор у фоні: {0}' $list) (T-D9 'Якщо це не ваша активна програма — перевірте, що вона робить (Диспетчер завдань). Частий випадок: індексація, оновлення, антивірусна перевірка, майнер.') @{ type = 'manual' }
     }
 }
 
@@ -173,10 +173,10 @@ function Test-D9ThirdPartyServices {
         $_.PathName -and $_.PathName -notmatch '\\Windows\\(System32|SysWOW64|Microsoft\.NET)\\|\\Windows Defender\\|\\Microsoft\\' })
     $updaters = @($services | Where-Object { $_.Name -match 'update|updater|gupdate|edgeupdate|AdobeARM|Maintenance' -or $_.DisplayName -match 'Update' })
     if ($services.Count -ge $Check.thresholds.count) {
-        New-D9Finding $Check suggestion "Сторонніх служб із автозапуском: $($services.Count)" ("Кожна стартує разом із Windows. Перегляньте непотрібні (services.msc): " + (($services | Select-Object -First 12).DisplayName -join ', ')) @{ type = 'manual' } @((New-D9Link 'Служби' 'services.msc')) -Key "$($Check.id):count"
+        New-D9Finding $Check suggestion (T-D9 'Сторонніх служб із автозапуском: {0}' $services.Count) (T-D9 'Кожна стартує разом із Windows. Перегляньте непотрібні (services.msc): {0}' (($services | Select-Object -First 12).DisplayName -join ', ')) @{ type = 'manual' } @((New-D9Link (T-D9 'Служби') 'services.msc')) -Key "$($Check.id):count"
     }
     if ($updaters.Count -ge 3) {
-        New-D9Finding $Check suggestion "Служб-оновлювачів сторонніх програм: $($updaters.Count)" ("Debora переведе їх на «Вручну» — програми оновлюватимуться, коли ви їх запускаєте: " + ($updaters.DisplayName -join ', ')) (New-D9ActionsFix @($updaters | ForEach-Object { @{ type = 'service'; name = $_.Name; startup = 'Manual' } })) @((New-D9Link 'Служби' 'services.msc')) -Key "$($Check.id):updaters"
+        New-D9Finding $Check suggestion (T-D9 'Служб-оновлювачів сторонніх програм: {0}' $updaters.Count) (T-D9 'Debora переведе їх на «Вручну» — програми оновлюватимуться, коли ви їх запускаєте: {0}' ($updaters.DisplayName -join ', ')) (New-D9ActionsFix @($updaters | ForEach-Object { @{ type = 'service'; name = $_.Name; startup = 'Manual' } })) @((New-D9Link (T-D9 'Служби') 'services.msc')) -Key "$($Check.id):updaters"
     }
 }
 
@@ -195,9 +195,9 @@ function Test-D9LogonTasks {
                 if ($xml.Task.Triggers.LogonTrigger -or $xml.Task.Triggers.BootTrigger) { $tasks += $t.Name }
             }
         }
-    } catch { return New-D9Skip $Check 'Планувальник завдань недоступний' }
+    } catch { return New-D9Skip $Check (T-D9 'Планувальник завдань недоступний') }
     if ($tasks.Count -ge $Check.thresholds.count) {
-        New-D9Finding $Check suggestion "Завдань, що запускаються при вході в систему: $($tasks.Count)" ("Приховане автозавантаження через Планувальник: " + (($tasks | Select-Object -First 10) -join ', ')) @{ type = 'manual' } @((New-D9Link 'Планувальник завдань' 'taskschd.msc'))
+        New-D9Finding $Check suggestion (T-D9 'Завдань, що запускаються при вході в систему: {0}' $tasks.Count) (T-D9 'Приховане автозавантаження через Планувальник: {0}' (($tasks | Select-Object -First 10) -join ', ')) @{ type = 'manual' } @((New-D9Link (T-D9 'Планувальник завдань') 'taskschd.msc'))
     }
 }
 
@@ -211,7 +211,7 @@ function Test-D9ShellExtensions {
         if ($dll -and $dll -notmatch '\\Windows\\') { $_.PSChildName }
     } | Sort-Object -Unique)
     if ($handlers.Count -ge $Check.thresholds.count) {
-        New-D9Finding $Check suggestion "Сторонніх пунктів у контекстному меню: $($handlers.Count)" ("Кожен сповільнює відкриття меню правої кнопки: " + ($handlers -join ', ') + '. Вимкніть непотрібні в налаштуваннях відповідних програм або видаліть програми.') @{ type = 'manual' }
+        New-D9Finding $Check suggestion (T-D9 'Сторонніх пунктів у контекстному меню: {0}' $handlers.Count) (T-D9 'Кожен сповільнює відкриття меню правої кнопки: {0}. Вимкніть непотрібні в налаштуваннях відповідних програм або видаліть програми.' ($handlers -join ', ')) @{ type = 'manual' }
     }
 }
 
@@ -219,7 +219,7 @@ function Test-D9Fonts {
     param($Check, $Ctx)
     $count = @(Get-ChildItem "$env:SystemRoot\Fonts" -File -ErrorAction SilentlyContinue).Count + @(Get-ChildItem "$env:LOCALAPPDATA\Microsoft\Windows\Fonts" -File -ErrorAction SilentlyContinue).Count
     if ($count -ge $Check.thresholds.count) {
-        New-D9Finding $Check suggestion "Встановлено $count шрифтів" 'Тисячі шрифтів сповільнюють запуск програм (Office, Photoshop, браузери). Видаліть непотрібні колекції.' @{ type = 'manual' } @((New-D9Link 'Шрифти' 'ms-settings:fonts'))
+        New-D9Finding $Check suggestion (T-D9 'Встановлено {0} шрифтів' $count) (T-D9 'Тисячі шрифтів сповільнюють запуск програм (Office, Photoshop, браузери). Видаліть непотрібні колекції.') @{ type = 'manual' } @((New-D9Link (T-D9 'Шрифти') 'ms-settings:fonts'))
     }
 }
 
@@ -228,7 +228,7 @@ function Test-D9DesktopItems {
     $desktop = [Environment]::GetFolderPath('Desktop')
     $count = @(Get-ChildItem $desktop -Force -ErrorAction SilentlyContinue | Where-Object Name -ne 'desktop.ini').Count
     if ($count -ge $Check.thresholds.count) {
-        New-D9Finding $Check suggestion "На робочому столі $count файлів і папок" 'Захаращений робочий стіл повільніше відмальовується й частіше потрапляє під синхронізацію. Розкладіть файли по папках «Документи» / «Завантаження».' @{ type = 'manual' }
+        New-D9Finding $Check suggestion (T-D9 'На робочому столі {0} файлів і папок' $count) (T-D9 'Захаращений робочий стіл повільніше відмальовується й частіше потрапляє під синхронізацію. Розкладіть файли по папках «Документи» / «Завантаження».') @{ type = 'manual' }
     }
 }
 
@@ -242,7 +242,7 @@ function Test-D9BrowserExtensions {
         if ($n -ge $Check.thresholds.count) { "$($b[0]): $n" }
     }
     if ($found) {
-        New-D9Finding $Check suggestion "Багато розширень у браузері ($($found -join ', '))" 'Кожне розширення забирає пам''ять і може читати сторінки, які ви відкриваєте. Видаліть ті, якими не користуєтесь.' @{ type = 'manual' }
+        New-D9Finding $Check suggestion (T-D9 'Багато розширень у браузері ({0})' ($found -join ', ')) (T-D9 'Кожне розширення забирає пам''ять і може читати сторінки, які ви відкриваєте. Видаліть ті, якими не користуєтесь.') @{ type = 'manual' }
     }
 }
 
@@ -252,7 +252,7 @@ function Test-D9PrintSpooler {
     if (-not $svc.exists -or $svc.status -ne 'Running') { return }
     $real = @(Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue | Where-Object { $_.PortName -notmatch '^(PORTPROMPT:|nul:|SHRFAX:|FILE:)' -and $_.Name -notmatch 'PDF|XPS|OneNote|Fax' })
     if (-not $real) {
-        New-D9Finding $Check suggestion 'Служба друку працює, хоча принтерів немає' 'Debora переведе «Диспетчер черги друку» на «Вручну»: менше фонових процесів і закриті вразливості на кшталт PrintNightmare. Якщо підключите принтер — відкотіть у «Журналі змін».' (New-D9ActionsFix @(@{ type = 'service'; name = 'Spooler'; startup = 'Manual'; stop = $true })) @((New-D9Link 'Служби' 'services.msc'))
+        New-D9Finding $Check suggestion (T-D9 'Служба друку працює, хоча принтерів немає') (T-D9 'Debora переведе «Диспетчер черги друку» на «Вручну»: менше фонових процесів і закриті вразливості на кшталт PrintNightmare. Якщо підключите принтер — відкотіть у «Журналі змін».') (New-D9ActionsFix @(@{ type = 'service'; name = 'Spooler'; startup = 'Manual'; stop = $true })) @((New-D9Link (T-D9 'Служби') 'services.msc'))
     }
 }
 
@@ -269,6 +269,6 @@ function Test-D9ServiceFailures {
         ForEach-Object { [string]$_.Properties[0].Value } | Where-Object { -not $disabled.ContainsKey($_) } |
         Group-Object | Where-Object Count -ge $Check.thresholds.min | Sort-Object Count -Descending)
     if ($services) {
-        New-D9Finding $Check suggestion "Служби, що регулярно падають або не запускаються: $(($services | Select-Object -First 6 | ForEach-Object { "$($_.Name) ($($_.Count))" }) -join ', ')" 'Зазвичай це залишки видалених програм або зламані драйвери. Перевстановіть відповідну програму або вимкніть службу.' @{ type = 'manual' } @((New-D9Link 'Служби' 'services.msc'))
+        New-D9Finding $Check suggestion (T-D9 'Служби, що регулярно падають або не запускаються: {0}' (($services | Select-Object -First 6 | ForEach-Object { "$($_.Name) ($($_.Count))" }) -join ', ')) (T-D9 'Зазвичай це залишки видалених програм або зламані драйвери. Перевстановіть відповідну програму або вимкніть службу.') @{ type = 'manual' } @((New-D9Link (T-D9 'Служби') 'services.msc'))
     }
 }

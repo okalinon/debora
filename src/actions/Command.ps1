@@ -26,13 +26,13 @@ function Invoke-D9Command {
 
 function Restore-D9Command {
     param([Parameter(Mandatory)]$Action, [Parameter(Mandatory)]$Before)
-    if (-not $Action.undoRun) { return "Цю дію не можна відкотити" }
+    if (-not $Action.undoRun) { return (T-D9 'Цю дію не можна відкотити') }
     Invoke-D9Script $Action.undoRun | Out-Null
 }
 
 function Get-D9CommandDescription {
     param([Parameter(Mandatory)]$Action, $State)
     $label = Get-D9Text $Action.label
-    if ($label) { return "Команда: $label" }
-    return "Команда PowerShell"
+    if ($label) { return (T-D9 'Команда: {0}' $label) }
+    return (T-D9 'Команда PowerShell')
 }

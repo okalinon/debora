@@ -19,7 +19,7 @@ function Get-D9DriverReport {
                 Name     = Get-D9DeviceDisplayName $info $_.Name
                 Windows  = $_.Name
                 Class    = $_.PNPClass
-                Reason   = if ($reason) { $reason } else { "код $($_.ConfigManagerErrorCode)" }
+                Reason   = if ($reason) { Get-D9DeviceErrorText ([int]$_.ConfigManagerErrorCode) } else { T-D9 'код {0}' $_.ConfigManagerErrorCode }
                 Info     = $info
                 Links    = @(Get-D9DriverLinks $info $oem)
             }
@@ -29,11 +29,11 @@ function Get-D9DriverReport {
             $_.DeviceName -and $script:D9KeyDriverClasses.ContainsKey([string]$_.DeviceClass) -and $_.DriverProviderName -ne 'Microsoft' -and $_.DeviceID -match '^(PCI|HDAUDIO|ACPI|USB)\\'
         } | Sort-Object DeviceClass, DeviceName -Unique | ForEach-Object {
             [pscustomobject]@{
-                Group    = $script:D9KeyDriverClasses[[string]$_.DeviceClass]
+                Group    = T-D9 $script:D9KeyDriverClasses[[string]$_.DeviceClass]
                 Name     = $_.DeviceName
                 Version  = $_.DriverVersion
                 # Чипсетні INF Intel мають умовну дату 1968 р. — вони лише називають пристрій, оновлювати нічого
-                Date     = if (-not $_.DriverDate) { '' } elseif (([datetime]$_.DriverDate).Year -lt 1990) { 'INF чипсета' } else { ([datetime]$_.DriverDate).ToString('dd.MM.yyyy') }
+                Date     = if (-not $_.DriverDate) { '' } elseif (([datetime]$_.DriverDate).Year -lt 1990) { T-D9 'INF чипсета' } else { ([datetime]$_.DriverDate).ToString('dd.MM.yyyy') }
                 Provider = $_.DriverProviderName
             }
         })
@@ -84,9 +84,9 @@ function Expand-D9DriverArchives {
         foreach ($zip in Get-ChildItem $Folder -Filter '*.zip' -Recurse -File -ErrorAction SilentlyContinue) {
             $target = Join-Path $zip.DirectoryName ("_розпаковано\" + $zip.BaseName)
             if (Test-Path $target) { continue }
-            Write-D9Log "  Розпаковую $($zip.Name)..." Detail
+            Write-D9Log ('  ' + (T-D9 'Розпаковую {0}...' $zip.Name)) Detail
             try { Expand-Archive -LiteralPath $zip.FullName -DestinationPath $target -Force; $new++ }
-            catch { Write-D9Log "  Не вдалося розпакувати $($zip.Name): $($_.Exception.Message)" Warn }
+            catch { Write-D9Log ('  ' + (T-D9 'Не вдалося розпакувати {0}: {1}' $zip.Name $_.Exception.Message)) Warn }
         }
         if (-not $new) { break }
     }

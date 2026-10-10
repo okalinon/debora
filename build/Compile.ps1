@@ -29,6 +29,7 @@ foreach ($folder in 'actions', 'scan', 'drivers', 'maintenance', 'ui') {
     $modules += Get-ChildItem (Join-Path $src $folder) -Filter '*.ps1' | Sort-Object Name | ForEach-Object FullName
 }
 $configFiles = 'tweaks.json', 'presets.json', 'checks.json', 'lifecycle.json', 'known-bloat.json', 'software-risks.json', 'driver-sources.json', 'apps.json', 'startup-known.json', 'bugchecks.json'
+$configFiles += @(Get-ChildItem (Join-Path $PSScriptRoot '..\config') -Filter 'lang-*.json' | ForEach-Object Name)   # словники мов
 $knowledgeFiles = 'pci.ids', 'usb.ids'
 
 # Бази ідентифікаторів: лише рядки виробників і пристроїв (без коментарів, підсистем і класів), gzip + base64

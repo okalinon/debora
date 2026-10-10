@@ -45,7 +45,7 @@ function Add-D9JournalEntry {
 function Get-D9Session {
     param([Parameter(Mandatory)][string]$Id)
     $path = Join-Path (Get-D9SessionDir) "$Id.json"
-    if (-not (Test-Path $path)) { throw "Сесію '$Id' не знайдено" }
+    if (-not (Test-Path $path)) { throw (T-D9 'Сесію ''{0}'' не знайдено' $Id) }
     $s = ConvertFrom-Json ([IO.File]::ReadAllText($path, [Text.Encoding]::UTF8))
     # Повертаємо масиви як ArrayList, щоб до сесії можна було дописувати
     $s.entries = New-Object System.Collections.ArrayList (, @($s.entries | Where-Object { $_ }))

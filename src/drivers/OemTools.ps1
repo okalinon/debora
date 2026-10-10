@@ -1,5 +1,5 @@
 ﻿# Утиліти виробників ПК для драйверів і BIOS: найповніше джерело для своїх моделей. На ПК Dell, Lenovo
-# і HP Debora сам ставить утиліту (winget) і запускає її в тихому режимі командного рядка.
+# і HP Debora сама ставить утиліту (winget) і запускає її в тихому режимі командного рядка.
 # Увага: перевірено за документацією виробників, на реальних ПК ще не запускалося — усе пишеться в журнал.
 
 $script:D9OemTools = @(
@@ -48,19 +48,19 @@ function Invoke-D9OemDriverTool {
     param([Parameter(Mandatory)]$SystemInfo)
     $tool = Get-D9OemTool $SystemInfo
     if (-not $tool) { return $null }
-    Write-D9Log "Утиліта виробника: $($tool.Name)..."
+    Write-D9Log (T-D9 'Утиліта виробника: {0}...' $tool.Name)
     $exe = Find-D9OemToolExe $tool
     if (-not $exe -and (Get-D9WingetPath)) {
-        Write-D9Log "  Встановлення $($tool.Name) через winget..." Detail
+        Write-D9Log ('  ' + (T-D9 'Встановлення {0} через winget...' $tool.Name)) Detail
         [void](Install-D9Apps -Apps @([pscustomobject]@{ id = $tool.WingetId; name = $tool.Name }))
         $exe = Find-D9OemToolExe $tool
     }
-    if (-not $exe) { Write-D9Log "  $($tool.Name) не знайдено й не вдалося встановити — пропускаю." Warn; return [pscustomobject]@{ Tool = $tool.Name; Done = $false; RebootRecommended = $false } }
-    try { if ($tool.Prepare) { & $tool.Prepare } } catch { Write-D9Log "  Підготовка: $($_.Exception.Message)" Warn }
-    Write-D9Log "  Запуск: $exe $($tool.Args -join ' ') (може тривати 10–30 хвилин)" Detail
+    if (-not $exe) { Write-D9Log ('  ' + (T-D9 '{0} не знайдено й не вдалося встановити — пропускаю.' $tool.Name)) Warn; return [pscustomobject]@{ Tool = $tool.Name; Done = $false; RebootRecommended = $false } }
+    try { if ($tool.Prepare) { & $tool.Prepare } } catch { Write-D9Log ('  ' + (T-D9 'Підготовка: {0}' $_.Exception.Message)) Warn }
+    Write-D9Log ('  ' + (T-D9 'Запуск: {0} {1} (може тривати 10–30 хвилин)' $exe ($tool.Args -join ' '))) Detail
     $p = Start-Process -FilePath $exe -ArgumentList $tool.Args -Wait -PassThru -WindowStyle Hidden
     $code = $p.ExitCode
     $ok = $tool.Ok -contains $code
-    Write-D9Log "  $($tool.Name) завершилась з кодом $code$(if ($ok) { ' — успішно' } else { ' — подробиці в журналі утиліти' })" $(if ($ok) { 'Ok' } else { 'Warn' })
+    Write-D9Log ('  ' + $(if ($ok) { T-D9 '{0} завершилась з кодом {1} — успішно' $tool.Name $code } else { T-D9 '{0} завершилась з кодом {1} — подробиці в журналі утиліти' $tool.Name $code })) $(if ($ok) { 'Ok' } else { 'Warn' })
     [pscustomobject]@{ Tool = $tool.Name; Done = $ok; Code = $code; RebootRecommended = ($tool.Reboot -contains $code) }
 }

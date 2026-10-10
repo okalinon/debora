@@ -10,12 +10,12 @@
 function Export-D9Drivers {
     param([Parameter(Mandatory)][string]$Folder)
     New-Item -ItemType Directory -Path $Folder -Force | Out-Null
-    Write-D9Log "Збереження драйверів цього ПК у $Folder ..."
+    Write-D9Log (T-D9 'Збереження драйверів цього ПК у {0} ...' $Folder)
     $out = & pnputil.exe /export-driver * $Folder 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0) { throw "pnputil /export-driver завершився з кодом ${LASTEXITCODE}: $($out.Trim() -split "`n" | Select-Object -Last 2)" }
+    if ($LASTEXITCODE -ne 0) { throw (T-D9 'pnputil /export-driver завершився з кодом {0}: {1}' $LASTEXITCODE "$($out.Trim() -split "`n" | Select-Object -Last 2)") }
     $count = @(Get-ChildItem $Folder -Filter '*.inf' -Recurse -File -ErrorAction SilentlyContinue).Count
     $size = [long]((Get-ChildItem $Folder -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum)
-    Write-D9Log "Збережено драйверів: $count ($(Format-D9Size $size))." Ok
+    Write-D9Log (T-D9 'Збережено драйверів: {0} ({1}).' $count (Format-D9Size $size)) Ok
     [pscustomobject]@{ Folder = $Folder; Count = $count; Bytes = $size }
 }
 
@@ -48,8 +48,8 @@ function New-D9AutounattendXml {
     $o = @{ Language = 'uk-UA'; Keyboard = 'uk-UA;en-US'; TimeZone = 'FLE Standard Time'; UserName = 'User'; Password = ''
             ComputerName = '*'; Edition = ''; BypassRequirements = $true; BypassNetwork = $true; PostInstall = 'Recommended'; DriverUpdate = $true }
     foreach ($k in $Options.Keys) { $o[$k] = $Options[$k] }
-    if ($o.UserName -notmatch '^[^\\/\[\]:;|=,+*?<>"@]{1,20}$') { throw "Недопустиме ім'я облікового запису: $($o.UserName)" }
-    if ($o.ComputerName -ne '*' -and $o.ComputerName -notmatch '^[A-Za-z0-9-]{1,15}$') { throw "Ім'я комп'ютера: латиниця, цифри й дефіс, до 15 символів" }
+    if ($o.UserName -notmatch '^[^\\/\[\]:;|=,+*?<>"@]{1,20}$') { throw (T-D9 'Недопустиме ім''я облікового запису: {0}' $o.UserName) }
+    if ($o.ComputerName -ne '*' -and $o.ComputerName -notmatch '^[A-Za-z0-9-]{1,15}$') { throw (T-D9 'Ім''я комп''ютера: латиниця, цифри й дефіс, до 15 символів') }
     $c = 'processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"'
     $lang = ConvertTo-D9XmlText $o.Language; $kbd = ConvertTo-D9XmlText $o.Keyboard
     $user = ConvertTo-D9XmlText $o.UserName; $pass = ConvertTo-D9XmlText $o.Password
@@ -134,26 +134,26 @@ function New-D9AutounattendXml {
 function Initialize-D9InstallUsb {
     param([Parameter(Mandatory)][string]$Drive, [Parameter(Mandatory)][hashtable]$Options, [string]$ProgramFolder, [switch]$IncludeDrivers)
     $root = "$($Drive.TrimEnd('\', ':')):\"
-    if (-not [IO.File]::Exists("${root}setup.exe")) { throw "На $root немає файлів встановлення Windows. Спершу створіть флешку через Media Creation Tool або Rufus." }
+    if (-not [IO.File]::Exists("${root}setup.exe")) { throw (T-D9 'На {0} немає файлів встановлення Windows. Спершу створіть флешку через Media Creation Tool або Rufus.' $root) }
     $media = Get-D9InstallMedia | Where-Object { $_.Drive -eq $root.TrimEnd('\') } | Select-Object -First 1
     if ($media.Language -and -not $Options.ContainsKey('Language')) { $Options.Language = $media.Language }
     $done = @()
     $xmlPath = "${root}autounattend.xml"
-    if (Test-Path $xmlPath) { Copy-Item $xmlPath "$xmlPath.d9-old" -Force; $done += 'попередній autounattend.xml збережено як autounattend.xml.d9-old' }
+    if (Test-Path $xmlPath) { Copy-Item $xmlPath "$xmlPath.d9-old" -Force; $done += T-D9 'попередній autounattend.xml збережено як autounattend.xml.d9-old' }
     [IO.File]::WriteAllText($xmlPath, (New-D9AutounattendXml -Options $Options), (New-Object Text.UTF8Encoding $false))
-    Write-D9Log "autounattend.xml записано на $root" Ok
+    Write-D9Log (T-D9 'autounattend.xml записано на {0}' $root) Ok
     $done += 'autounattend.xml'
     if ($IncludeDrivers) {
         $model = ("$((Get-CimInstance Win32_ComputerSystem).Model)" -replace '[\\/:*?"<>|]', '_').Trim()
         $r = Export-D9Drivers -Folder "${root}`$WinpeDriver`$\$model"
-        $done += "драйвери цього ПК: $($r.Count) ($(Format-D9Size $r.Bytes))"
+        $done += T-D9 'драйвери цього ПК: {0} ({1})' $r.Count (Format-D9Size $r.Bytes)
     }
     if ($ProgramFolder -and (Test-Path (Join-Path $ProgramFolder 'Debora.ps1'))) {
         $dst = "${root}Debora"
         New-Item -ItemType Directory -Path $dst -Force | Out-Null
         Get-ChildItem $ProgramFolder -File | Where-Object Extension -in '.ps1', '.bat', '.txt', '' | Copy-Item -Destination $dst -Force
-        Write-D9Log "Debora скопійовано на флешку ($dst)" Ok
-        $done += 'Debora (запуститься після першого входу)'
+        Write-D9Log (T-D9 'Debora скопійовано на флешку ({0})' $dst) Ok
+        $done += T-D9 'Debora (запуститься після першого входу)'
     }
     [pscustomobject]@{ Drive = $root; Done = $done; Language = $Options.Language }
 }

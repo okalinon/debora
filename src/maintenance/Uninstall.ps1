@@ -157,9 +157,9 @@ function Find-D9UninstallLeftovers {
     foreach ($f in $folders | Select-Object -Unique) {
         if (-not (Test-Path -LiteralPath $f -PathType Container) -or (Test-D9GenericFolder $f)) { continue }
         # Усередині стоїть інша програма (наприклад, ігри в папці Steam) — не чіпаємо
-        if (@($otherFolders | Where-Object { $_ -like "$($f.TrimEnd('\'))\*" }).Count) { Write-D9Log "  Пропущено $f — усередині інші встановлені програми" Detail; continue }
+        if (@($otherFolders | Where-Object { $_ -like "$($f.TrimEnd('\'))\*" }).Count) { Write-D9Log ('  ' + (T-D9 'Пропущено {0} — усередині інші встановлені програми' $f)) Detail; continue }
         $size = Get-D9FolderSize $f 3000
-        if ($size -ge 2GB) { Write-D9Log "  Пропущено $f ($(Format-D9Size $size)) — завелика для автоматичного прибирання, перегляньте вручну" Detail; continue }
+        if ($size -ge 2GB) { Write-D9Log ('  ' + (T-D9 'Пропущено {0} ({1}) — завелика для автоматичного прибирання, перегляньте вручну' $f (Format-D9Size $size))) Detail; continue }
         [pscustomobject]@{ Type = 'folder'; Path = $f; Size = $size }
     }
     foreach ($hive in 'HKCU:\SOFTWARE', 'HKLM:\SOFTWARE', 'HKLM:\SOFTWARE\WOW6432Node') {
@@ -195,8 +195,8 @@ function Get-D9OrphanRegistryEntries {
 # Крок обслуговування: прибрати такі записи (кожен — після резервної копії .reg)
 function Clear-D9OrphanEntries {
     $items = @(Get-D9OrphanRegistryEntries)
-    if (-not $items) { Write-D9Log 'Записів від видалених програм не знайдено.' Ok; return [pscustomobject]@{ Done = $true; RebootRecommended = $false } }
-    Write-D9Log "Прибирання записів від видалених програм: $($items.Count)..."
+    if (-not $items) { Write-D9Log (T-D9 'Записів від видалених програм не знайдено.') Ok; return [pscustomobject]@{ Done = $true; RebootRecommended = $false } }
+    Write-D9Log (T-D9 'Прибирання записів від видалених програм: {0}...' $items.Count)
     foreach ($i in $items) { Write-D9Log "  $($i.Name) → $($i.Target)" Detail }
     [void](Remove-D9UninstallLeftovers -Items @($items | ForEach-Object { [pscustomobject]@{ Type = 'registry'; Path = $_.Path; Size = 0 } }))
     [pscustomobject]@{ Done = $true; RebootRecommended = $false }
@@ -219,21 +219,21 @@ function Remove-D9UninstallLeftovers {
         try {
             if ($it.Type -eq 'folder') {
                 [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($it.Path, 'OnlyErrorDialogs', 'SendToRecycleBin')
-                Write-D9Log "  У Кошик: $($it.Path)" Detail
+                Write-D9Log ('  ' + (T-D9 'У Кошик: {0}' $it.Path)) Detail
             } else {
                 if (-not (Test-Path $backup)) { New-Item -ItemType Directory -Path $backup -Force | Out-Null }
                 $i++
                 $regPath = $it.Path -replace '^HKCU:', 'HKEY_CURRENT_USER' -replace '^HKLM:', 'HKEY_LOCAL_MACHINE'
                 $null = & reg.exe export $regPath (Join-Path $backup "$i.reg") /y 2>&1
-                if ($LASTEXITCODE -ne 0) { throw 'не вдалося зберегти резервну копію — розділ не видалено' }
+                if ($LASTEXITCODE -ne 0) { throw (T-D9 'не вдалося зберегти резервну копію — розділ не видалено') }
                 $hive = if ($it.Path -like 'HKCU:*') { [Microsoft.Win32.Registry]::CurrentUser } else { [Microsoft.Win32.Registry]::LocalMachine }
                 $hive.DeleteSubKeyTree(($it.Path -replace '^HK(CU|LM):\\', ''), $false)
-                Write-D9Log "  Реєстр: $($it.Path) (копія: $backup)" Detail
+                Write-D9Log ('  ' + (T-D9 'Реєстр: {0} (копія: {1})' $it.Path $backup)) Detail
             }
             $done++
-        } catch { Write-D9Log "  Не вдалося прибрати $($it.Path): $($_.Exception.Message)" Warn }
+        } catch { Write-D9Log ('  ' + (T-D9 'Не вдалося прибрати {0}: {1}' $it.Path $_.Exception.Message)) Warn }
     }
-    Write-D9Log "Прибрано залишків: $done з $($Items.Count). Папки — у Кошику; розділи реєстру можна повернути з .reg у $backup" Ok
+    Write-D9Log (T-D9 'Прибрано залишків: {0} з {1}. Папки — у Кошику; розділи реєстру можна повернути з .reg у {2}' $done $Items.Count $backup) Ok
     [pscustomobject]@{ Removed = $done; Backup = $backup }
 }
 
@@ -271,19 +271,19 @@ function Uninstall-D9Programs {
         $n++
         if ($script:D9OnProgress) { & $script:D9OnProgress $n $Programs.Count $prog.Name }
         $cmd = Get-D9UninstallCommand $prog
-        if (-not $cmd) { [pscustomobject]@{ name = $prog.Name; result = 'failed'; message = 'немає команди видалення' }; continue }
-        Write-D9Log "[$n/$($Programs.Count)] Видалення $($prog.Name)$(if (-not $cmd.Silent) { ' — відкриється вікно деінсталятора, пройдіть його' })..."
+        if (-not $cmd) { [pscustomobject]@{ name = $prog.Name; result = 'failed'; message = (T-D9 'немає команди видалення') }; continue }
+        Write-D9Log ("[$n/$($Programs.Count)] " + $(if ($cmd.Silent) { T-D9 'Видалення {0}...' $prog.Name } else { T-D9 'Видалення {0} — відкриється вікно деінсталятора, пройдіть його...' $prog.Name }))
         if ($cmd.Method -eq 'missing') {
-            $text = 'деінсталятора немає, хоча файли програми на диску — видаліть її через лаунчер (Steam, EA, Ubisoft…) або її власним способом'
+            $text = T-D9 'деінсталятора немає, хоча файли програми на диску — видаліть її через лаунчер (Steam, EA, Ubisoft…) або її власним способом'
             Write-D9Log "  $($prog.Name): $text" Warn
             [pscustomobject]@{ name = $prog.Name; result = 'failed'; message = $text; leftovers = @() }
             continue
         }
         if ($cmd.Method -eq 'orphan') {
-            Write-D9Log "  Деінсталятора $($cmd.File) уже немає — програму видалено раніше, прибираю лише її запис" Detail
+            Write-D9Log ('  ' + (T-D9 'Деінсталятора {0} уже немає — програму видалено раніше, прибираю лише її запис' $cmd.File)) Detail
             $r = Remove-D9UninstallLeftovers -Items @([pscustomobject]@{ Type = 'registry'; Path = (ConvertTo-D9RegDrivePath $prog.Key); Size = 0 })
             $gone = -not (Test-Path -LiteralPath $prog.Key)
-            $text = if ($gone) { "прибрано запис (копія: $($r.Backup))" } else { 'не вдалося прибрати запис' }
+            $text = if ($gone) { T-D9 'прибрано запис (копія: {0})' $r.Backup } else { T-D9 'не вдалося прибрати запис' }
             Write-D9Log "  $($prog.Name): $text" $(if ($gone) { 'Ok' } else { 'Warn' })
             [pscustomobject]@{ name = $prog.Name; result = $(if ($gone) { 'removed' } else { 'failed' }); message = $text; leftovers = @() }
             continue
@@ -294,18 +294,18 @@ function Uninstall-D9Programs {
             $sp = @{ FilePath = $cmd.File; PassThru = $true; ErrorAction = 'Stop'; WindowStyle = $(if ($cmd.Silent) { 'Hidden' } else { 'Normal' }) }
             if ($cmd.Args) { $sp.ArgumentList = $cmd.Args }
             $p = Start-Process @sp
-            if (-not $p.WaitForExit($TimeoutMinutes * 60000)) { $msg = "не завершилось за $TimeoutMinutes хв" }
+            if (-not $p.WaitForExit($TimeoutMinutes * 60000)) { $msg = T-D9 'не завершилось за {0} хв' $TimeoutMinutes }
             else { $code = $p.ExitCode }
         } catch { $msg = $_.Exception.Message }
         Start-Sleep -Milliseconds 800   # деякі деінсталятори дочищають реєстр уже після виходу
         $gone = -not (Test-Path -LiteralPath $prog.Key)
         $result = if ($gone -and $code -eq 3010) { 'reboot' } elseif ($gone) { 'removed' } elseif ($msg) { 'failed' } else { 'stillPresent' }
-        $text = @{ removed = 'видалено'; reboot = 'видалено, потрібне перезавантаження'; stillPresent = "не видалено (код $code; можливо, скасовано у вікні деінсталятора)"; failed = "помилка: $msg" }[$result]
+        $text = @{ removed = (T-D9 'видалено'); reboot = (T-D9 'видалено, потрібне перезавантаження'); stillPresent = (T-D9 'не видалено (код {0}; можливо, скасовано у вікні деінсталятора)' "$code"); failed = (T-D9 'помилка: {0}' $msg) }[$result]
         Write-D9Log "  $($prog.Name): $text" $(if ($result -in 'removed', 'reboot') { 'Ok' } else { 'Warn' })
         $left = @()
         if ($result -in 'removed', 'reboot') {
             $left = @(Find-D9UninstallLeftovers -Program $prog -Remaining @(Get-D9UninstallList))
-            if ($left) { Write-D9Log "  Залишки після видалення: $($left.Count) (папки й розділи реєстру)" Detail }
+            if ($left) { Write-D9Log ('  ' + (T-D9 'Залишки після видалення: {0} (папки й розділи реєстру)' $left.Count)) Detail }
         }
         [pscustomobject]@{ name = $prog.Name; result = $result; message = $text; leftovers = $left }
     }

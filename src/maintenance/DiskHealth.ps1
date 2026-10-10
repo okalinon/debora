@@ -42,7 +42,7 @@ function Get-D9DiskHealth {
             Number = $number
             Model = ([string]$d.FriendlyName).Trim()
             Media = if ($script:D9DiskMedia.ContainsKey([int]$media)) { $script:D9DiskMedia[[int]$media] } else { '' }
-            Bus = if ($script:D9DiskBus.ContainsKey([int]$bus)) { $script:D9DiskBus[[int]$bus] } else { '' }
+            Bus = if ($script:D9DiskBus.ContainsKey([int]$bus)) { T-D9 $script:D9DiskBus[[int]$bus] } else { '' }
             Removable = $bus -in 7, 12, 13
             SizeBytes = Get-D9CimLong $d Size
             Letters = $letters
@@ -67,14 +67,14 @@ function Get-D9DiskHealth {
 function Get-D9DiskVerdict {
     param([Parameter(Mandatory)]$Disk, [int]$WearPercent = 80, [int]$TempC = 60)
     $bad = @(); $warn = @()
-    if ($Disk.HealthStatus -eq 2) { $bad += 'Windows вважає диск несправним' }
-    if ($Disk.PredictFailure) { $bad += 'SMART прогнозує скору відмову' }
-    if ($Disk.ReadErrorsUncorrected -gt 0) { $bad += "невиправні помилки читання: $($Disk.ReadErrorsUncorrected)" }
-    if ($Disk.WriteErrorsUncorrected -gt 0) { $bad += "невиправні помилки запису: $($Disk.WriteErrorsUncorrected)" }
-    if ($Disk.Wear -ge 100) { $bad += "ресурс записів вичерпано ($($Disk.Wear)%)" }
-    elseif ($Disk.Wear -ge $WearPercent) { $warn += "зношений на $($Disk.Wear)%" }
-    if ($Disk.HealthStatus -eq 1) { $warn += 'Windows повідомляє про попередження' }
-    if ($Disk.Temperature -ge $TempC) { $warn += "гарячий: $($Disk.Temperature) °C" }
+    if ($Disk.HealthStatus -eq 2) { $bad += T-D9 'Windows вважає диск несправним' }
+    if ($Disk.PredictFailure) { $bad += T-D9 'SMART прогнозує скору відмову' }
+    if ($Disk.ReadErrorsUncorrected -gt 0) { $bad += T-D9 'невиправні помилки читання: {0}' $Disk.ReadErrorsUncorrected }
+    if ($Disk.WriteErrorsUncorrected -gt 0) { $bad += T-D9 'невиправні помилки запису: {0}' $Disk.WriteErrorsUncorrected }
+    if ($Disk.Wear -ge 100) { $bad += T-D9 'ресурс записів вичерпано ({0}%)' $Disk.Wear }
+    elseif ($Disk.Wear -ge $WearPercent) { $warn += T-D9 'зношений на {0}%' $Disk.Wear }
+    if ($Disk.HealthStatus -eq 1) { $warn += T-D9 'Windows повідомляє про попередження' }
+    if ($Disk.Temperature -ge $TempC) { $warn += T-D9 'гарячий: {0} °C' $Disk.Temperature }
     $level = if ($bad) { 'bad' } elseif ($warn) { 'warn' } elseif ($Disk.HealthStatus -eq 0 -or $Disk.HasCounters) { 'ok' } else { 'unknown' }
     [pscustomobject]@{ Level = $level; Problems = @($bad + $warn) }
 }
@@ -83,10 +83,10 @@ function Get-D9DiskVerdict {
 function Format-D9DiskTitle {
     param([Parameter(Mandatory)]$Disk)
     $kind = (@($Disk.Bus, $Disk.Media) | Where-Object { $_ }) -join ' '
-    $parts = @("Диск $($Disk.Number)", $Disk.Model)
+    $parts = @((T-D9 'Диск {0}' "$($Disk.Number)"), $Disk.Model)
     if ($kind) { $parts += $kind }
     if ($Disk.SizeBytes) { $parts += Format-D9Size $Disk.SizeBytes }
-    if ($Disk.Letters) { $parts += (($Disk.Letters -join ', ') + $(if ($Disk.IsSystem) { ' (системний)' })) }
+    if ($Disk.Letters) { $parts += (($Disk.Letters -join ', ') + $(if ($Disk.IsSystem) { ' ' + (T-D9 '(системний)') })) }
     $parts -join ' · '
 }
 
@@ -95,29 +95,36 @@ function Format-D9DiskDetails {
     param([Parameter(Mandatory)]$Disk)
     $p = @()
     if ($null -ne $Disk.Temperature -and $Disk.Temperature -gt 0) {
-        $p += "температура $($Disk.Temperature) °C$(if ($Disk.TemperatureMax -gt 0) { " (макс. $($Disk.TemperatureMax) °C)" })"
+        $p += (T-D9 'температура {0} °C' $Disk.Temperature) + $(if ($Disk.TemperatureMax -gt 0) { ' ' + (T-D9 '(макс. {0} °C)' $Disk.TemperatureMax) })
     }
-    if ($null -ne $Disk.Wear -and $Disk.Media -ne 'HDD') { $p += "знос $($Disk.Wear)%" }
+    if ($null -ne $Disk.Wear -and $Disk.Media -ne 'HDD') { $p += T-D9 'знос {0}%' "$($Disk.Wear)" }
     if ($Disk.PowerOnHours -gt 0) {
-        $p += "напрацювання $($Disk.PowerOnHours) год (≈ $([math]::Round($Disk.PowerOnHours / 24 / 365, 1)) р.)"
+        $p += T-D9 'напрацювання {0} год (≈ {1} р.)' $Disk.PowerOnHours ([math]::Round($Disk.PowerOnHours / 24 / 365, 1))
     }
-    if ($Disk.StartStopCycles -gt 0) { $p += "увімкнень $($Disk.StartStopCycles)" }
-    if ($Disk.HasCounters) { $p += "невиправних помилок: $([long]$Disk.ReadErrorsUncorrected + [long]$Disk.WriteErrorsUncorrected)" }
-    if ($Disk.Firmware) { $p += "прошивка $($Disk.Firmware)" }
-    if (-not $Disk.CountersAvailable) { $p += 'температура й знос — після запуску від адміністратора' }
-    elseif (-not $Disk.HasCounters) { $p += 'диск не віддає лічильників SMART (типово для флешок і USB-кишень)' }
+    if ($Disk.StartStopCycles -gt 0) { $p += T-D9 'увімкнень {0}' $Disk.StartStopCycles }
+    if ($Disk.HasCounters) { $p += T-D9 'невиправних помилок: {0}' "$([long]$Disk.ReadErrorsUncorrected + [long]$Disk.WriteErrorsUncorrected)" }
+    if ($Disk.Firmware) { $p += T-D9 'прошивка {0}' $Disk.Firmware }
+    if (-not $Disk.CountersAvailable) { $p += T-D9 'температура й знос — після запуску від адміністратора' }
+    elseif (-not $Disk.HasCounters) { $p += T-D9 'диск не віддає лічильників SMART (типово для флешок і USB-кишень)' }
     $p -join '; '
 }
 
 $script:D9DiskLevelText = @{ ok = 'Справний'; warn = 'Увага'; bad = 'Несправний'; unknown = 'Невідомо' }
+
+# Назва рівня поточною мовою (таблиця вище — українські шаблони)
+function Get-D9DiskLevelText {
+    param([string]$Level)
+    $t = $script:D9DiskLevelText[$Level]
+    if ($t) { T-D9 $t } else { $Level }
+}
 
 # Текстовий звіт (CLI і діагностика)
 function Format-D9DiskHealthReport {
     param([object[]]$Disks = @(Get-D9DiskHealth))
     foreach ($d in $Disks) {
         $v = Get-D9DiskVerdict $d
-        "[$($script:D9DiskLevelText[$v.Level])] $(Format-D9DiskTitle $d)"
-        if ($v.Problems) { "    Проблеми: $($v.Problems -join '; ')" }
+        "[$(Get-D9DiskLevelText $v.Level)] $(Format-D9DiskTitle $d)"
+        if ($v.Problems) { '    ' + (T-D9 'Проблеми: {0}' ($v.Problems -join '; ')) }
         "    $(Format-D9DiskDetails $d)"
     }
 }
@@ -134,17 +141,17 @@ function Get-D9IconCacheFiles {
 }
 
 function Reset-D9IconCache {
-    Write-D9Log 'Скидання кешу іконок і ескізів (Провідник перезапуститься, відкриті вікна папок закриються)...'
+    Write-D9Log (T-D9 'Скидання кешу іконок і ескізів (Провідник перезапуститься, відкриті вікна папок закриються)...')
     $before = @(Get-D9IconCacheFiles)
     $size = [long](($before | Measure-Object Length -Sum).Sum)
     Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 1500
     $removed = 0
     foreach ($f in $before) {
-        try { [IO.File]::Delete($f.FullName); $removed++ } catch { Write-D9Log "  Зайнятий, пропущено: $($f.Name)" Detail }
+        try { [IO.File]::Delete($f.FullName); $removed++ } catch { Write-D9Log ('  ' + (T-D9 'Зайнятий, пропущено: {0}' $f.Name)) Detail }
     }
     if (-not (Get-Process explorer -ErrorAction SilentlyContinue)) { Start-Process explorer.exe }
-    Write-D9Log "Видалено файлів кешу: $removed з $($before.Count) ($(Format-D9Size $size)). Windows створить кеш заново; значки з'являться за хвилину." Ok
-    if ($removed -lt $before.Count) { Write-D9Log 'Частину файлів тримає інша програма — після перезавантаження скиньте кеш ще раз.' Warn }
+    Write-D9Log (T-D9 'Видалено файлів кешу: {0} з {1} ({2}). Windows створить кеш заново; значки з''являться за хвилину.' $removed $before.Count (Format-D9Size $size)) Ok
+    if ($removed -lt $before.Count) { Write-D9Log (T-D9 'Частину файлів тримає інша програма — після перезавантаження скиньте кеш ще раз.') Warn }
     [pscustomobject]@{ Done = $true; RebootRecommended = $false; Removed = $removed }
 }

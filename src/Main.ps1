@@ -211,8 +211,8 @@ param(
     [Parameter(ParameterSetName = 'Uninstall')]
     [switch]$Yes,
 
-    [ValidateSet('uk', 'en')]
-    [string]$Language = 'uk',
+    [ValidateSet('auto', 'uk', 'en')]
+    [string]$Language = 'auto',
 
     [string]$LogPath
 )
@@ -232,8 +232,9 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.22.0-dev'
-$script:D9Language = $Language
+$script:D9Version  = '0.23.0-dev'
+$script:D9Language = Resolve-D9Language $Language
+$script:D9ScriptPath = $PSCommandPath
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
 
@@ -241,18 +242,18 @@ $ExitCodes = @{ Ok = 0; Partial = 1; BadArgs = 2; NotAdmin = 3; Cancelled = 4; R
 
 function Write-D9SystemSummary {
     param($Sys, $Recommendation)
-    $disk = @{ hdd = 'HDD'; ssd = 'SSD'; nvme = 'NVMe SSD'; unknown = 'не визначено' }[$Sys.SystemDisk]
+    $disk = @{ hdd = 'HDD'; ssd = 'SSD'; nvme = 'NVMe SSD'; unknown = (T-D9 'не визначено') }[$Sys.SystemDisk]
     Write-Host ""
     Write-Host "Debora $script:D9Version" -ForegroundColor Cyan
-    Write-Host ("  Система   {0} {1} ({2})" -f $Sys.OsName, $Sys.DisplayVersion, $Sys.Build)
-    Write-Host ("  ПК        {0} {1}" -f $Sys.Manufacturer, $Sys.Model)
-    Write-Host ("  Процесор  {0}, ядер: {1}" -f $Sys.Cpu, $Sys.Cores)
-    Write-Host ("  Пам'ять   {0} ГБ" -f $Sys.RamGB)
-    Write-Host ("  Диск C:   {0}" -f $disk)
-    Write-Host ("  Батарея   {0}" -f $(if ($Sys.HasBattery) { 'так' } else { 'ні' }))
-    Write-Host ("  Завантаж. {0} / {1}" -f $Sys.Firmware, $Sys.PartitionStyle)
+    Write-Host (T-D9 '  Система   {0} {1} ({2})' $Sys.OsName $Sys.DisplayVersion $Sys.Build)
+    Write-Host (T-D9 '  ПК        {0} {1}' $Sys.Manufacturer $Sys.Model)
+    Write-Host (T-D9 '  Процесор  {0}, ядер: {1}' $Sys.Cpu $Sys.Cores)
+    Write-Host (T-D9 '  Пам''ять   {0} ГБ' $Sys.RamGB)
+    Write-Host (T-D9 '  Диск C:   {0}' $disk)
+    Write-Host (T-D9 '  Батарея   {0}' $(if ($Sys.HasBattery) { (T-D9 'так') } else { (T-D9 'ні') }))
+    Write-Host (T-D9 '  Завантаж. {0} / {1}' $Sys.Firmware $Sys.PartitionStyle)
     Write-Host ""
-    Write-Host ("Рекомендований профіль: {0}" -f $Recommendation.Preset) -ForegroundColor Green
+    Write-Host (T-D9 'Рекомендований профіль: {0}' $Recommendation.Preset) -ForegroundColor Green
     foreach ($r in $Recommendation.Reasons) { Write-Host "  - $r" }
     Write-Host ""
 }
@@ -266,16 +267,16 @@ function Confirm-D9 {
 }
 
 $script:D9SevStyle = @{
-    critical   = @{ Icon = 'X'; Name = 'Критично';        Color = 'Red' }
-    warning    = @{ Icon = '!'; Name = 'Варто виправити'; Color = 'Yellow' }
-    suggestion = @{ Icon = '*'; Name = 'Поради';          Color = 'Cyan' }
-    info       = @{ Icon = 'i'; Name = 'Відомості';       Color = 'Gray' }
+    critical   = @{ Icon = 'X'; Name = (T-D9 'Критично');        Color = 'Red' }
+    warning    = @{ Icon = '!'; Name = (T-D9 'Варто виправити'); Color = 'Yellow' }
+    suggestion = @{ Icon = '*'; Name = (T-D9 'Поради');          Color = 'Cyan' }
+    info       = @{ Icon = 'i'; Name = (T-D9 'Відомості');       Color = 'Gray' }
 }
 
 function Write-D9ScanResult {
     param($ScanResult, $Categories)
     $color = @{ good = 'Green'; attention = 'Yellow'; serious = 'Red' }[$ScanResult.score.verdict]
-    $text  = @{ good = 'Добрий стан'; attention = 'Потребує уваги'; serious = 'Є серйозні проблеми' }[$ScanResult.score.verdict]
+    $text  = @{ good = (T-D9 'Добрий стан'); attention = (T-D9 'Потребує уваги'); serious = (T-D9 'Є серйозні проблеми') }[$ScanResult.score.verdict]
     Write-Host ""
     Write-Host ("  {0} / 100   {1}" -f $ScanResult.score.overall, $text) -ForegroundColor $color
     $cats = foreach ($c in $Categories) {
@@ -297,7 +298,7 @@ function Write-D9ScanResult {
     $notChecked = @($ScanResult.checks | Where-Object { $_.status -in 'skipped', 'error' })
     if ($notChecked) {
         Write-Host ""
-        Write-Host "Не перевірено: " -NoNewline -ForegroundColor DarkGray
+        Write-Host (T-D9 'Не перевірено: ') -NoNewline -ForegroundColor DarkGray
         Write-Host (($notChecked | ForEach-Object { "$($_.name) ($($_.note))" }) -join '; ') -ForegroundColor DarkGray
     }
 }
@@ -305,38 +306,38 @@ function Write-D9ScanResult {
 function Write-D9Checklist {
     param($List)
     $items = @($List.items)
-    if (-not $items) { Write-Host ""; Write-Host "Чекліст порожній — нічого робити не потрібно." -ForegroundColor Green; return }
+    if (-not $items) { Write-Host ""; Write-Host (T-D9 'Чекліст порожній — нічого робити не потрібно.') -ForegroundColor Green; return }
     $doneCount = @($items | Where-Object status -eq 'done').Count
     Write-Host ""
-    Write-Host ("Чекліст: {0} — виконано {1} з {2}" -f $List.model, $doneCount, $items.Count) -ForegroundColor Cyan
+    Write-Host (T-D9 'Чекліст: {0} — виконано {1} з {2}' $List.model $doneCount $items.Count) -ForegroundColor Cyan
     foreach ($i in $items) {
         $box  = if ($i.status -eq 'done') { '[x]' } else { '[ ]' }
-        $kind = if ($i.auto) { 'авто' } else { 'вручну' }
+        $kind = if ($i.auto) { (T-D9 'авто') } else { (T-D9 'вручну') }
         $c    = if ($i.status -eq 'done') { 'DarkGray' } elseif ($i.auto) { 'White' } else { 'Yellow' }
         Write-Host (" {0} {1,2}. {2}  ({3})" -f $box, $i.number, $i.title, $kind) -ForegroundColor $c
         if ($i.status -eq 'done') { continue }
         if ($i.why) { Write-Host "        $($i.why)" -ForegroundColor DarkGray }
         foreach ($l in @($i.links)) { Write-Host "        -> $($l.label): $($l.url)" -ForegroundColor DarkCyan }
         $deps = @($i.dependsOn | ForEach-Object { $id = $_; ($items | Where-Object id -eq $id).number } | Where-Object { $_ } | Sort-Object)
-        if ($deps) { Write-Host "        після кроку $($deps -join ', ')" -ForegroundColor DarkGray }
+        if ($deps) { Write-Host (T-D9 '        після кроку {0}' ($deps -join ', ')) -ForegroundColor DarkGray }
     }
     $autoLeft = @($items | Where-Object { $_.auto -and $_.status -ne 'done' }).Count
     Write-Host ""
-    if ($autoLeft) { Write-Host "Автоматичних кроків: $autoLeft. Виконати: -Checklist -Run All   (ручний крок позначити: -Checklist -Done <номер>)" }
+    if ($autoLeft) { Write-Host (T-D9 'Автоматичних кроків: {0}. Виконати: -Checklist -Run All   (ручний крок позначити: -Checklist -Done <номер>)' "$autoLeft") }
 }
 
 function Save-D9HtmlReport {
     param($ScanResult, $List, $Categories, [string]$Path)
     $html = ConvertTo-D9ScanHtml -Scan $ScanResult -Checklist $List -Categories $Categories
     [IO.File]::WriteAllText($Path, $html, (New-Object Text.UTF8Encoding $false))
-    Write-D9Log "Звіт збережено: $Path" Ok
+    Write-D9Log (T-D9 'Звіт збережено: {0}' $Path) Ok
 }
 
 # ---------------------------------------------------------------------
 $catalog = Import-D9Catalog
 $catalogErrors = Test-D9Catalog $catalog
 if ($catalogErrors.Count) {
-    Write-D9Log "Помилки в каталозі твіків:" Error
+    Write-D9Log (T-D9 'Помилки в каталозі твіків:') Error
     $catalogErrors | ForEach-Object { Write-D9Log "  $_" Error }
     exit $ExitCodes.BadArgs
 }
@@ -351,10 +352,10 @@ switch ($PSCmdlet.ParameterSetName) {
         $script:D9Theme = $Theme
         if ($SelfTest) {
             try {
-                $r = Show-D9Gui -Catalog $catalog -SystemInfo $sys -Recommendation $recommendation -ReportDir (Join-Path $base 'Звіти') -DriverDir (Join-Path $base 'Драйвери') -TestAction { "вікно побудовано: вкладок $($ui.Tabs.Items.Count)" }
-                Write-D9Log "Самоперевірка інтерфейсу: $r" Ok
+                $r = Show-D9Gui -Catalog $catalog -SystemInfo $sys -Recommendation $recommendation -ReportDir (Join-Path $base 'Звіти') -DriverDir (Join-Path $base 'Драйвери') -TestAction { T-D9 'вікно побудовано: вкладок {0}' "$($ui.Tabs.Items.Count)" }
+                Write-D9Log (T-D9 'Самоперевірка інтерфейсу: {0}' "$r") Ok
                 exit $ExitCodes.Ok
-            } catch { Write-D9Log "Самоперевірка інтерфейсу не пройшла: $($_.Exception.Message)" Error; exit $ExitCodes.Partial }
+            } catch { Write-D9Log (T-D9 'Самоперевірка інтерфейсу не пройшла: {0}' $_.Exception.Message) Error; exit $ExitCodes.Partial }
         }
         try {
             Show-D9Gui -Catalog $catalog -SystemInfo $sys -Recommendation $recommendation -ReportDir (Join-Path $base 'Звіти') -DriverDir (Join-Path $base 'Драйвери')
@@ -362,7 +363,7 @@ switch ($PSCmdlet.ParameterSetName) {
             # Якщо вікно не відкрилось (немає WPF, пошкоджені шрифти тощо) — показуємо текстове меню
             # run.bat запускає вікно з прихованою консоллю — меню відкриваємо в новому видимому вікні
             $err = $_.Exception.Message
-            try { Add-Type -AssemblyName PresentationFramework; [void][Windows.MessageBox]::Show("Не вдалося відкрити вікно програми:`n$err`n`nЗараз відкриється текстове меню.", 'Debora', 'OK', 'Warning') } catch { }
+            try { Add-Type -AssemblyName PresentationFramework; [void][Windows.MessageBox]::Show(((T-D9 'Не вдалося відкрити вікно програми:') + "`n$err`n`n" + (T-D9 'Зараз відкриється текстове меню.')), 'Debora', 'OK', 'Warning') } catch { }
             Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Menu"
         }
         exit $ExitCodes.Ok
@@ -374,26 +375,26 @@ switch ($PSCmdlet.ParameterSetName) {
         $reports = Join-Path (Split-Path $self) 'Звіти'
         $runSelf = { param([string[]]$Arguments) & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $self @Arguments }
         $lastReport = { Get-ChildItem $reports -Filter '*.html' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
-        if (-not (Test-D9IsAdmin)) { Write-D9Log "Увага: запущено без прав адміністратора — частина перевірок і всі зміни недоступні. Запускайте через run.bat." Warn }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Увага: запущено без прав адміністратора — частина перевірок і всі зміни недоступні. Запускайте через run.bat.') Warn }
         while ($true) {
             Write-Host ""
             Write-Host "Debora $script:D9Version — $($sys.Manufacturer) $($sys.Model), $($sys.OsName) $($sys.DisplayVersion)" -ForegroundColor Cyan
-            Write-Host "Рекомендований профіль: $($recommendation.Preset) ($($recommendation.Reasons -join '; '))" -ForegroundColor DarkGray
+            Write-Host (T-D9 'Рекомендований профіль: {0} ({1})' $recommendation.Preset ($recommendation.Reasons -join '; ')) -ForegroundColor DarkGray
             Write-Host ""
-            Write-Host "  1. Перевірити комп'ютер (сканування й звіт)"
-            Write-Host "  2. Показати чекліст «що робити»"
-            Write-Host "  3. Виконати автоматичні кроки чекліста"
-            Write-Host "  4. Застосувати рекомендований профіль налаштувань ($($recommendation.Preset))"
-            Write-Host "  5. Відкотити останні зміни"
-            Write-Host "  6. Відкрити останній звіт"
-            Write-Host "  7. Драйвери: що потрібно і де взяти"
-            Write-Host "  8. Встановити драйвери з папки «Драйвери»"
-            Write-Host " 11. Знайти й встановити нові драйвери з інтернету (автоматично)"
-            Write-Host "  9. Зібрати діагностику (zip для розбору проблеми)"
-            Write-Host " 10. Оновити всі програми (winget)"
-            Write-Host " 12. Стан дисків (температура, знос, помилки)"
-            Write-Host "  0. Вихід"
-            $choice = Read-Host "Ваш вибір"
+            Write-Host (T-D9 '  1. Перевірити комп''ютер (сканування й звіт)')
+            Write-Host (T-D9 '  2. Показати чекліст «що робити»')
+            Write-Host (T-D9 '  3. Виконати автоматичні кроки чекліста')
+            Write-Host (T-D9 '  4. Застосувати рекомендований профіль налаштувань ({0})' $recommendation.Preset)
+            Write-Host (T-D9 '  5. Відкотити останні зміни')
+            Write-Host (T-D9 '  6. Відкрити останній звіт')
+            Write-Host (T-D9 '  7. Драйвери: що потрібно і де взяти')
+            Write-Host (T-D9 '  8. Встановити драйвери з папки «Драйвери»')
+            Write-Host (T-D9 ' 11. Знайти й встановити нові драйвери з інтернету (автоматично)')
+            Write-Host (T-D9 '  9. Зібрати діагностику (zip для розбору проблеми)')
+            Write-Host (T-D9 ' 10. Оновити всі програми (winget)')
+            Write-Host (T-D9 ' 12. Стан дисків (температура, знос, помилки)')
+            Write-Host (T-D9 '  0. Вихід')
+            $choice = Read-Host (T-D9 'Ваш вибір')
             switch ($choice) {
                 '1' {
                     if (-not (Test-Path $reports)) { New-Item -ItemType Directory -Path $reports | Out-Null }
@@ -404,8 +405,8 @@ switch ($PSCmdlet.ParameterSetName) {
                 '2' { & $runSelf @('-Checklist') }
                 '3' {
                     & $runSelf @('-Checklist', '-Run', 'All')
-                    $answer = Read-Host "Перезавантажити комп'ютер зараз, щоб зміни запрацювали? [y/N]"
-                    if ($answer -match '^(y|т|так)$') { Restart-Computer -Force }
+                    $answer = Read-Host (T-D9 'Перезавантажити комп''ютер зараз, щоб зміни запрацювали? [y/N]')
+                    if ($answer -match '^(y|yes|т|так)$') { Restart-Computer -Force }
                 }
                 '4' {
                     & $runSelf @('-Preset', 'Recommended', '-WhatIf')
@@ -413,15 +414,15 @@ switch ($PSCmdlet.ParameterSetName) {
                 }
                 '5' {
                     $last = Get-D9SessionList | Where-Object { -not $_.Undone -and $_.Changed -gt 0 } | Select-Object -First 1
-                    if (-not $last) { Write-D9Log "Немає змін, які можна відкотити." Ok }
+                    if (-not $last) { Write-D9Log (T-D9 'Немає змін, які можна відкотити.') Ok }
                     else {
-                        Write-Host "Остання сесія: $($last.Started), $($last.Selection), змін: $($last.Changed)"
+                        Write-Host (T-D9 'Остання сесія: {0}, {1}, змін: {2}' $last.Started $last.Selection $last.Changed)
                         & $runSelf @('-Undo', $last.Id)
                     }
                 }
                 '6' {
                     $r = & $lastReport
-                    if ($r) { Start-Process $r.FullName } else { Write-D9Log "Звітів ще немає — спочатку пункт 1." Warn }
+                    if ($r) { Start-Process $r.FullName } else { Write-D9Log (T-D9 'Звітів ще немає — спочатку пункт 1.') Warn }
                 }
                 '7' { & $runSelf @('-Drivers') }
                 '8' {
@@ -429,8 +430,8 @@ switch ($PSCmdlet.ParameterSetName) {
                     if (-not (Test-Path $folder)) { New-Item -ItemType Directory -Path $folder | Out-Null }
                     if (-not (Get-ChildItem $folder -Recurse -File -ErrorAction SilentlyContinue)) {
                         Write-Host ""
-                        Write-Host "Папка «Драйвери» порожня: $folder" -ForegroundColor Yellow
-                        Write-Host "Завантажте драйвери з сайту виробника (пункт 7 покаже посилання) і покладіть сюди файли як є — .zip теж можна."
+                        Write-Host (T-D9 'Папка «Драйвери» порожня: {0}' $folder) -ForegroundColor Yellow
+                        Write-Host (T-D9 'Завантажте драйвери з сайту виробника (пункт 7 покаже посилання) і покладіть сюди файли як є — .zip теж можна.')
                         Start-Process explorer.exe $folder
                     } else {
                         & $runSelf @('-DriverInstall', $folder)
@@ -445,7 +446,7 @@ switch ($PSCmdlet.ParameterSetName) {
                 '11' { & $runSelf @('-DriverUpdate') }
                 '12' { & $runSelf @('-Disks') }
                 '0' { exit $ExitCodes.Ok }
-                default { Write-Host "Введіть номер пункту." -ForegroundColor Yellow }
+                default { Write-Host (T-D9 'Введіть номер пункту.') -ForegroundColor Yellow }
             }
         }
     }
@@ -453,94 +454,94 @@ switch ($PSCmdlet.ParameterSetName) {
     'DriverUpdate' {
         $folder = Join-Path (Split-Path $PSCommandPath) 'Драйвери\Завантажені'
         Write-Host ""
-        Write-Host "Онлайн-пошук драйверів: $($sys.Manufacturer) $($sys.Model), $($sys.OsName) $($sys.DisplayVersion)" -ForegroundColor Cyan
+        Write-Host (T-D9 'Онлайн-пошук драйверів: {0} {1}, {2} {3}' $sys.Manufacturer $sys.Model $sys.OsName $sys.DisplayVersion) -ForegroundColor Cyan
         $all = @(Find-D9DriverUpdates -SystemInfo $sys -IncludeWindowsUpdate)
         $cands = @($all | Where-Object { $IncludeOptional -or -not $_.Optional })
-        if (-not $all) { Write-D9Log 'Новіших драйверів не знайдено — встановлені актуальні.' Ok; exit $ExitCodes.Ok }
+        if (-not $all) { Write-D9Log (T-D9 'Новіших драйверів не знайдено — встановлені актуальні.') Ok; exit $ExitCodes.Ok }
         Write-Host ""
         foreach ($c in $all) {
-            $mark = if ($c.Status -eq 'missing') { 'немає драйвера' } elseif ($c.Optional) { 'необов''язково' } else { 'новіший' }
+            $mark = if ($c.Status -eq 'missing') { (T-D9 'немає драйвера') } elseif ($c.Optional) { (T-D9 'необов''язково') } else { (T-D9 'новіший') }
             $color = if ($c.Status -eq 'missing') { 'Yellow' } elseif ($c.Optional) { 'DarkGray' } else { 'White' }
-            Write-Host ("  [{0}] {1}{2}" -f $mark, $c.Device.Name, $(if ($c.Recommended) { ' (рекомендує Windows Update)' })) -ForegroundColor $color
-            Write-Host ("      {0} → {1} від {2:dd.MM.yyyy}, {3}" -f $(if ($c.Device.Version) { $c.Device.Version } else { 'немає' }), $c.Row.Version, $c.Row.Date, (Format-D9Size $c.Row.Size)) -ForegroundColor DarkGray
+            Write-Host ("  [{0}] {1}{2}" -f $mark, $c.Device.Name, $(if ($c.Recommended) { (T-D9 ' (рекомендує Windows Update)') })) -ForegroundColor $color
+            Write-Host (T-D9 '      {0} → {1} від {2:dd.MM.yyyy}, {3}' $(if ($c.Device.Version) { $c.Device.Version } else { (T-D9 'немає') }) $c.Row.Version $c.Row.Date (Format-D9Size $c.Row.Size)) -ForegroundColor DarkGray
         }
-        if ($all.Count -gt $cands.Count) { Write-Host "`nНеобов'язкові пропускаються; додайте -IncludeOptional, щоб встановити й їх." -ForegroundColor DarkGray }
+        if ($all.Count -gt $cands.Count) { Write-Host ("`n" + (T-D9 'Необов''язкові пропускаються; додайте -IncludeOptional, щоб встановити й їх.')) -ForegroundColor DarkGray }
         if ($WhatIf -or -not $cands) { exit $ExitCodes.Ok }
-        if (-not (Test-D9IsAdmin)) { Write-D9Log "Для встановлення потрібні права адміністратора (запускайте через run.bat)." Error; exit $ExitCodes.NotAdmin }
-        if (-not (Confirm-D9 "Завантажити й встановити $($cands.Count) драйвер(ів)? Попередні буде збережено для відкату")) { exit $ExitCodes.Cancelled }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Для встановлення потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
+        if (-not (Confirm-D9 (T-D9 'Завантажити й встановити {0} драйвер(ів)? Попередні буде збережено для відкату' "$($cands.Count)"))) { exit $ExitCodes.Cancelled }
         $oemTool = Get-D9OemTool $sys
-        if ($oemTool -and (Confirm-D9 "Також запустити $($oemTool.Name) — утиліту $($oemTool.Vendor) для драйверів і BIOS вашої моделі (встановиться автоматично)?")) { [void](Invoke-D9OemDriverTool -SystemInfo $sys) }
+        if ($oemTool -and (Confirm-D9 (T-D9 'Також запустити {0} — утиліту {1} для драйверів і BIOS вашої моделі (встановиться автоматично)?' $oemTool.Name $oemTool.Vendor))) { [void](Invoke-D9OemDriverTool -SystemInfo $sys) }
         $found = Save-D9DriverUpdates -Candidates $cands -Folder $folder
         $todo = @($found.Packages | Where-Object Status -ne 'current')
-        if (-not $todo) { Write-D9Log 'Після перевірки пакетів встановлювати нічого.' Ok; exit $ExitCodes.Ok }
+        if (-not $todo) { Write-D9Log (T-D9 'Після перевірки пакетів встановлювати нічого.') Ok; exit $ExitCodes.Ok }
         $drvCatalog = New-D9DriverCatalog -Packages $todo
         $plan = New-D9Plan -Catalog $drvCatalog -TweakIds @($drvCatalog.Tweaks.id) -SystemInfo $sys
-        $session = Invoke-D9Plan -Plan $plan -SystemInfo $sys -Selection 'драйвери з Microsoft Update Catalog' -NoRestorePoint:$NoRestorePoint
+        $session = Invoke-D9Plan -Plan $plan -SystemInfo $sys -Selection (T-D9 'драйвери з Microsoft Update Catalog') -NoRestorePoint:$NoRestorePoint
         $errors = @($session.entries | Where-Object result -eq 'error')
-        Write-D9Log ("Встановлено: {0}, помилок: {1}. Пакети збережено в {2} — їх можна взяти на інший такий самий ПК." -f @($session.entries | Where-Object result -eq 'ok').Count, $errors.Count, $folder) $(if ($errors) { 'Warn' } else { 'Ok' })
-        Write-D9Log "Перезавантажте комп'ютер, щоб драйвери запрацювали. Відкат: меню → 5." Warn
+        Write-D9Log (T-D9 'Встановлено: {0}, помилок: {1}. Пакети збережено в {2} — їх можна взяти на інший такий самий ПК.' @($session.entries | Where-Object result -eq 'ok').Count $errors.Count $folder) $(if ($errors) { 'Warn' } else { 'Ok' })
+        Write-D9Log (T-D9 'Перезавантажте комп''ютер, щоб драйвери запрацювали. Відкат: меню → 5.') Warn
         exit $(if ($errors) { $ExitCodes.Partial } else { $ExitCodes.Reboot })
     }
 
     'Maintain' {
-        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора.' Error; exit $ExitCodes.NotAdmin }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора.') Error; exit $ExitCodes.NotAdmin }
         $summary = Invoke-D9Maintenance -Catalog $catalog -SystemInfo $sys
-        Show-D9Toast 'Debora: обслуговування завершено' (Format-D9MaintenanceSummary $summary)
+        Show-D9Toast (T-D9 'Debora: обслуговування завершено') (Format-D9MaintenanceSummary $summary)
         exit $(if (@($summary.results | Where-Object { -not $_.ok })) { $ExitCodes.Partial } elseif ($summary.reboot) { $ExitCodes.Reboot } else { $ExitCodes.Ok })
     }
 
     'Schedule' {
-        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора (запускайте через run.bat).' Error; exit $ExitCodes.NotAdmin }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
         if ($Schedule -eq 'Off') { Unregister-D9MaintenanceTask; exit $ExitCodes.Ok }
-        if (-not $script:D9Embedded) { Write-D9Log 'Розклад працює лише зі зібраним Debora.ps1 (build\Compile.ps1).' Error; exit $ExitCodes.BadArgs }
+        if (-not $script:D9Embedded) { Write-D9Log (T-D9 'Розклад працює лише зі зібраним Debora.ps1 (build\Compile.ps1).') Error; exit $ExitCodes.BadArgs }
         $cfg = Get-D9MaintenanceConfig
         $cfg.Day = $Schedule; $cfg.Time = $At
         try { Register-D9MaintenanceTask -SourceScript $PSCommandPath -Config $cfg; exit $ExitCodes.Ok }
-        catch { Write-D9Log "Не вдалося створити розклад: $($_.Exception.Message)" Error; exit $ExitCodes.Partial }
+        catch { Write-D9Log (T-D9 'Не вдалося створити розклад: {0}' $_.Exception.Message) Error; exit $ExitCodes.Partial }
     }
 
     'Uninstall' {
         $all = @(Get-D9UninstallList)
         $progs = @($all | Where-Object { $n = $_.Name; @($Uninstall | Where-Object { $n -like $_ }).Count })
-        if (-not $progs) { Write-D9Log "Не знайдено встановлених програм за назвою: $($Uninstall -join ', ')" Warn; exit $ExitCodes.BadArgs }
-        foreach ($pr in $progs) { $c = Get-D9UninstallCommand $pr; Write-Host ("  {0} {1}{2}" -f $pr.Name, $pr.Version, $(if ($c -and -not $c.Silent) { '  (з вікном деінсталятора)' })) }
-        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора (запускайте через run.bat).' Error; exit $ExitCodes.NotAdmin }
-        if (-not (Confirm-D9 "Видалити $($progs.Count) програм(и)?")) { exit $ExitCodes.Cancelled }
+        if (-not $progs) { Write-D9Log (T-D9 'Не знайдено встановлених програм за назвою: {0}' ($Uninstall -join ', ')) Warn; exit $ExitCodes.BadArgs }
+        foreach ($pr in $progs) { $c = Get-D9UninstallCommand $pr; Write-Host ("  {0} {1}{2}" -f $pr.Name, $pr.Version, $(if ($c -and -not $c.Silent) { (T-D9 '  (з вікном деінсталятора)') })) }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
+        if (-not (Confirm-D9 (T-D9 'Видалити {0} програм(и)?' "$($progs.Count)"))) { exit $ExitCodes.Cancelled }
         [void](New-D9RestorePoint)
         $res = @(Uninstall-D9Programs -Programs $progs)
         $left = @($res | ForEach-Object { $_.leftovers } | Where-Object { $_ })
         if ($left) {
-            Write-Host "Залишки після видалення:" -ForegroundColor Cyan
-            foreach ($l in $left) { Write-Host "  $(if ($l.Type -eq 'folder') { 'Папка ' } else { 'Реєстр' }) $($l.Path)" }
-            if (Confirm-D9 "Прибрати $($left.Count) залишків? Папки — у Кошик, реєстр — з резервною копією .reg") { [void](Remove-D9UninstallLeftovers -Items $left) }
+            Write-Host (T-D9 'Залишки після видалення:') -ForegroundColor Cyan
+            foreach ($l in $left) { Write-Host "  $(if ($l.Type -eq 'folder') { T-D9 'Папка ' } else { T-D9 'Реєстр' }) $($l.Path)" }
+            if (Confirm-D9 (T-D9 'Прибрати {0} залишків? Папки — у Кошик, реєстр — з резервною копією .reg' "$($left.Count)")) { [void](Remove-D9UninstallLeftovers -Items $left) }
         }
         exit $(if (@($res | Where-Object { $_.result -notin 'removed', 'reboot' })) { $ExitCodes.Partial } else { $ExitCodes.Ok })
     }
 
     'ExportDrivers' {
-        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора (запускайте через run.bat).' Error; exit $ExitCodes.NotAdmin }
-        try { $r = Export-D9Drivers -Folder $ExportDrivers; Write-D9Log "Щоб поставити їх на іншу (таку саму) систему: -DriverInstall `"$ExportDrivers`"" Detail; exit $ExitCodes.Ok }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
+        try { $r = Export-D9Drivers -Folder $ExportDrivers; Write-D9Log (T-D9 'Щоб поставити їх на іншу (таку саму) систему: -DriverInstall "{0}"' $ExportDrivers) Detail; exit $ExitCodes.Ok }
         catch { Write-D9Log $_.Exception.Message Error; exit $ExitCodes.Partial }
     }
 
     'PrepareUsb' {
-        if (-not $NoDrivers -and -not (Test-D9IsAdmin)) { Write-D9Log 'Для збереження драйверів потрібні права адміністратора (або додайте -NoDrivers).' Error; exit $ExitCodes.NotAdmin }
+        if (-not $NoDrivers -and -not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Для збереження драйверів потрібні права адміністратора (або додайте -NoDrivers).') Error; exit $ExitCodes.NotAdmin }
         $opts = @{ UserName = $UserName; Password = $AccountPassword; Edition = $Edition; BypassRequirements = -not $KeepRequirements
                    PostInstall = $(if ($Preset) { $Preset } else { 'Recommended' }); DriverUpdate = $true }
         Write-Host ""
-        Write-Host "Флешка $PrepareUsb буде доповнена: autounattend.xml$(if (-not $NoDrivers) { ', драйвери цього ПК' }), Debora." -ForegroundColor Cyan
-        Write-Host "Під час встановлення вручну лишиться тільки вибір диска. Усе на флешці, крім autounattend.xml, не змінюється." -ForegroundColor DarkGray
+        Write-Host (T-D9 'Флешка {0} буде доповнена: autounattend.xml{1}, Debora.' $PrepareUsb $(if (-not $NoDrivers) { T-D9 ', драйвери цього ПК' } else { '' })) -ForegroundColor Cyan
+        Write-Host (T-D9 'Під час встановлення вручну лишиться тільки вибір диска. Усе на флешці, крім autounattend.xml, не змінюється.') -ForegroundColor DarkGray
         try {
             $r = Initialize-D9InstallUsb -Drive $PrepareUsb -Options $opts -ProgramFolder (Split-Path $PSCommandPath) -IncludeDrivers:(-not $NoDrivers)
-            Write-D9Log "Готово ($($r.Language)): $($r.Done -join '; ')." Ok
-            Write-D9Log 'Завантажтеся з флешки й виберіть диск — решта автоматично. Після першого входу Debora застосує налаштування й доставить драйвери (потрібен інтернет).' Detail
+            Write-D9Log (T-D9 'Готово ({0}): {1}.' $r.Language ($r.Done -join '; ')) Ok
+            Write-D9Log (T-D9 'Завантажтеся з флешки й виберіть диск — решта автоматично. Після першого входу Debora застосує налаштування й доставить драйвери (потрібен інтернет).') Detail
             exit $ExitCodes.Ok
         } catch { Write-D9Log $_.Exception.Message Error; exit $ExitCodes.Partial }
     }
 
     'Apps' {
-        if (-not (Get-D9WingetPath)) { Write-D9Log 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store: ms-windows-store://pdp/?productid=9NBLGGH4NNS1' Error; exit $ExitCodes.Partial }
-        Write-D9Log 'Перевіряю встановлені програми (winget export)...'
+        if (-not (Get-D9WingetPath)) { Write-D9Log (T-D9 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store: {0}' 'ms-windows-store://pdp/?productid=9NBLGGH4NNS1') Error; exit $ExitCodes.Partial }
+        Write-D9Log (T-D9 'Перевіряю встановлені програми (winget export)...')
         $installed = Get-D9InstalledAppIds
         $appCatalog = Import-D9AppCatalog
         foreach ($c in $appCatalog.categories) {
@@ -554,100 +555,100 @@ switch ($PSCmdlet.ParameterSetName) {
             }
         }
         Write-Host ""
-        Write-Host 'Встановити: -InstallApp <ID>[,<ID>...]   Оновити всі: -UpgradeApps' -ForegroundColor DarkGray
+        Write-Host (T-D9 'Встановити: -InstallApp <ID>[,<ID>...]   Оновити всі: -UpgradeApps') -ForegroundColor DarkGray
         exit $ExitCodes.Ok
     }
 
     'InstallApp' {
-        if (-not (Get-D9WingetPath)) { Write-D9Log 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store.' Error; exit $ExitCodes.Partial }
+        if (-not (Get-D9WingetPath)) { Write-D9Log (T-D9 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store.') Error; exit $ExitCodes.Partial }
         $appCatalog = Import-D9AppCatalog
         $list = foreach ($want in $InstallApp) {
             $hit = @($appCatalog.apps | Where-Object { $_.id -eq $want -or $_.name -eq $want }) | Select-Object -First 1
             if ($hit) { $hit } else { [pscustomobject]@{ id = $want; name = $want; source = 'winget' } }   # будь-який пакет winget за точним ID
         }
-        Write-Host "Буде встановлено: $(($list | ForEach-Object name) -join ', ')"
-        if (-not (Confirm-D9 'Встановити?')) { exit $ExitCodes.Cancelled }
+        Write-Host (T-D9 'Буде встановлено: {0}' (($list | ForEach-Object name) -join ', '))
+        if (-not (Confirm-D9 (T-D9 'Встановити?'))) { exit $ExitCodes.Cancelled }
         $res = @(Install-D9Apps -Apps @($list))
         $bad = @($res | Where-Object { $_.result -in 'failed', 'notFound' })
-        if (@($res | Where-Object result -eq 'reboot')) { Write-D9Log 'Деякі програми запрацюють після перезавантаження.' Warn }
+        if (@($res | Where-Object result -eq 'reboot')) { Write-D9Log (T-D9 'Деякі програми запрацюють після перезавантаження.') Warn }
         exit $(if ($bad) { $ExitCodes.Partial } else { $ExitCodes.Ok })
     }
 
     'UpgradeApps' {
-        if (-not (Get-D9WingetPath)) { Write-D9Log 'winget не знайдено.' Error; exit $ExitCodes.Partial }
+        if (-not (Get-D9WingetPath)) { Write-D9Log (T-D9 'winget не знайдено.') Error; exit $ExitCodes.Partial }
         $up = @(Get-D9AppUpgrades)
-        if (-not $up) { Write-D9Log 'Усі програми актуальні.' Ok; exit $ExitCodes.Ok }
-        Write-Host "Оновлення є для $($up.Count) програм:"
+        if (-not $up) { Write-D9Log (T-D9 'Усі програми актуальні.') Ok; exit $ExitCodes.Ok }
+        Write-Host (T-D9 'Оновлення є для {0} програм:' "$($up.Count)")
         foreach ($u in $up) { Write-Host ("  {0,-40} {1} → {2}" -f $u.Name, $u.Version, $u.Available) }
-        if (-not (Confirm-D9 'Оновити всі? Відкриті програми краще закрити.')) { exit $ExitCodes.Cancelled }
+        if (-not (Confirm-D9 (T-D9 'Оновити всі? Відкриті програми краще закрити.'))) { exit $ExitCodes.Cancelled }
         $r = Invoke-D9AppUpgradeAll
         exit $(if ($r.Result -in 'installed', 'upToDate') { $ExitCodes.Ok } else { $ExitCodes.Partial })
     }
 
     'Disks' {
         Write-Host ""
-        Write-Host "Стан дисків: $($sys.Manufacturer) $($sys.Model)" -ForegroundColor Cyan
-        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Без прав адміністратора Windows не віддає температуру, знос і лічильники помилок.' Warn }
+        Write-Host (T-D9 'Стан дисків: {0} {1}' $sys.Manufacturer $sys.Model) -ForegroundColor Cyan
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Без прав адміністратора Windows не віддає температуру, знос і лічильники помилок.') Warn }
         $all = @(Get-D9DiskHealth)
         foreach ($d in $all) {
             $v = Get-D9DiskVerdict $d
             $color = @{ ok = 'Green'; warn = 'Yellow'; bad = 'Red'; unknown = 'DarkGray' }[$v.Level]
-            Write-Host ("  [{0}] {1}" -f $script:D9DiskLevelText[$v.Level], (Format-D9DiskTitle $d)) -ForegroundColor $color
-            if ($v.Problems) { Write-Host "      Проблеми: $($v.Problems -join '; ')" -ForegroundColor $color }
+            Write-Host ("  [{0}] {1}" -f (Get-D9DiskLevelText $v.Level), (Format-D9DiskTitle $d)) -ForegroundColor $color
+            if ($v.Problems) { Write-Host (T-D9 '      Проблеми: {0}' ($v.Problems -join '; ')) -ForegroundColor $color }
             Write-Host "      $(Format-D9DiskDetails $d)" -ForegroundColor DarkGray
         }
         $worst = @($all | Where-Object { -not $_.Removable } | ForEach-Object { (Get-D9DiskVerdict $_).Level })
-        if ($worst -contains 'bad') { Write-D9Log 'Є несправний диск: негайно скопіюйте важливі файли й замініть диск.' Error; exit $ExitCodes.Partial }
+        if ($worst -contains 'bad') { Write-D9Log (T-D9 'Є несправний диск: негайно скопіюйте важливі файли й замініть диск.') Error; exit $ExitCodes.Partial }
         exit $ExitCodes.Ok
     }
 
     'Diagnostics' {
         $target = if ($OutDir) { $OutDir } else { Join-Path (Split-Path $PSCommandPath) 'Звіти' }
-        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Без прав адміністратора частина журналів і відомостей про драйвери буде неповною.' Warn }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Без прав адміністратора частина журналів і відомостей про драйвери буде неповною.') Warn }
         try {
             [void](New-D9DiagnosticsBundle -SystemInfo $sys -OutDir $target -ReportDir (Join-Path (Split-Path $PSCommandPath) 'Звіти'))
             exit $ExitCodes.Ok
-        } catch { Write-D9Log "Не вдалося зібрати діагностику: $($_.Exception.Message)" Error; exit $ExitCodes.Partial }
+        } catch { Write-D9Log (T-D9 'Не вдалося зібрати діагностику: {0}' $_.Exception.Message) Error; exit $ExitCodes.Partial }
     }
 
     'Drivers' {
         Write-Host ""
-        Write-Host "Драйвери: $($sys.Manufacturer) $($sys.Model), $($sys.OsName) $($sys.DisplayVersion)" -ForegroundColor Cyan
+        Write-Host (T-D9 'Драйвери: {0} {1}, {2} {3}' $sys.Manufacturer $sys.Model $sys.OsName $sys.DisplayVersion) -ForegroundColor Cyan
         $rep = Get-D9DriverReport $sys
         if ($rep.Oem) {
             Write-Host ""
-            Write-Host "Сторінка драйверів $($rep.Oem.Name) для цієї моделі (найкраще джерело):" -ForegroundColor Green
+            Write-Host (T-D9 'Сторінка драйверів {0} для цієї моделі (найкраще джерело):' "$($rep.Oem.Name)") -ForegroundColor Green
             Write-Host "  $($rep.Oem.Url)"
             if ($rep.Oem.Note) { Write-Host "  $($rep.Oem.Note)" -ForegroundColor DarkGray }
-            if ($rep.Oem.Serial) { Write-Host "  Серійний номер: $($rep.Oem.Serial)" -ForegroundColor DarkGray }
+            if ($rep.Oem.Serial) { Write-Host (T-D9 '  Серійний номер: {0}' "$($rep.Oem.Serial)") -ForegroundColor DarkGray }
         }
         Write-Host ""
         if ($rep.Problems) {
-            Write-Host "Без драйвера або з помилкою ($($rep.Problems.Count)):" -ForegroundColor Yellow
+            Write-Host (T-D9 'Без драйвера або з помилкою ({0}):' "$($rep.Problems.Count)") -ForegroundColor Yellow
             foreach ($p in ($rep.Problems | Sort-Object { if ($_.Class -eq 'Net') { 0 } else { 1 } })) {
                 Write-Host "  [!] $($p.Name) — $($p.Reason)" -ForegroundColor Yellow
-                if ($p.Windows -and $p.Windows -ne $p.Name) { Write-Host "      Windows називає: $($p.Windows)" -ForegroundColor DarkGray }
+                if ($p.Windows -and $p.Windows -ne $p.Name) { Write-Host (T-D9 '      Windows називає: {0}' "$($p.Windows)") -ForegroundColor DarkGray }
                 Write-Host "      ID: $($p.Info.HardwareId)" -ForegroundColor DarkGray
                 foreach ($l in $p.Links) { Write-Host "      -> $($l.label): $($l.url)" -ForegroundColor DarkCyan }
             }
         } else {
-            Write-Host "Усі пристрої мають драйвери." -ForegroundColor Green
+            Write-Host (T-D9 'Усі пристрої мають драйвери.') -ForegroundColor Green
         }
         Write-Host ""
-        Write-Host "Важливі драйвери (версія, дата):" -ForegroundColor Cyan
+        Write-Host (T-D9 'Важливі драйвери (версія, дата):') -ForegroundColor Cyan
         $rep.Important | Format-Table Group, Name, Version, Date, Provider -AutoSize | Out-String -Width 200 | Write-Host
-        Write-Host "Як оновити: завантажте драйвери з сайту виробника в папку «Драйвери» поруч із програмою й виберіть у меню пункт 8." -ForegroundColor DarkGray
-        Write-Host "Програма сама підбере, що підходить до цього ПК, і поставить у правильному порядку (з можливістю відкату)." -ForegroundColor DarkGray
+        Write-Host (T-D9 'Як оновити: завантажте драйвери з сайту виробника в папку «Драйвери» поруч із програмою й виберіть у меню пункт 8.') -ForegroundColor DarkGray
+        Write-Host (T-D9 'Програма сама підбере, що підходить до цього ПК, і поставить у правильному порядку (з можливістю відкату).') -ForegroundColor DarkGray
         exit $ExitCodes.Ok
     }
 
     'DriverInstall' {
-        if (-not (Test-Path -LiteralPath $DriverInstall)) { Write-D9Log "Папку не знайдено: $DriverInstall" Error; exit $ExitCodes.BadArgs }
-        Write-D9Log "Аналіз драйверів у $DriverInstall ..."
+        if (-not (Test-Path -LiteralPath $DriverInstall)) { Write-D9Log (T-D9 'Папку не знайдено: {0}' $DriverInstall) Error; exit $ExitCodes.BadArgs }
+        Write-D9Log (T-D9 'Аналіз драйверів у {0} ...' $DriverInstall)
         $found = Find-D9DriverPackages -Folder $DriverInstall
         Write-Host ""
-        Write-Host "INF-файлів знайдено: $($found.Infs). Підходять до цього ПК: $($found.Packages.Count)." -ForegroundColor Cyan
-        $statusText = @{ missing = 'немає драйвера — встановити'; newer = 'новіший — оновити'; current = 'вже актуальний' }
+        Write-Host (T-D9 'INF-файлів знайдено: {0}. Підходять до цього ПК: {1}.' $found.Infs $found.Packages.Count) -ForegroundColor Cyan
+        $statusText = @{ missing = (T-D9 'немає драйвера — встановити'); newer = (T-D9 'новіший — оновити'); current = (T-D9 'вже актуальний') }
         $n = 0
         foreach ($p in $found.Packages) {
             $n++
@@ -655,32 +656,32 @@ switch ($PSCmdlet.ParameterSetName) {
             $color = @{ missing = 'Yellow'; newer = 'White'; current = 'DarkGray' }[$p.Status]
             Write-Host ("  {0,2}. {1} [{2}]" -f $n, $p.Name, $statusText[$p.Status]) -ForegroundColor $color
             $date = if ($p.Package.Inf.Date) { $p.Package.Inf.Date.ToString('dd.MM.yyyy') } else { '?' }
-            Write-Host ("      зараз: {0}; у папці: {1} ({2}) — {3}" -f $(if ($cur) { $cur } else { 'немає' }), $p.Package.Inf.Version, $date, (Split-Path $p.Package.Inf.Path -Leaf)) -ForegroundColor DarkGray
+            Write-Host (T-D9 '      зараз: {0}; у папці: {1} ({2}) — {3}' $(if ($cur) { $cur } else { (T-D9 'немає') }) $p.Package.Inf.Version $date (Split-Path $p.Package.Inf.Path -Leaf)) -ForegroundColor DarkGray
         }
         if ($found.Installers) {
             Write-Host ""
-            Write-Host "Пакети лише з інсталятором — запустіть вручну, якщо цей пристрій є в ПК ($(@($found.Installers).Count)):" -ForegroundColor Yellow
+            Write-Host (T-D9 'Пакети лише з інсталятором — запустіть вручну, якщо цей пристрій є в ПК ({0}):' "$(@($found.Installers).Count)") -ForegroundColor Yellow
             foreach ($i in $found.Installers) { Write-Host "  - $($i.Package): $($i.Path)" -ForegroundColor DarkGray }
         }
         $todo = @($found.Packages | Where-Object Status -ne 'current')
         if (-not $todo) {
             Write-Host ""
-            Write-D9Log "Нічого встановлювати: усе з папки вже стоїть або новіше." Ok
+            Write-D9Log (T-D9 'Нічого встановлювати: усе з папки вже стоїть або новіше.') Ok
             exit $ExitCodes.Ok
         }
-        if (-not (Test-D9IsAdmin)) { Write-D9Log "Для встановлення потрібні права адміністратора (запускайте через run.bat)." Error; exit $ExitCodes.NotAdmin }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Для встановлення потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
         Write-Host ""
-        if (-not (Confirm-D9 "Встановити $($todo.Count) драйвер(ів) у показаному порядку? Попередні буде збережено для відкату")) { exit $ExitCodes.Cancelled }
+        if (-not (Confirm-D9 (T-D9 'Встановити {0} драйвер(ів) у показаному порядку? Попередні буде збережено для відкату' "$($todo.Count)"))) { exit $ExitCodes.Cancelled }
         $drvCatalog = New-D9DriverCatalog -Packages $todo
         $plan = New-D9Plan -Catalog $drvCatalog -TweakIds @($drvCatalog.Tweaks.id) -SystemInfo $sys
-        $session = Invoke-D9Plan -Plan $plan -SystemInfo $sys -Selection "драйвери з $DriverInstall" -NoRestorePoint:$NoRestorePoint
+        $session = Invoke-D9Plan -Plan $plan -SystemInfo $sys -Selection (T-D9 'драйвери з {0}' $DriverInstall) -NoRestorePoint:$NoRestorePoint
         $ok = @($session.entries | Where-Object result -eq 'ok').Count
         $errors = @($session.entries | Where-Object result -eq 'error')
         Write-Host ""
-        Write-D9Log ("Встановлено: {0}, помилок: {1}. Сесія: {2}" -f $ok, $errors.Count, $session.id) $(if ($errors) { 'Warn' } else { 'Ok' })
-        Write-D9Log "Перезавантажте комп'ютер, щоб драйвери запрацювали. Відкат: меню → 5." Warn
+        Write-D9Log (T-D9 'Встановлено: {0}, помилок: {1}. Сесія: {2}' $ok $errors.Count $session.id) $(if ($errors) { 'Warn' } else { 'Ok' })
+        Write-D9Log (T-D9 'Перезавантажте комп''ютер, щоб драйвери запрацювали. Відкат: меню → 5.') Warn
         $left = @(Get-CimInstance Win32_PnPEntity -Filter 'ConfigManagerErrorCode <> 0' -ErrorAction SilentlyContinue | Where-Object { $_.ConfigManagerErrorCode -notin 22, 45 })
-        if ($left) { Write-Host "Ще без драйвера: $(($left | ForEach-Object { Get-D9DeviceDisplayName (Resolve-D9Device @($_.HardwareID)) $_.Name }) -join ', ')" -ForegroundColor Yellow }
+        if ($left) { Write-Host (T-D9 'Ще без драйвера: {0}' (($left | ForEach-Object { Get-D9DeviceDisplayName (Resolve-D9Device @($_.HardwareID)) $_.Name }) -join ', ')) -ForegroundColor Yellow }
         exit $(if ($errors) { $ExitCodes.Partial } else { $ExitCodes.Reboot })
     }
 
@@ -688,8 +689,8 @@ switch ($PSCmdlet.ParameterSetName) {
         $scanConfig = Import-D9ScanConfig
         $ctx = New-D9ScanContext -Catalog $catalog -SystemInfo $sys -ScanConfig $scanConfig -Deep:$Deep
         Write-Host ""
-        Write-Host ("Debora {0} — сканування{1}: {2} {3}" -f $script:D9Version, $(if ($Deep) { ' (глибоке)' } else { '' }), $sys.Manufacturer, $sys.Model) -ForegroundColor Cyan
-        if (-not $ctx.IsAdmin) { Write-D9Log "Без прав адміністратора частину перевірок пропущено. Для повного сканування запустіть від адміністратора." Warn }
+        Write-Host (T-D9 'Debora {0} — сканування{1}: {2} {3}' $script:D9Version $(if ($Deep) { T-D9 ' (глибоке)' } else { '' }) $sys.Manufacturer $sys.Model) -ForegroundColor Cyan
+        if (-not $ctx.IsAdmin) { Write-D9Log (T-D9 'Без прав адміністратора частину перевірок пропущено. Для повного сканування запустіть від адміністратора.') Warn }
         $result = Invoke-D9Scan -Context $ctx
         $path = Save-D9Scan $result
         Write-D9ScanResult $result $scanConfig.Checks.categories
@@ -700,41 +701,41 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-D9Checklist $list
         if ($Report) { Save-D9HtmlReport $result $list $scanConfig.Checks.categories $Report }
         Write-Host ""
-        Write-Host ("Сканування: {0} с. Результат: {1}" -f $result.durationSec, $path) -ForegroundColor DarkGray
+        Write-Host (T-D9 'Сканування: {0} с. Результат: {1}' $result.durationSec $path) -ForegroundColor DarkGray
         exit $(switch ($result.score.verdict) { 'good' { 0 } 'attention' { 1 } default { 2 } })
     }
 
     'Checklist' {
         $list = Get-D9Checklist
-        if (-not $list) { Write-D9Log "Чекліста ще немає. Спочатку запустіть: -Scan" Warn; exit $ExitCodes.BadArgs }
+        if (-not $list) { Write-D9Log (T-D9 'Чекліста ще немає. Спочатку запустіть: -Scan') Warn; exit $ExitCodes.BadArgs }
         $scanConfig = Import-D9ScanConfig
         $ctx = New-D9ScanContext -Catalog $catalog -SystemInfo $sys -ScanConfig $scanConfig
 
         foreach ($n in @($Done | Where-Object { $_ })) {
             $item = $list.items | Where-Object number -eq $n
-            if (-not $item) { Write-D9Log "Кроку $n немає" Error; exit $ExitCodes.BadArgs }
-            $item.status = 'done'; $item.doneAt = (Get-Date).ToString('s'); $item.note = 'позначено вручну'
+            if (-not $item) { Write-D9Log (T-D9 'Кроку {0} немає' "$n") Error; exit $ExitCodes.BadArgs }
+            $item.status = 'done'; $item.doneAt = (Get-Date).ToString('s'); $item.note = (T-D9 'позначено вручну')
         }
 
         if ($Run) {
             $targets = if ($Run -eq 'All') { @($list.items | Where-Object { $_.auto -and $_.status -ne 'done' }) }
                        else { @($list.items | Where-Object { $_.number -in @($Run -split ',' | ForEach-Object { [int]$_ }) }) }
             $targets = @($targets | Sort-Object number)
-            if (-not $targets) { Write-D9Log "Немає кроків для виконання." Ok }
+            if (-not $targets) { Write-D9Log (T-D9 'Немає кроків для виконання.') Ok }
             else {
-                if (-not (Test-D9IsAdmin)) { Write-D9Log "Потрібні права адміністратора." Error; exit $ExitCodes.NotAdmin }
-                Write-Host ("Буде виконано кроки: " + (($targets | ForEach-Object { "$($_.number). $($_.title)" }) -join '; '))
-                if (-not (Confirm-D9 "Продовжити?")) { exit $ExitCodes.Cancelled }
+                if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора.') Error; exit $ExitCodes.NotAdmin }
+                Write-Host (T-D9 'Буде виконано кроки: {0}' (($targets | ForEach-Object { "$($_.number). $($_.title)" }) -join '; '))
+                if (-not (Confirm-D9 (T-D9 'Продовжити?'))) { exit $ExitCodes.Cancelled }
                 foreach ($item in $targets) {
                     if ($item.action.type -eq 'maintenance' -and $item.action.action -eq 'reboot' -and $Run -eq 'All' -and -not $AllowReboot) { continue }
-                    if (-not (Test-D9ChecklistReady $list $item)) { Write-D9Log "Крок $($item.number) пропущено: спершу виконайте попередні кроки" Warn; continue }
+                    if (-not (Test-D9ChecklistReady $list $item)) { Write-D9Log (T-D9 'Крок {0} пропущено: спершу виконайте попередні кроки' "$($item.number)") Warn; continue }
                     try { [void](Invoke-D9ChecklistStep -Checklist $list -Item $item -Context $ctx -AllowReboot:$AllowReboot) }
-                    catch { Write-D9Log "  Помилка: $($_.Exception.Message)" Error }
+                    catch { Write-D9Log (T-D9 '  Помилка: {0}' $_.Exception.Message) Error }
                 }
             }
         }
 
-        Write-D9Log "Перевірка виконаних кроків..." Detail
+        Write-D9Log (T-D9 'Перевірка виконаних кроків...') Detail
         $list = Update-D9ChecklistStatus -Checklist $list -Context $ctx
         Save-D9Checklist $list
         Write-D9Checklist $list
@@ -747,24 +748,24 @@ switch ($PSCmdlet.ParameterSetName) {
 
     'Info' {
         Write-D9SystemSummary $sys $recommendation
-        Write-Host "Що далі:"
-        Write-Host "  -Scan                           перевірити стан Windows і отримати чекліст"
-        Write-Host "  -Diagnostics                    зібрати zip для розбору проблеми"
-        Write-Host "  -Disks                          стан дисків: температура, знос, помилки (SMART)"
-        Write-Host "  -Apps / -InstallApp / -UpgradeApps   програми через winget"
-        Write-Host "  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити"
-        Write-Host "  -PrepareUsb E: -UserName Ім'я   флешка для перевстановлення Windows без запитань і з драйверами"
-        Write-Host "  -Schedule Sunday -At 12:00      щотижневе автоматичне обслуговування (-Schedule Off — вимкнути)"
-        Write-Host "  -ListTweaks                     каталог твіків і їхній стан"
-        Write-Host "  -Preset Recommended -WhatIf     що зміниться за рекомендованим профілем"
-        Write-Host "  -Preset Recommended -Yes        застосувати"
+        Write-Host (T-D9 'Що далі:')
+        Write-Host (T-D9 '  -Scan                           перевірити стан Windows і отримати чекліст')
+        Write-Host (T-D9 '  -Diagnostics                    зібрати zip для розбору проблеми')
+        Write-Host (T-D9 '  -Disks                          стан дисків: температура, знос, помилки (SMART)')
+        Write-Host (T-D9 '  -Apps / -InstallApp / -UpgradeApps   програми через winget')
+        Write-Host (T-D9 '  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити')
+        Write-Host (T-D9 '  -PrepareUsb E: -UserName Ім''я   флешка для перевстановлення Windows без запитань і з драйверами')
+        Write-Host (T-D9 '  -Schedule Sunday -At 12:00      щотижневе автоматичне обслуговування (-Schedule Off — вимкнути)')
+        Write-Host (T-D9 '  -ListTweaks                     каталог твіків і їхній стан')
+        Write-Host (T-D9 '  -Preset Recommended -WhatIf     що зміниться за рекомендованим профілем')
+        Write-Host (T-D9 '  -Preset Recommended -Yes        застосувати')
         Write-Host "  Get-Help .\Debora.ps1 -Examples"
         exit $ExitCodes.Ok
     }
 
     'List' {
-        $stateNames = @{ applied = 'застосовано'; partial = 'частково'; notApplied = '-'; notApplicable = 'н/д'; unknown = '?' }
-        $riskNames  = @{ safe = 'безпечно'; moderate = 'помірно'; expert = 'експертний' }
+        $stateNames = @{ applied = (T-D9 'застосовано'); partial = (T-D9 'частково'); notApplied = '-'; notApplicable = (T-D9 'н/д'); unknown = '?' }
+        $riskNames  = @{ safe = (T-D9 'безпечно'); moderate = (T-D9 'помірно'); expert = (T-D9 'експертний') }
         $catalog.Tweaks | ForEach-Object {
             $check = Test-D9Applicable $_.requires $sys
             [pscustomobject]@{
@@ -780,25 +781,25 @@ switch ($PSCmdlet.ParameterSetName) {
 
     'Sessions' {
         $list = @(Get-D9SessionList)
-        if (-not $list) { Write-Host "Сесій ще немає."; exit $ExitCodes.Ok }
+        if (-not $list) { Write-Host (T-D9 'Сесій ще немає.'); exit $ExitCodes.Ok }
         $list | Format-Table -AutoSize
         exit $ExitCodes.Ok
     }
 
     'Undo' {
-        if (-not (Test-D9IsAdmin)) { Write-D9Log "Потрібні права адміністратора." Error; exit $ExitCodes.NotAdmin }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора.') Error; exit $ExitCodes.NotAdmin }
         $session = Get-D9Session $Undo
         $count = @($session.entries | Where-Object { $_.result -eq 'ok' -and (-not $UndoTweak -or $UndoTweak -contains $_.tweak) }).Count
-        Write-Host "Сесія $($session.id) ($($session.selection)): змін для відкату — $count"
-        if (-not (Confirm-D9 "Відкотити?")) { exit $ExitCodes.Cancelled }
+        Write-Host (T-D9 'Сесія {0} ({1}): змін для відкату — {2}' $session.id $session.selection $count)
+        if (-not (Confirm-D9 (T-D9 'Відкотити?'))) { exit $ExitCodes.Cancelled }
         $report = Undo-D9Session -Id $Undo -TweakIds $UndoTweak
         $bad = @($report | Where-Object { $_.result -in 'error', 'conflict', 'manual' }).Count
-        Write-D9Log ("Відкочено: {0}, потребує уваги: {1}" -f @($report | Where-Object result -eq 'restored').Count, $bad) $(if ($bad) { 'Warn' } else { 'Ok' })
+        Write-D9Log (T-D9 'Відкочено: {0}, потребує уваги: {1}' @($report | Where-Object result -eq 'restored').Count $bad) $(if ($bad) { 'Warn' } else { 'Ok' })
         exit $(if ($bad) { $ExitCodes.Partial } else { $ExitCodes.Ok })
     }
 
     'Apply' {
-        if (-not $Preset -and -not $Tweak) { Write-D9Log "Вкажіть -Preset або -Tweak." Error; exit $ExitCodes.BadArgs }
+        if (-not $Preset -and -not $Tweak) { Write-D9Log (T-D9 'Вкажіть -Preset або -Tweak.') Error; exit $ExitCodes.BadArgs }
         $presetId = if ($Preset -eq 'Recommended') { $recommendation.Preset } else { $Preset }
         $ids = @()
         if ($presetId) { $ids += @((Get-D9Preset $catalog $presetId).tweaks) }
@@ -807,37 +808,37 @@ switch ($PSCmdlet.ParameterSetName) {
 
         $plan = New-D9Plan -Catalog $catalog -TweakIds $ids -SystemInfo $sys
         $unknown = @($plan | Where-Object { -not $_.Tweak })
-        if ($unknown) { Write-D9Log ("Невідомі твіки: " + ($unknown.Id -join ', ')) Error; exit $ExitCodes.BadArgs }
+        if ($unknown) { Write-D9Log (T-D9 'Невідомі твіки: {0}' ($unknown.Id -join ', ')) Error; exit $ExitCodes.BadArgs }
 
         Write-D9SystemSummary $sys $recommendation
-        Write-Host "План ($selection):" -ForegroundColor Cyan
+        Write-Host (T-D9 'План ({0}):' $selection) -ForegroundColor Cyan
         $preview = @(Get-D9Preview -Plan $plan -SystemInfo $sys)
         foreach ($group in ($preview | Group-Object Tweak)) {
             $pending = @($group.Group | Where-Object Pending)
             $mark = if ($pending) { '*' } else { ' ' }
             Write-Host " $mark $($group.Name)"
             foreach ($p in $group.Group) {
-                if ($p.Pending -or $p.Change -like 'пропущено*') { Write-Host "      $($p.Change)" -ForegroundColor $(if ($p.Pending) { 'Gray' } else { 'DarkYellow' }) }
+                if ($p.Pending -or $p.Skipped) { Write-Host "      $($p.Change)" -ForegroundColor $(if ($p.Pending) { 'Gray' } else { 'DarkYellow' }) }
             }
         }
         $pendingCount = @($preview | Where-Object Pending).Count
         Write-Host ""
-        Write-Host "Змін до застосування: $pendingCount (* — твік має незастосовані зміни)"
+        Write-Host (T-D9 'Змін до застосування: {0} (* — твік має незастосовані зміни)' "$pendingCount")
         if ($WhatIf) { exit $ExitCodes.Ok }
-        if ($pendingCount -eq 0) { Write-D9Log "Усе вже застосовано." Ok; exit $ExitCodes.Ok }
+        if ($pendingCount -eq 0) { Write-D9Log (T-D9 'Усе вже застосовано.') Ok; exit $ExitCodes.Ok }
 
-        if (-not (Test-D9IsAdmin)) { Write-D9Log "Потрібні права адміністратора." Error; exit $ExitCodes.NotAdmin }
-        if (-not (Confirm-D9 "Застосувати $pendingCount змін?")) { exit $ExitCodes.Cancelled }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора.') Error; exit $ExitCodes.NotAdmin }
+        if (-not (Confirm-D9 (T-D9 'Застосувати {0} змін?' "$pendingCount"))) { exit $ExitCodes.Cancelled }
 
         $session = Invoke-D9Plan -Plan $plan -SystemInfo $sys -Selection $selection -NoRestorePoint:$NoRestorePoint
         $entries = @($session.entries)
         $ok      = @($entries | Where-Object result -eq 'ok').Count
         $errors  = @($entries | Where-Object result -eq 'error').Count
         Write-Host ""
-        Write-D9Log ("Готово. Змінено: {0}, помилок: {1}. Сесія: {2}" -f $ok, $errors, $session.id) $(if ($errors) { 'Warn' } else { 'Ok' })
-        Write-D9Log "Відкат: .\Debora.ps1 -Undo $($session.id)"
+        Write-D9Log (T-D9 'Готово. Змінено: {0}, помилок: {1}. Сесія: {2}' $ok $errors $session.id) $(if ($errors) { 'Warn' } else { 'Ok' })
+        Write-D9Log (T-D9 'Відкат: {0}' ".\Debora.ps1 -Undo $($session.id)")
         $reboot = @($plan | Where-Object { $_.Run -and $_.Tweak.rebootRequired }).Count -gt 0
-        if ($reboot) { Write-D9Log "Деякі зміни запрацюють після перезавантаження." Warn }
+        if ($reboot) { Write-D9Log (T-D9 'Деякі зміни запрацюють після перезавантаження.') Warn }
         if ($errors) { exit $ExitCodes.Partial }
         if ($reboot) { exit $ExitCodes.Reboot }
         exit $ExitCodes.Ok

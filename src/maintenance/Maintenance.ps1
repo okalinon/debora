@@ -12,42 +12,42 @@ function Invoke-D9Native {
 
 # DISM /RestoreHealth (потрібен інтернет) + sfc /scannow. 10–40 хвилин.
 function Invoke-D9RepairSystem {
-    Write-D9Log 'Крок 1/2: відновлення сховища компонентів Windows (DISM). Це може тривати 10–30 хвилин...'
+    Write-D9Log (T-D9 'Крок 1/2: відновлення сховища компонентів Windows (DISM). Це може тривати 10–30 хвилин...')
     try {
         $r = Repair-WindowsImage -Online -RestoreHealth -ErrorAction Stop
-        Write-D9Log "  Стан образу: $($r.ImageHealthState)" $(if ([string]$r.ImageHealthState -eq 'Healthy') { 'Ok' } else { 'Warn' })
+        Write-D9Log ('  ' + (T-D9 'Стан образу: {0}' $r.ImageHealthState)) $(if ([string]$r.ImageHealthState -eq 'Healthy') { 'Ok' } else { 'Warn' })
     } catch { Write-D9Log "  DISM: $($_.Exception.Message)" Warn }
-    Write-D9Log 'Крок 2/2: перевірка системних файлів (sfc /scannow)...'
+    Write-D9Log (T-D9 'Крок 2/2: перевірка системних файлів (sfc /scannow)...')
     $code = Invoke-D9Native 'sfc.exe' @('/scannow')
-    if ($code -eq 0) { Write-D9Log 'Системні файли перевірено.' Ok } else { Write-D9Log "sfc завершився з кодом $code — подробиці в C:\Windows\Logs\CBS\CBS.log" Warn }
+    if ($code -eq 0) { Write-D9Log (T-D9 'Системні файли перевірено.') Ok } else { Write-D9Log (T-D9 'sfc завершився з кодом {0} — подробиці в C:\Windows\Logs\CBS\CBS.log' $code) Warn }
     return [pscustomobject]@{ Done = $true; RebootRecommended = $true }
 }
 
 # Очищення кешу DNS, скидання Winsock і TCP/IP — коли інтернет «є, але не працює»
 function Invoke-D9NetworkReset {
-    Write-D9Log 'Скидання мережевих налаштувань...'
+    Write-D9Log (T-D9 'Скидання мережевих налаштувань...')
     [void](Invoke-D9Native 'ipconfig.exe' @('/flushdns'))
     [void](Invoke-D9Native 'netsh.exe' @('winsock', 'reset'))
     [void](Invoke-D9Native 'netsh.exe' @('int', 'ip', 'reset'))
-    Write-D9Log 'Готово. Перезавантажте комп''ютер, щоб скидання запрацювало.' Ok
+    Write-D9Log (T-D9 'Готово. Перезавантажте комп''ютер, щоб скидання запрацювало.') Ok
     return [pscustomobject]@{ Done = $true; RebootRecommended = $true }
 }
 
 # Коли оновлення «зависли» або постійно падають: зупинка служб, перейменування кешів, запуск служб
 function Invoke-D9WindowsUpdateReset {
     $services = 'wuauserv', 'bits', 'cryptsvc', 'msiserver'
-    Write-D9Log 'Зупинка служб оновлення...'
+    Write-D9Log (T-D9 'Зупинка служб оновлення...')
     foreach ($s in $services) { Stop-Service $s -Force -ErrorAction SilentlyContinue }
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     foreach ($dir in "$env:SystemRoot\SoftwareDistribution", "$env:SystemRoot\System32\catroot2") {
         if (Test-Path $dir) {
-            try { Rename-Item $dir "$(Split-Path $dir -Leaf).d9-$stamp" -ErrorAction Stop; Write-D9Log "  Перейменовано: $dir → *.d9-$stamp" Detail }
-            catch { Write-D9Log "  Не вдалося перейменувати $dir (зайнято?): $($_.Exception.Message)" Warn }
+            try { Rename-Item $dir "$(Split-Path $dir -Leaf).d9-$stamp" -ErrorAction Stop; Write-D9Log ('  ' + (T-D9 'Перейменовано: {0} → *.d9-{1}' $dir $stamp)) Detail }
+            catch { Write-D9Log ('  ' + (T-D9 'Не вдалося перейменувати {0} (зайнято?): {1}' $dir $_.Exception.Message)) Warn }
         }
     }
-    Write-D9Log 'Запуск служб оновлення...'
+    Write-D9Log (T-D9 'Запуск служб оновлення...')
     foreach ($s in $services) { Start-Service $s -ErrorAction SilentlyContinue }
-    Write-D9Log 'Готово. Windows Update створить кеш заново; старі папки *.d9-* можна видалити через тиждень.' Ok
+    Write-D9Log (T-D9 'Готово. Windows Update створить кеш заново; старі папки *.d9-* можна видалити через тиждень.') Ok
     return [pscustomobject]@{ Done = $true; RebootRecommended = $false }
 }
 
@@ -66,7 +66,7 @@ function New-D9PauseUpdatesCatalog {
     [pscustomobject]@{ Presets = @(); Tweaks = @([pscustomobject]@{
         id = 'updates.pause'; category = 'updates'; risk = 'moderate'
         name = [pscustomobject]@{ uk = "Призупинити оновлення Windows на $Days дн."; en = "Pause Windows updates for $Days days" }
-        description = [pscustomobject]@{ uk = "До $($Now.AddDays($Days).ToString('dd.MM.yyyy')). На цей час не приходять і виправлення безпеки."; en = 'Security fixes are paused too.' }
+        description = [pscustomobject]@{ uk = "До $($Now.AddDays($Days).ToString('dd.MM.yyyy')). На цей час не приходять і виправлення безпеки."; en = "Until $($Now.AddDays($Days).ToString('yyyy-MM-dd')). Security fixes are paused too." }
         actions = @($actions)
     }) }
 }

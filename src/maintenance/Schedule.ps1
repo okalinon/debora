@@ -14,6 +14,13 @@ $script:D9MaintenanceSteps = [ordered]@{
     windowsUpdate = 'Оновлення Windows'
 }
 
+# Назва кроку поточною мовою (значення таблиці — українські шаблони для T-D9)
+function Get-D9MaintenanceStepName {
+    param([Parameter(Mandatory)][string]$Step)
+    $t = $script:D9MaintenanceSteps[$Step]
+    if ($t) { T-D9 $t } else { $Step }
+}
+
 function Get-D9MaintenanceConfigPath { Join-Path (Get-D9DataRoot) 'maintenance.json' }
 
 function Get-D9MaintenanceConfig {
@@ -39,6 +46,8 @@ function Save-D9MaintenanceConfig {
 
 # ---------- Виконання ----------
 
+# Крок повертає текст підсумку або об'єкт { Text; Reboot } (Reboot — потрібне перезавантаження)
+
 function Invoke-D9MaintenanceStep {
     param([Parameter(Mandatory)][string]$Step, [Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo)
     switch ($Step) {
@@ -46,28 +55,28 @@ function Invoke-D9MaintenanceStep {
             $before = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID = '$env:SystemDrive'").FreeSpace
             $ids = 'cleanup.temp', 'cleanup.update-cache', 'cleanup.leftovers', 'cleanup.do-cache'
             $cat = [pscustomobject]@{ Tweaks = @($Catalog.Tweaks | Where-Object { $ids -contains $_.id }); Presets = @() }
-            [void](Invoke-D9Plan -Plan (New-D9Plan -Catalog $cat -TweakIds @($cat.Tweaks.id) -SystemInfo $SystemInfo) -SystemInfo $SystemInfo -Selection 'автообслуговування: очищення' -NoRestorePoint)
+            [void](Invoke-D9Plan -Plan (New-D9Plan -Catalog $cat -TweakIds @($cat.Tweaks.id) -SystemInfo $SystemInfo) -SystemInfo $SystemInfo -Selection (T-D9 'автообслуговування: очищення') -NoRestorePoint)
             $freed = [math]::Max(0, (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID = '$env:SystemDrive'").FreeSpace - $before)
-            return "звільнено $(Format-D9Size $freed)"
+            return (T-D9 'звільнено {0}' (Format-D9Size $freed))
         }
-        'defender' { [void](Invoke-D9DefenderRepair); return 'бази оновлено' }
+        'defender' { [void](Invoke-D9DefenderRepair); return (T-D9 'бази оновлено') }
         'apps' {
-            if (-not (Get-D9WingetPath)) { return 'winget не встановлено — пропущено' }
+            if (-not (Get-D9WingetPath)) { return (T-D9 'winget не встановлено — пропущено') }
             $up = @(Get-D9AppUpgrades)
-            if (-not $up) { return 'усі програми актуальні' }
+            if (-not $up) { return (T-D9 'усі програми актуальні') }
             $r = Invoke-D9AppUpgradeAll
-            return "оновлено програм: $($up.Count)$(if ($r.Result -notin 'installed', 'upToDate') { ' (частину — ні)' })"
+            return (T-D9 'оновлено програм: {0}' $up.Count) + $(if ($r.Result -notin 'installed', 'upToDate') { ' ' + (T-D9 '(частину — ні)') })
         }
         'drivers' {
             $r = Invoke-D9DriverAutoUpdate -SystemInfo $SystemInfo -Folder (Join-Path (Get-D9DataRoot) 'driver-downloads') -NoRestorePoint
             $ok = if ($r.Session) { @($r.Session.entries | Where-Object result -eq 'ok').Count } else { 0 }
-            return $(if ($ok) { "встановлено драйверів: $ok (потрібне перезавантаження)" } else { 'драйвери актуальні' })
+            return $(if ($ok) { [pscustomobject]@{ Text = (T-D9 'встановлено драйверів: {0} (потрібне перезавантаження)' $ok); Reboot = $true } } else { T-D9 'драйвери актуальні' })
         }
         'windowsUpdate' {
             $r = Install-D9WindowsUpdates
-            return "встановлено оновлень: $($r.Installed)$(if ($r.RebootRecommended) { ' (потрібне перезавантаження)' })"
+            return [pscustomobject]@{ Text = (T-D9 'встановлено оновлень: {0}' "$($r.Installed)") + $(if ($r.RebootRecommended) { ' ' + (T-D9 '(потрібне перезавантаження)') }); Reboot = [bool]$r.RebootRecommended }
         }
-        default { throw "Невідомий крок обслуговування: $Step" }
+        default { throw (T-D9 'Невідомий крок обслуговування: {0}' $Step) }
     }
 }
 
@@ -76,12 +85,16 @@ function Invoke-D9Maintenance {
     param([Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo, [string[]]$Steps, [switch]$NoScan)
     if (-not $Steps) { $Steps = @((Get-D9MaintenanceConfig).Steps) }
     $started = Get-Date
-    Write-D9Log "Автоматичне обслуговування: $($Steps -join ', ')"
+    Write-D9Log (T-D9 'Автоматичне обслуговування: {0}' ($Steps -join ', '))
     $rp = New-D9RestorePoint
     $results = foreach ($s in $Steps) {
-        Write-D9Log "— $($script:D9MaintenanceSteps[$s])"
-        try { $text = Invoke-D9MaintenanceStep -Step $s -Catalog $Catalog -SystemInfo $SystemInfo; [pscustomobject]@{ step = $s; ok = $true; text = [string]$text } }
-        catch { Write-D9Log "  Помилка: $($_.Exception.Message)" Error; [pscustomobject]@{ step = $s; ok = $false; text = $_.Exception.Message } }
+        Write-D9Log "— $(Get-D9MaintenanceStepName $s)"
+        try {
+            $out = Invoke-D9MaintenanceStep -Step $s -Catalog $Catalog -SystemInfo $SystemInfo
+            if ($out -is [string] -or $null -eq $out.Text) { $text = [string]$out; $reboot = $text -match 'перезавантаж' } else { $text = [string]$out.Text; $reboot = [bool]$out.Reboot }
+            [pscustomobject]@{ step = $s; ok = $true; text = $text; reboot = $reboot }
+        }
+        catch { Write-D9Log ('  ' + (T-D9 'Помилка: {0}' $_.Exception.Message)) Error; [pscustomobject]@{ step = $s; ok = $false; text = $_.Exception.Message; reboot = $false } }
     }
     $score = $null; $critical = 0
     if (-not $NoScan) {
@@ -89,17 +102,17 @@ function Invoke-D9Maintenance {
             $scan = Invoke-D9Scan -Context (New-D9ScanContext -Catalog $Catalog -SystemInfo $SystemInfo)
             [void](Save-D9Scan $scan)
             $score = $scan.score.overall; $critical = @($scan.findings | Where-Object severity -eq 'critical').Count
-        } catch { Write-D9Log "Сканування не вдалося: $($_.Exception.Message)" Warn }
+        } catch { Write-D9Log (T-D9 'Сканування не вдалося: {0}' $_.Exception.Message) Warn }
     }
     $summary = [pscustomobject]@{
         started = $started.ToString('s'); finished = (Get-Date).ToString('s'); restorePoint = [bool]$rp
         results = @($results); score = $score; critical = $critical
-        reboot = [bool](@($results | Where-Object { $_.text -match 'перезавантаж' }))
+        reboot = [bool](@($results | Where-Object { $_.reboot }))
     }
     $root = Get-D9DataRoot
     if (-not (Test-Path $root)) { New-Item -ItemType Directory -Path $root -Force | Out-Null }
     [IO.File]::WriteAllText((Join-Path $root 'maintenance-last.json'), (ConvertTo-Json $summary -Depth 5), (New-Object Text.UTF8Encoding $false))
-    Write-D9Log "Обслуговування завершено: $((@($results | ForEach-Object { "$($script:D9MaintenanceSteps[$_.step].Split(' ')[0]): $($_.text)" })) -join '; ')" Ok
+    Write-D9Log (T-D9 'Обслуговування завершено: {0}' ((@($results | ForEach-Object { "$((Get-D9MaintenanceStepName $_.step).Split(' ')[0]): $($_.text)" })) -join '; ')) Ok
     return $summary
 }
 
@@ -124,11 +137,11 @@ function Show-D9Toast {
 
 function Format-D9MaintenanceSummary {
     param([Parameter(Mandatory)]$Summary)
-    $parts = @($Summary.results | ForEach-Object { if ($_.ok) { $_.text } else { "$($_.step): помилка" } })
+    $parts = @($Summary.results | ForEach-Object { if ($_.ok) { $_.text } else { "$($_.step): $(T-D9 'помилка')" } })
     $text = $parts -join '; '
-    if ($null -ne $Summary.score) { $text += ". Оцінка: $($Summary.score)/100" }
-    if ($Summary.critical) { $text += ", критичних проблем: $($Summary.critical) — відкрийте Debora" }
-    if ($Summary.reboot) { $text += '. Перезавантажте ПК' }
+    if ($null -ne $Summary.score) { $text += '. ' + (T-D9 'Оцінка: {0}/100' "$($Summary.score)") }
+    if ($Summary.critical) { $text += ', ' + (T-D9 'критичних проблем: {0} — відкрийте Debora' $Summary.critical) }
+    if ($Summary.reboot) { $text += '. ' + (T-D9 'Перезавантажте ПК') }
     return $text
 }
 
@@ -143,7 +156,7 @@ function Install-D9AppCopy {
     Copy-Item -LiteralPath $SourceScript -Destination $dst -Force
     # Спершу копія, потім замок: SYSTEM і адміністратори — повний доступ, користувачі — лише читання (успадковується файлом)
     $out = & icacls.exe $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "Не вдалося захистити папку програми: $out" }
+    if ($LASTEXITCODE -ne 0) { throw (T-D9 'Не вдалося захистити папку програми: {0}' "$out") }
     return $dst
 }
 
@@ -163,17 +176,17 @@ function Register-D9MaintenanceTask {
     $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
     $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 3) -MultipleInstances IgnoreNew
-    $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Debora: щотижневе обслуговування (очищення, оновлення програм, драйверів і баз Захисника). Вимкнути — у Debora → Обслуговування.'
+    $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description (T-D9 'Debora: щотижневе обслуговування (очищення, оновлення програм, драйверів і баз Захисника). Вимкнути — у Debora → Обслуговування.')
     [void](Register-ScheduledTask -TaskName $script:D9TaskName -InputObject $task -Force)
     if (Get-ScheduledTask -TaskName $script:D9LegacyTaskName -ErrorAction SilentlyContinue) { Unregister-ScheduledTask -TaskName $script:D9LegacyTaskName -Confirm:$false }
-    Write-D9Log "Розклад: щотижня, $($Config.Day) о $($Config.Time). Кроки: $($Config.Steps -join ', ')" Ok
+    Write-D9Log (T-D9 'Розклад: щотижня, {0} о {1}. Кроки: {2}' $Config.Day $Config.Time ($Config.Steps -join ', ')) Ok
 }
 
 function Unregister-D9MaintenanceTask {
     foreach ($name in $script:D9TaskName, $script:D9LegacyTaskName) {
         if (Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue) {
             Unregister-ScheduledTask -TaskName $name -Confirm:$false
-            Write-D9Log 'Автоматичне обслуговування вимкнено.' Ok
+            Write-D9Log (T-D9 'Автоматичне обслуговування вимкнено.') Ok
         }
     }
 }

@@ -17,7 +17,7 @@ function Get-D9WingetPath {
 function Invoke-D9Winget {
     param([string[]]$Arguments)
     $exe = Get-D9WingetPath
-    if (-not $exe) { throw 'winget не знайдено. Встановіть «Інсталятор застосунків» (App Installer) з Microsoft Store.' }
+    if (-not $exe) { throw (T-D9 'winget не знайдено. Встановіть «Інсталятор застосунків» (App Installer) з Microsoft Store.') }
     $prev = [Console]::OutputEncoding
     try {
         try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
@@ -85,7 +85,7 @@ function Install-D9Apps {
         $r = try { Invoke-D9Winget (Get-D9AppArguments $app) } catch { [pscustomobject]@{ Code = -1; Output = @($_.Exception.Message) } }
         $result = ConvertFrom-D9WingetCode $r.Code
         $level = switch ($result) { 'installed' { 'Ok' } 'already' { 'Ok' } 'upToDate' { 'Ok' } 'reboot' { 'Warn' } default { 'Error' } }
-        $text = @{ installed = 'встановлено'; already = 'уже встановлено'; upToDate = 'уже встановлено'; reboot = 'встановлено, потрібне перезавантаження'; notFound = 'пакет не знайдено'; failed = "помилка (код $($r.Code))" }[$result]
+        $text = @{ installed = (T-D9 'встановлено'); already = (T-D9 'уже встановлено'); upToDate = (T-D9 'уже встановлено'); reboot = (T-D9 'встановлено, потрібне перезавантаження'); notFound = (T-D9 'пакет не знайдено'); failed = (T-D9 'помилка (код {0})' $r.Code) }[$result]
         Write-D9Log "  $($app.name): $text" $level
         if ($level -eq 'Error') { foreach ($l in Select-D9WingetLines $r.Output) { Write-D9Log "    $l" Detail } }
         [pscustomobject]@{ id = $app.id; name = $app.name; result = $result; code = $r.Code }
@@ -125,30 +125,30 @@ function Update-D9Apps {
     $github = @{}
     foreach ($a in @((Import-D9AppCatalog).apps | Where-Object source -eq 'github')) { $github[$a.id] = $a }
     foreach ($id in $Ids) {
-        Write-D9Log "Оновлення $id..."
+        Write-D9Log (T-D9 'Оновлення {0}...' $id)
         if ($github.ContainsKey($id)) { Install-D9GithubApp $github[$id]; continue }
         $common = @('--id', $id, '--exact', '--source', 'winget', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
         $r = try { Invoke-D9Winget (@('upgrade') + $common) } catch { [pscustomobject]@{ Code = -1; Output = @($_.Exception.Message) } }
         $result = ConvertFrom-D9WingetCode $r.Code
         if ($result -in 'notFound', 'failed') {
-            Write-D9Log '  winget не знайшов її серед своїх пакетів — встановлюю актуальну версію поверх.' Detail
+            Write-D9Log ('  ' + (T-D9 'winget не знайшов її серед своїх пакетів — встановлюю актуальну версію поверх.')) Detail
             $r = try { Invoke-D9Winget (@('install') + $common) } catch { [pscustomobject]@{ Code = -1; Output = @($_.Exception.Message) } }
             $result = ConvertFrom-D9WingetCode $r.Code
         }
         $ok = $result -in 'installed', 'upToDate', 'already', 'reboot'
-        Write-D9Log "  ${id}: $(if ($ok) { 'оновлено' } else { "не вдалося (код $($r.Code))" })" $(if ($ok) { 'Ok' } else { 'Error' })
+        Write-D9Log "  ${id}: $(if ($ok) { T-D9 'оновлено' } else { T-D9 'не вдалося (код {0})' $r.Code })" $(if ($ok) { 'Ok' } else { 'Error' })
         if (-not $ok) { foreach ($l in Select-D9WingetLines $r.Output) { Write-D9Log "    $l" Detail } }
         [pscustomobject]@{ id = $id; result = $result; code = $r.Code }
     }
 }
 
 function Invoke-D9AppUpgradeAll {
-    Write-D9Log 'Оновлення всіх програм через winget (може тривати довго)...'
+    Write-D9Log (T-D9 'Оновлення всіх програм через winget (може тривати довго)...')
     $r = Invoke-D9Winget @('upgrade', '--all', '--silent', '--include-unknown', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
     foreach ($l in Select-D9WingetLines $r.Output 12) { Write-D9Log "  $l" Detail }
     $result = ConvertFrom-D9WingetCode $r.Code
-    if ($result -in 'installed', 'upToDate') { Write-D9Log 'Оновлення програм завершено.' Ok }
-    else { Write-D9Log "winget завершився з кодом $($r.Code): частина програм могла не оновитися (наприклад, відкриті зараз)." Warn }
+    if ($result -in 'installed', 'upToDate') { Write-D9Log (T-D9 'Оновлення програм завершено.') Ok }
+    else { Write-D9Log (T-D9 'winget завершився з кодом {0}: частина програм могла не оновитися (наприклад, відкриті зараз).' $r.Code) Warn }
     $gh = @(try { Get-D9GithubUpgrades } catch { })
     if ($gh) { [void](Update-D9Apps -Ids @($gh.Id)) }
     [pscustomobject]@{ Code = $r.Code; Result = $result }

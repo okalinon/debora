@@ -23,6 +23,13 @@ $script:D9MaintenanceActions = [ordered]@{
     memoryTest     = @{ Group = 85; Fn = 'Invoke-D9MemoryTestOnReboot'; Title = 'Перевірити оперативну пам''ять під час перезавантаження' }
 }
 
+# Назва кроку обслуговування поточною мовою (Title у таблиці — український шаблон для T-D9)
+function Get-D9MaintenanceTitle {
+    param([Parameter(Mandatory)][string]$Name)
+    $m = $script:D9MaintenanceActions[$Name]
+    if ($m) { T-D9 $m.Title } else { $Name }
+}
+
 # Крок чекліста: драйвери для пристроїв без драйвера й новіші версії для решти (без необов'язкових замін).
 # Точку відновлення вже створив чекліст; завантажені пакети лишаються в папці даних для повторного використання.
 function Invoke-D9DriverUpdateStep {
@@ -50,7 +57,7 @@ function Get-D9BrowserCacheDirs {
 }
 
 function Clear-D9BrowserCache {
-    Write-D9Log 'Очищення кешу браузерів (паролі, історія й вкладки не зачіпаються)...'
+    Write-D9Log (T-D9 'Очищення кешу браузерів (паролі, історія й вкладки не зачіпаються)...')
     $freed = 0L; $skipped = @()
     foreach ($b in @(Get-D9BrowserCacheDirs | Where-Object { $_.Dirs })) {
         if (Get-Process -Name $b.Process -ErrorAction SilentlyContinue) { $skipped += $b.Name; continue }
@@ -58,67 +65,67 @@ function Clear-D9BrowserCache {
         foreach ($d in $b.Dirs) { Get-ChildItem -LiteralPath $d -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
         $after = [long](($b.Dirs | ForEach-Object { Get-D9FolderSize $_ } | Measure-Object -Sum).Sum)
         $freed += [math]::Max(0, $before - $after)
-        Write-D9Log "  $($b.Name): звільнено $(Format-D9Size ([math]::Max(0, $before - $after)))" Detail
+        Write-D9Log "  $($b.Name): $(T-D9 'звільнено {0}' (Format-D9Size ([math]::Max(0, $before - $after))))" Detail
     }
-    if ($skipped) { Write-D9Log "  Пропущено, бо відкриті: $($skipped -join ', '). Закрийте їх і повторіть." Warn }
-    Write-D9Log "Звільнено: $(Format-D9Size $freed)." Ok
+    if ($skipped) { Write-D9Log ('  ' + (T-D9 'Пропущено, бо відкриті: {0}. Закрийте їх і повторіть.' ($skipped -join ', '))) Warn }
+    Write-D9Log (T-D9 'Звільнено: {0}.' (Format-D9Size $freed)) Ok
     [pscustomobject]@{ Done = $true; RebootRecommended = $false; Freed = $freed }
 }
 
 function Invoke-D9DefenderRepair {
-    Write-D9Log 'Захисник Windows: увімкнення захисту й оновлення баз...'
-    if (-not (Get-Command Set-MpPreference -ErrorAction SilentlyContinue)) { Write-D9Log '  Захисника в цій системі немає.' Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
+    Write-D9Log (T-D9 'Захисник Windows: увімкнення захисту й оновлення баз...')
+    if (-not (Get-Command Set-MpPreference -ErrorAction SilentlyContinue)) { Write-D9Log ('  ' + (T-D9 'Захисника в цій системі немає.')) Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
     try {
         Set-MpPreference -DisableRealtimeMonitoring $false -ErrorAction Stop
-        Write-D9Log '  Захист у реальному часі увімкнено.' Ok
-    } catch { Write-D9Log "  Не вдалося увімкнути захист: $($_.Exception.Message). Можливо, працює інший антивірус або увімкнено захист від втручання — увімкніть вручну в «Безпека Windows»." Warn }
+        Write-D9Log ('  ' + (T-D9 'Захист у реальному часі увімкнено.')) Ok
+    } catch { Write-D9Log ('  ' + (T-D9 'Не вдалося увімкнути захист: {0}. Можливо, працює інший антивірус або увімкнено захист від втручання — увімкніть вручну в «Безпека Windows».' $_.Exception.Message)) Warn }
     try {
         Update-MpSignature -ErrorAction Stop
-        Write-D9Log "  Антивірусні бази оновлено (версія $((Get-MpComputerStatus).AntivirusSignatureVersion))." Ok
-    } catch { Write-D9Log "  Бази не оновлено: $($_.Exception.Message). Потрібен інтернет." Warn }
+        Write-D9Log ('  ' + (T-D9 'Антивірусні бази оновлено (версія {0}).' (Get-MpComputerStatus).AntivirusSignatureVersion)) Ok
+    } catch { Write-D9Log ('  ' + (T-D9 'Бази не оновлено: {0}. Потрібен інтернет.' $_.Exception.Message)) Warn }
     [pscustomobject]@{ Done = $true; RebootRecommended = $false }
 }
 
 function Invoke-D9DefenderScan {
-    Write-D9Log 'Швидка перевірка Захисником Windows (зазвичай 5–15 хвилин)...'
+    Write-D9Log (T-D9 'Швидка перевірка Захисником Windows (зазвичай 5–15 хвилин)...')
     $since = Get-Date
     try { Start-MpScan -ScanType QuickScan -ErrorAction Stop }
-    catch { Write-D9Log "  Перевірку не запущено: $($_.Exception.Message)" Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
+    catch { Write-D9Log ('  ' + (T-D9 'Перевірку не запущено: {0}' $_.Exception.Message)) Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
     $found = @(Get-MpThreatDetection -ErrorAction SilentlyContinue | Where-Object { $_.InitialDetectionTime -ge $since })
     if ($found) {
-        Write-D9Log "  Знайдено загроз: $($found.Count). Захисник обробив їх автоматично; подробиці — Безпека Windows → Журнал захисту." Warn
-    } else { Write-D9Log '  Загроз не знайдено.' Ok }
+        Write-D9Log ('  ' + (T-D9 'Знайдено загроз: {0}. Захисник обробив їх автоматично; подробиці — Безпека Windows → Журнал захисту.' $found.Count)) Warn
+    } else { Write-D9Log ('  ' + (T-D9 'Загроз не знайдено.')) Ok }
     [pscustomobject]@{ Done = $true; RebootRecommended = [bool]$found }
 }
 
 # Встановлення оновлень Windows через Windows Update Agent (як кнопка «Перевірити наявність оновлень»).
 # Лише програмні оновлення: драйвери ставимо самі (вкладка «Драйвери»).
 function Install-D9WindowsUpdates {
-    Write-D9Log 'Пошук оновлень Windows (може тривати кілька хвилин)...'
+    Write-D9Log (T-D9 'Пошук оновлень Windows (може тривати кілька хвилин)...')
     $session = New-Object -ComObject Microsoft.Update.Session
     $session.ClientApplicationID = 'Debora'
     $result = $session.CreateUpdateSearcher().Search("IsInstalled=0 and IsHidden=0 and Type='Software'")
     $list = New-Object -ComObject Microsoft.Update.UpdateColl
     foreach ($u in $result.Updates) {
-        if ($u.InstallationBehavior.CanRequestUserInput) { Write-D9Log "  Пропущено (потребує вашої участі): $($u.Title)" Detail; continue }
+        if ($u.InstallationBehavior.CanRequestUserInput) { Write-D9Log ('  ' + (T-D9 'Пропущено (потребує вашої участі): {0}' $u.Title)) Detail; continue }
         if (-not $u.EulaAccepted) { $u.AcceptEula() }
         [void]$list.Add($u)
         Write-D9Log "  $($u.Title)" Detail
     }
-    if ($list.Count -eq 0) { Write-D9Log 'Нових оновлень немає.' Ok; return [pscustomobject]@{ Done = $true; Installed = 0; RebootRecommended = $false } }
-    Write-D9Log "Завантаження оновлень: $($list.Count)..."
+    if ($list.Count -eq 0) { Write-D9Log (T-D9 'Нових оновлень немає.') Ok; return [pscustomobject]@{ Done = $true; Installed = 0; RebootRecommended = $false } }
+    Write-D9Log (T-D9 'Завантаження оновлень: {0}...' $list.Count)
     $downloader = $session.CreateUpdateDownloader(); $downloader.Updates = $list
     [void]$downloader.Download()
-    Write-D9Log 'Встановлення...'
+    Write-D9Log (T-D9 'Встановлення...')
     $installer = $session.CreateUpdateInstaller(); $installer.Updates = $list
     $r = $installer.Install()
     $ok = 0
     for ($i = 0; $i -lt $list.Count; $i++) {
         $code = $r.GetUpdateResult($i).ResultCode   # 2 — успішно, 3 — успішно з помилками
-        if ($code -in 2, 3) { $ok++ } else { Write-D9Log "  Не встановлено: $($list.Item($i).Title) (код $code)" Warn }
+        if ($code -in 2, 3) { $ok++ } else { Write-D9Log ('  ' + (T-D9 'Не встановлено: {0} (код {1})' $list.Item($i).Title $code)) Warn }
     }
-    Write-D9Log "Встановлено оновлень: $ok з $($list.Count)." $(if ($ok -eq $list.Count) { 'Ok' } else { 'Warn' })
-    if ($r.RebootRequired) { Write-D9Log 'Для завершення потрібне перезавантаження.' Warn }
+    Write-D9Log (T-D9 'Встановлено оновлень: {0} з {1}.' $ok $list.Count) $(if ($ok -eq $list.Count) { 'Ok' } else { 'Warn' })
+    if ($r.RebootRequired) { Write-D9Log (T-D9 'Для завершення потрібне перезавантаження.') Warn }
     [pscustomobject]@{ Done = $true; Installed = $ok; RebootRecommended = [bool]$r.RebootRequired }
 }
 
@@ -126,52 +133,52 @@ function Install-D9WindowsUpdates {
 # виправить їх під час наступного запуску (autochk), як після «Перевірити» у властивостях диска.
 function Invoke-D9DiskCheck {
     $drive = $env:SystemDrive
-    Write-D9Log "Перевірка файлової системи $drive (chkdsk /scan, 1–10 хвилин)..."
+    Write-D9Log (T-D9 'Перевірка файлової системи {0} (chkdsk /scan, 1–10 хвилин)...' $drive)
     $code = Invoke-D9Native 'chkdsk.exe' @($drive, '/scan')
     if ($code -eq 0) {
-        Write-D9Log 'Помилок файлової системи не знайдено.' Ok
+        Write-D9Log (T-D9 'Помилок файлової системи не знайдено.') Ok
         return [pscustomobject]@{ Done = $true; RebootRecommended = $false }
     }
     [void](Invoke-D9Native 'fsutil.exe' @('dirty', 'set', $drive))
-    Write-D9Log "Знайдено помилки — їх буде виправлено під час наступного перезавантаження (перевірка диска перед входом у Windows)." Warn
+    Write-D9Log (T-D9 'Знайдено помилки — їх буде виправлено під час наступного перезавантаження (перевірка диска перед входом у Windows).') Warn
     [pscustomobject]@{ Done = $true; RebootRecommended = $true }
 }
 
 function Enable-D9SystemRestore {
     $drive = "$env:SystemDrive\"
-    Write-D9Log "Увімкнення захисту системи для $drive..."
+    Write-D9Log (T-D9 'Увімкнення захисту системи для {0}...' $drive)
     $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore'
     foreach ($n in 'DisableSR', 'DisableConfig') {
         if ((Get-ItemProperty $policy -ErrorAction SilentlyContinue).$n -eq 1) {
             Remove-ItemProperty -Path $policy -Name $n -ErrorAction SilentlyContinue
-            Write-D9Log "  Прибрано заборону політикою ($n)." Detail
+            Write-D9Log ('  ' + (T-D9 'Прибрано заборону політикою ({0}).' $n)) Detail
         }
     }
     try {
         Enable-ComputerRestore -Drive $drive -ErrorAction Stop
-        Write-D9Log '  Захист системи увімкнено.' Ok
-    } catch { Write-D9Log "  Не вдалося: $($_.Exception.Message)" Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
+        Write-D9Log ('  ' + (T-D9 'Захист системи увімкнено.')) Ok
+    } catch { Write-D9Log ('  ' + (T-D9 'Не вдалося: {0}' $_.Exception.Message)) Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
     # Місце під точки відновлення: 5% диска (типово Windows інколи ставить 0 або 1–2%)
     [void](Invoke-D9Native 'vssadmin.exe' @('resize', 'shadowstorage', "/for=$env:SystemDrive", "/on=$env:SystemDrive", '/maxsize=5%'))
     $rp = New-D9RestorePoint
-    if ($rp) { Write-D9Log '  Першу точку відновлення створено.' Ok }
+    if ($rp) { Write-D9Log ('  ' + (T-D9 'Першу точку відновлення створено.')) Ok }
     [pscustomobject]@{ Done = $true; RebootRecommended = $false }
 }
 
 # Дефрагментація HDD (SSD не чіпаємо: для них Windows робить TRIM). Звичайно 10–60 хвилин.
 function Invoke-D9DefragHdd {
     $drive = $env:SystemDrive.TrimEnd(':')
-    Write-D9Log "Дефрагментація диска ${drive}: (може тривати до години, комп'ютером можна користуватися)..."
+    Write-D9Log (T-D9 'Дефрагментація диска {0}: (може тривати до години, комп''ютером можна користуватися)...' $drive)
     try {
         Optimize-Volume -DriveLetter $drive -Defrag -ErrorAction Stop
-        Write-D9Log 'Дефрагментацію завершено.' Ok
-    } catch { Write-D9Log "  Не вдалося: $($_.Exception.Message)" Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
+        Write-D9Log (T-D9 'Дефрагментацію завершено.') Ok
+    } catch { Write-D9Log ('  ' + (T-D9 'Не вдалося: {0}' $_.Exception.Message)) Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
     [pscustomobject]@{ Done = $true; RebootRecommended = $false }
 }
 
 # Перевстановлення Visual C++ 2015–2022 (x64 і x86) поверх наявних — лікує падіння програм у msvcp/vcruntime
 function Repair-D9VcRedist {
-    Write-D9Log 'Перевстановлення бібліотек Visual C++ 2015–2022...'
+    Write-D9Log (T-D9 'Перевстановлення бібліотек Visual C++ 2015–2022...')
     $res = @(Update-D9Apps -Ids @('Microsoft.VCRedist.2015+.x64', 'Microsoft.VCRedist.2015+.x86'))
     $bad = @($res | Where-Object { $_.result -in 'failed', 'notFound' })
     [pscustomobject]@{ Done = -not $bad; RebootRecommended = [bool]($res | Where-Object result -eq 'reboot') }
@@ -179,7 +186,7 @@ function Repair-D9VcRedist {
 
 # Пошуковий індекс розрісся або зламаний: зупинити службу, прибрати базу, Windows проіндексує заново (у фоні, кілька годин)
 function Reset-D9SearchIndex {
-    Write-D9Log 'Перебудова пошукового індексу Windows...'
+    Write-D9Log (T-D9 'Перебудова пошукового індексу Windows...')
     $dir = Join-Path $env:ProgramData 'Microsoft\Search\Data\Applications\Windows'
     $before = [long]((Get-ChildItem -LiteralPath $dir -File -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum)
     Stop-Service WSearch -Force -ErrorAction SilentlyContinue
@@ -189,17 +196,17 @@ function Reset-D9SearchIndex {
         try { [IO.File]::Delete($f.FullName) } catch { $failed++ }
     }
     Start-Service WSearch -ErrorAction SilentlyContinue
-    if ($failed) { Write-D9Log "  Не вдалося видалити файлів: $failed (зайняті)." Warn }
-    Write-D9Log "Звільнено $(Format-D9Size $before). Індекс створюється заново у фоні; пошук запрацює повністю за кілька годин." Ok
+    if ($failed) { Write-D9Log ('  ' + (T-D9 'Не вдалося видалити файлів: {0} (зайняті).' $failed)) Warn }
+    Write-D9Log (T-D9 'Звільнено {0}. Індекс створюється заново у фоні; пошук запрацює повністю за кілька годин.' (Format-D9Size $before)) Ok
     [pscustomobject]@{ Done = $true; RebootRecommended = $false }
 }
 
 # Засіб діагностики пам'яті Windows при наступному запуску (bcdedit /bootsequence — лише один раз).
 # Результат Windows запише в журнал (MemoryDiagnostics-Results), його покаже наступне сканування.
 function Invoke-D9MemoryTestOnReboot {
-    Write-D9Log 'Планування перевірки пам''яті на наступне перезавантаження...'
+    Write-D9Log (T-D9 'Планування перевірки пам''яті на наступне перезавантаження...')
     $code = Invoke-D9Native 'bcdedit.exe' @('/bootsequence', '{memdiag}')
-    if ($code -ne 0) { Write-D9Log '  Не вдалося. Запустіть вручну: Win+R → mdsched.exe.' Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
-    Write-D9Log 'Після перезавантаження Windows 10–20 хвилин перевірятиме пам''ять, потім запуститься як звичайно. Результат покаже наступне сканування.' Ok
+    if ($code -ne 0) { Write-D9Log ('  ' + (T-D9 'Не вдалося. Запустіть вручну: Win+R → mdsched.exe.')) Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
+    Write-D9Log (T-D9 'Після перезавантаження Windows 10–20 хвилин перевірятиме пам''ять, потім запуститься як звичайно. Результат покаже наступне сканування.') Ok
     [pscustomobject]@{ Done = $true; RebootRecommended = $true }
 }

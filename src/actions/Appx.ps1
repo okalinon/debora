@@ -77,13 +77,13 @@ function Restore-D9Appx {
         $manual += $name
     }
     Clear-D9AppxCache
-    if ($manual) { return "Встановіть вручну з Microsoft Store: $($manual -join ', ')" }
+    if ($manual) { return (T-D9 'Встановіть вручну з Microsoft Store: {0}' ($manual -join ', ')) }
 }
 
 function Get-D9AppxDescription {
     param([Parameter(Mandatory)]$Action, $State)
     if ($State -and $State.installed.Count -eq 0 -and $State.provisioned.Count -eq 0) {
-        return "Застосунок $($Action.package): не встановлено"
+        return (T-D9 'Застосунок {0}: не встановлено' "$($Action.package)")
     }
-    return "Видалити застосунок $($Action.package)"
+    return (T-D9 'Видалити застосунок {0}' "$($Action.package)")
 }

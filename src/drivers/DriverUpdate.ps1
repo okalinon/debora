@@ -54,7 +54,7 @@ function Search-D9DriverCatalog {
                 try { $result[$q] = @(ConvertFrom-D9CatalogHtml $tasks[$q].GetAwaiter().GetResult()) }
                 catch {
                     $err = $_.Exception; while ($err.InnerException) { $err = $err.InnerException }
-                    if ($attempt -eq 2) { Write-D9Log "  Каталог не відповів на «$q»: $($err.Message)" Detail; $result[$q] = @() }
+                    if ($attempt -eq 2) { Write-D9Log ('  ' + (T-D9 'Каталог не відповів на «{0}»: {1}' $q $err.Message)) Detail; $result[$q] = @() }
                 }
             }
             if ($script:D9OnProgress) { & $script:D9OnProgress ([math]::Min($i + $Parallel, $left.Count)) $left.Count 'Microsoft Update Catalog' }
@@ -168,17 +168,17 @@ function Get-D9WuaDriverUpdates {
         foreach ($u in $r.Updates) {
             [pscustomobject]@{ Title = $u.Title; Version = $(if ($u.Title -match '\(([\d.]+)\)\s*$') { $Matches[1] }); Date = $u.DriverVerDate; HardwareId = [string]$u.DriverHardwareID }
         }
-    } catch { Write-D9Log "  Windows Update недоступний для пошуку драйверів: $($_.Exception.Message)" Detail }
+    } catch { Write-D9Log ('  ' + (T-D9 'Windows Update недоступний для пошуку драйверів: {0}' $_.Exception.Message)) Detail }
 }
 
 # Головний пошук: для кожного пристрою — найновіший підходящий запис каталогу, якщо він новіший за встановлений.
 # Повертає кандидатів: Device, Row (запис каталогу), Status (missing|newer), Alternatives (наступні за якістю записи).
 function Find-D9DriverUpdates {
     param([Parameter(Mandatory)]$SystemInfo, [switch]$IncludeWindowsUpdate)
-    Write-D9Log 'Пошук новіших драйверів у Microsoft Update Catalog...'
+    Write-D9Log (T-D9 'Пошук новіших драйверів у Microsoft Update Catalog...')
     $devices = @(Get-D9UpdatableDevices)
-    Write-D9Log "  Пристроїв для перевірки: $($devices.Count)" Detail
-    $wua = if ($IncludeWindowsUpdate) { Write-D9Log '  Запит до Windows Update (до хвилини)...' Detail; @(Get-D9WuaDriverUpdates) } else { @() }
+    Write-D9Log ('  ' + (T-D9 'Пристроїв для перевірки: {0}' "$($devices.Count)")) Detail
+    $wua = if ($IncludeWindowsUpdate) { Write-D9Log ('  ' + (T-D9 'Запит до Windows Update (до хвилини)...')) Detail; @(Get-D9WuaDriverUpdates) } else { @() }
     $queries = @($devices | ForEach-Object { $_.Queries } | Sort-Object -Unique) + @($wua | ForEach-Object { $_.Title })
     $found = Search-D9DriverCatalog -Queries $queries
     foreach ($d in $devices) {
@@ -204,7 +204,7 @@ function Find-D9DriverUpdates {
 function Save-D9CatalogFile {
     param([Parameter(Mandatory)]$Row, [Parameter(Mandatory)][string]$Folder)
     $dl = Get-D9CatalogDownload $Row.Id
-    if (-not $dl) { throw "Каталог не дав посилання для $($Row.Title)" }
+    if (-not $dl) { throw (T-D9 'Каталог не дав посилання для {0}' $Row.Title) }
     $safe = ($Row.Title -replace '[\\/:*?"<>|]', '_').Trim()
     $dir = Join-Path $Folder $safe
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -219,14 +219,14 @@ function Save-D9CatalogFile {
     if ($dl.Sha256) {
         $want = ([BitConverter]::ToString([Convert]::FromBase64String($dl.Sha256)) -replace '-', '')
         $have = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
-        if ($want -ne $have) { [IO.File]::Delete($file); throw "Контрольна сума не збігається для $($Row.Title) — файл видалено" }
+        if ($want -ne $have) { [IO.File]::Delete($file); throw (T-D9 'Контрольна сума не збігається для {0} — файл видалено' $Row.Title) }
     }
     # .cab розпаковуємо поруч (expand.exe є в кожній Windows)
     if ($file -like '*.cab') {
         $x = Join-Path $dir 'files'
         New-Item -ItemType Directory -Path $x -Force | Out-Null
         $o = & expand.exe -F:* $file $x 2>&1
-        if ($LASTEXITCODE -ne 0) { throw "Не вдалося розпакувати $($dl.Name): $o" }
+        if ($LASTEXITCODE -ne 0) { throw (T-D9 'Не вдалося розпакувати {0}: {1}' $dl.Name "$o") }
     }
     return [string]$dir
 }
@@ -245,8 +245,8 @@ function Save-D9DriverUpdates {
             try { $dir = [string](@(Save-D9CatalogFile $row $Folder) | Select-Object -Last 1) } catch { Write-D9Log "  $($_.Exception.Message)" Warn; continue }
             $infOk = @(Get-ChildItem -LiteralPath $dir -Filter '*.inf' -Recurse | Where-Object { -not $_.PSIsContainer } | ForEach-Object { Get-D9InfInfo $_.FullName } |
                 Where-Object { $_.Ids | Where-Object { (Test-D9SpecificId $_) -and (@($c.Device.HardwareIds) + @($c.Device.CompatibleIds)) -contains $_ } })
-            if ($infOk) { Write-D9Log '  Завантажено, пакет підходить до пристрою.' Ok; break }
-            Write-D9Log '  Пакет не містить драйвера саме для цього пристрою — пробую інший варіант.' Detail
+            if ($infOk) { Write-D9Log ('  ' + (T-D9 'Завантажено, пакет підходить до пристрою.')) Ok; break }
+            Write-D9Log ('  ' + (T-D9 'Пакет не містить драйвера саме для цього пристрою — пробую інший варіант.')) Detail
         }
     }
     Find-D9DriverPackages -Folder $Folder
@@ -261,15 +261,15 @@ function Invoke-D9DriverAutoUpdate {
     if ($oem) { Clear-D9PnpCache }
     $all = @(Find-D9DriverUpdates -SystemInfo $SystemInfo -IncludeWindowsUpdate)
     $cands = @($all | Where-Object { $IncludeOptional -or -not $_.Optional })
-    if ($all.Count -gt $cands.Count) { Write-D9Log "  Необов'язкових (заміна робочих драйверів Windows на системних пристроях): $($all.Count - $cands.Count) — пропущено; їх можна вибрати у вікні." Detail }
-    if (-not $cands) { Write-D9Log 'Новіших драйверів у каталозі Microsoft не знайдено — встановлені актуальні.' Ok; return [pscustomobject]@{ Candidates = @(); Packages = @(); Session = $null; RebootRecommended = [bool]$oem.RebootRecommended } }
-    foreach ($c in $cands) { Write-D9Log ("  {0}: {1} → {2} ({3:dd.MM.yyyy})" -f $c.Device.Name, $(if ($c.Device.Version) { $c.Device.Version } else { 'немає драйвера' }), $c.Row.Version, $c.Row.Date) }
+    if ($all.Count -gt $cands.Count) { Write-D9Log ('  ' + (T-D9 'Необов''язкових (заміна робочих драйверів Windows на системних пристроях): {0} — пропущено; їх можна вибрати у вікні.' ($all.Count - $cands.Count))) Detail }
+    if (-not $cands) { Write-D9Log (T-D9 'Новіших драйверів у каталозі Microsoft не знайдено — встановлені актуальні.') Ok; return [pscustomobject]@{ Candidates = @(); Packages = @(); Session = $null; RebootRecommended = [bool]$oem.RebootRecommended } }
+    foreach ($c in $cands) { Write-D9Log ("  {0}: {1} → {2} ({3:dd.MM.yyyy})" -f $c.Device.Name, $(if ($c.Device.Version) { $c.Device.Version } else { T-D9 'немає драйвера' }), $c.Row.Version, $c.Row.Date) }
     if ($WhatIf) { return [pscustomobject]@{ Candidates = $cands; Packages = @(); Session = $null; RebootRecommended = $false } }
     $found = Save-D9DriverUpdates -Candidates $cands -Folder $Folder
     $todo = @($found.Packages | Where-Object Status -ne 'current')
-    if (-not $todo) { Write-D9Log 'Після перевірки пакетів встановлювати нічого (поточні драйвери не старші).' Ok; return [pscustomobject]@{ Candidates = $cands; Packages = @(); Session = $null; RebootRecommended = $false } }
+    if (-not $todo) { Write-D9Log (T-D9 'Після перевірки пакетів встановлювати нічого (поточні драйвери не старші).') Ok; return [pscustomobject]@{ Candidates = $cands; Packages = @(); Session = $null; RebootRecommended = $false } }
     $cat = New-D9DriverCatalog -Packages $todo
     $plan = New-D9Plan -Catalog $cat -TweakIds @($cat.Tweaks.id) -SystemInfo $SystemInfo
-    $session = Invoke-D9Plan -Plan $plan -SystemInfo $SystemInfo -Selection 'драйвери з Microsoft Update Catalog' -NoRestorePoint:$NoRestorePoint
+    $session = Invoke-D9Plan -Plan $plan -SystemInfo $SystemInfo -Selection (T-D9 'драйвери з Microsoft Update Catalog') -NoRestorePoint:$NoRestorePoint
     [pscustomobject]@{ Candidates = $cands; Packages = $todo; Session = $session; RebootRecommended = $true }
 }

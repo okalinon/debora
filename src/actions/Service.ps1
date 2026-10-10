@@ -41,7 +41,7 @@ function Test-D9Service {
 function Set-D9ServiceStartup {
     param([string]$Name, [string]$Startup)
     $mode = $script:D9ServiceStartup[$Startup]
-    if (-not $mode) { throw "Невідомий тип запуску: $Startup" }
+    if (-not $mode) { throw (T-D9 'Невідомий тип запуску: {0}' "$Startup") }
     $output = & sc.exe config "$Name" start= $mode 2>&1
     if ($LASTEXITCODE -ne 0) { throw "sc.exe config $Name start= $mode : $output" }
 }
@@ -67,8 +67,8 @@ function Restore-D9Service {
 
 function Get-D9ServiceDescription {
     param([Parameter(Mandatory)]$Action, $State)
-    if ($State -and -not $State.exists) { return "Служба $($Action.name): немає в системі" }
+    if ($State -and -not $State.exists) { return (T-D9 'Служба {0}: немає в системі' "$($Action.name)") }
     $old = if ($State) { $State.startup } else { '?' }
-    $stop = if ($Action.stop) { ', зупинити' } elseif ($Action.start) { ', запустити' } else { '' }
-    return "Служба $($Action.name): $old -> $($Action.startup)$stop"
+    $stop = if ($Action.stop) { (T-D9 ', зупинити') } elseif ($Action.start) { (T-D9 ', запустити') } else { '' }
+    return (T-D9 'Служба {0}: {1} -> {2}{3}' "$($Action.name)" "$old" "$($Action.startup)" $stop)
 }

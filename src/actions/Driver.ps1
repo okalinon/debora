@@ -56,17 +56,17 @@ function Test-D9Driver { param([Parameter(Mandatory)]$Action) return $null }
 
 function Invoke-D9Driver {
     param([Parameter(Mandatory)]$Action)
-    if (-not (Test-Path -LiteralPath $Action.inf)) { throw "Файл драйвера не знайдено: $($Action.inf)" }
+    if (-not (Test-Path -LiteralPath $Action.inf)) { throw (T-D9 'Файл драйвера не знайдено: {0}' "$($Action.inf)") }
     $backup = Get-D9DriverBackupDir
     foreach ($d in (Get-D9DriverState $Action).devices) {
         if ($d.inf -like 'oem*.inf' -and -not (Test-Path (Join-Path $backup $d.inf))) {
             $out = & pnputil.exe /export-driver $d.inf (Join-Path $backup $d.inf) 2>&1
-            if ($LASTEXITCODE -ne 0) { throw "Не вдалося зберегти поточний драйвер $($d.inf) для відкату: $out" }
+            if ($LASTEXITCODE -ne 0) { throw (T-D9 'Не вдалося зберегти поточний драйвер {0} для відкату: {1}' $d.inf "$out") }
         }
     }
     $out = & pnputil.exe /add-driver $Action.inf /install 2>&1 | Out-String
     # 0 — встановлено; 3010 — потрібне перезавантаження; 259 — додано, але жоден пристрій не оновлено (вже стоїть кращий)
-    if ($LASTEXITCODE -notin 0, 3010, 259) { throw "pnputil завершився з кодом ${LASTEXITCODE}: $($out.Trim())" }
+    if ($LASTEXITCODE -notin 0, 3010, 259) { throw (T-D9 'pnputil завершився з кодом {0}: {1}' "$LASTEXITCODE" $out.Trim()) }
 }
 
 function Restore-D9Driver {
@@ -81,16 +81,16 @@ function Restore-D9Driver {
         if ($old.inf -like 'oem*.inf') {
             $saved = Join-Path $backup $old.inf
             if (Test-Path $saved) { & pnputil.exe /add-driver (Join-Path $saved '*.inf') /subdirs /install | Out-Null }
-            else { $notes += "резервної копії $($old.inf) немає" }
+            else { $notes += (T-D9 'резервної копії {0} немає' "$($old.inf)") }
         }
     }
     & pnputil.exe /scan-devices | Out-Null
-    if ($notes) { return "Драйвер повернуто не повністю: $($notes -join '; ')" }
+    if ($notes) { return (T-D9 'Драйвер повернуто не повністю: {0}' ($notes -join '; ')) }
 }
 
 function Get-D9DriverDescription {
     param([Parameter(Mandatory)]$Action, $State)
-    $old = @($State.devices | ForEach-Object { if ($_.version) { "$($_.version) ($($_.date))" } else { 'без драйвера' } } | Sort-Object -Unique) -join ', '
+    $old = @($State.devices | ForEach-Object { if ($_.version) { "$($_.version) ($($_.date))" } else { (T-D9 'без драйвера') } } | Sort-Object -Unique) -join ', '
     if (-not $old) { $old = '?' }
-    return "Драйвер $($Action.name): $old -> $($Action.version) ($($Action.date))"
+    return (T-D9 'Драйвер {0}: {1} -> {2} ({3})' "$($Action.name)" $old "$($Action.version)" "$($Action.date)")
 }

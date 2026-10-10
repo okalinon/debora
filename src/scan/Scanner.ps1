@@ -84,7 +84,7 @@ function Invoke-D9ProbesParallel {
                 $results[$j.Check.id] = $r
                 $j.PS.Dispose()
                 $done++
-                Write-Progress -Activity 'Debora: сканування' -Status "$done / $($jobs.Count): $(Get-D9Text $j.Check.name)" -PercentComplete ($done * 100 / $jobs.Count)
+                Write-Progress -Activity (T-D9 'Debora: сканування') -Status "$done / $($jobs.Count): $(Get-D9Text $j.Check.name)" -PercentComplete ($done * 100 / $jobs.Count)
                 if ($script:D9OnProgress) { & $script:D9OnProgress $done $jobs.Count (Get-D9Text $j.Check.name) }
             }
             if ($done -lt $jobs.Count) { Start-Sleep -Milliseconds 50 }
@@ -105,21 +105,21 @@ function Invoke-D9Scan {
     foreach ($check in $list) {
         $fit = if ($check.requires) { Test-D9Applicable $check.requires $Context.System } else { $null }
         if ($fit -and -not $fit.Applicable) { $pre[$check.id] = @('notApplicable', $fit.Reason) }
-        elseif ($check.deep -and -not $Context.Deep) { $pre[$check.id] = @('notRun', 'лише в глибокому скануванні') }
-        elseif ($check.adminOnly -and -not $Context.IsAdmin) { $pre[$check.id] = @('skipped', 'потрібні права адміністратора') }
+        elseif ($check.deep -and -not $Context.Deep) { $pre[$check.id] = @('notRun', (T-D9 'лише в глибокому скануванні')) }
+        elseif ($check.adminOnly -and -not $Context.IsAdmin) { $pre[$check.id] = @('skipped', (T-D9 'потрібні права адміністратора')) }
     }
     $run = @($list | Where-Object { -not $pre.ContainsKey($_.id) })
     $outputs = $null
     if (-not $Sequential -and $run.Count -ge 8) {
         try { $outputs = Invoke-D9ProbesParallel -Checks $run -Context $Context }
-        catch { Write-D9Log "Паралельне сканування недоступне ($($_.Exception.Message)) — виконую послідовно." Detail; $outputs = $null }
+        catch { Write-D9Log (T-D9 'Паралельне сканування недоступне ({0}) — виконую послідовно.' $_.Exception.Message) Detail; $outputs = $null }
     }
     if (-not $outputs) {
         $outputs = @{}; $n = 0
         $runner = [scriptblock]::Create($script:D9ProbeRunner.ToString())   # прив'язка до поточного runspace (у вікні це фоновий потік)
         foreach ($check in $run) {
             $n++
-            Write-Progress -Activity 'Debora: сканування' -Status "$n / $($run.Count): $(Get-D9Text $check.name)" -PercentComplete ($n * 100 / $run.Count)
+            Write-Progress -Activity (T-D9 'Debora: сканування') -Status "$n / $($run.Count): $(Get-D9Text $check.name)" -PercentComplete ($n * 100 / $run.Count)
             if ($script:D9OnProgress) { & $script:D9OnProgress $n $run.Count (Get-D9Text $check.name) }
             $outputs[$check.id] = & $runner $check $Context
         }
@@ -145,7 +145,7 @@ function Invoke-D9Scan {
         })
     }
 
-    Write-Progress -Activity 'Debora: сканування' -Completed
+    Write-Progress -Activity (T-D9 'Debora: сканування') -Completed
     $checked = @($results | Where-Object { $_.status -in 'ok', 'found' } | ForEach-Object category | Sort-Object -Unique)
     $order = @{ critical = 0; warning = 1; suggestion = 2; info = 3 }
     $sorted = @($findings | Sort-Object { $order[$_.severity] }, category)

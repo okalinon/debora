@@ -8,7 +8,7 @@ $script:D9RegKinds = @('String', 'ExpandString', 'Binary', 'DWord', 'MultiString
 
 function ConvertTo-D9RegLocation {
     param([Parameter(Mandatory)][string]$Path)
-    if ($Path -notmatch '^(HKLM|HKCU|HKCR|HKU):\\(.+)$') { throw "Некоректний шлях реєстру: $Path" }
+    if ($Path -notmatch '^(HKLM|HKCU|HKCR|HKU):\\(.+)$') { throw (T-D9 'Некоректний шлях реєстру: {0}' "$Path") }
     $hive = @{ HKLM = 'LocalMachine'; HKCU = 'CurrentUser'; HKCR = 'ClassesRoot'; HKU = 'Users' }[$Matches[1]]
     [pscustomobject]@{
         Hive   = [Microsoft.Win32.RegistryHive]$hive
@@ -99,7 +99,7 @@ function Set-D9RegValue {
     $base = Open-D9RegBase $loc.Hive
     try {
         $key = $base.CreateSubKey($loc.SubKey)
-        if (-not $key) { throw "Не вдалося відкрити ключ для запису: $Path" }
+        if (-not $key) { throw (T-D9 'Не вдалося відкрити ключ для запису: {0}' "$Path") }
         try { $key.SetValue($Name, (ConvertTo-D9RegWritable $Value $Kind), [Microsoft.Win32.RegistryValueKind]$Kind) }
         finally { $key.Dispose() }
     } finally { $base.Dispose() }
@@ -140,7 +140,7 @@ function Invoke-D9Registry {
     param([Parameter(Mandatory)]$Action)
     $name = Get-D9RegValueName $Action
     if ($Action.delete) { Remove-D9RegValue $Action.path $name; return }
-    if ($script:D9RegKinds -notcontains $Action.kind) { throw "Невідомий тип значення реєстру: $($Action.kind)" }
+    if ($script:D9RegKinds -notcontains $Action.kind) { throw (T-D9 'Невідомий тип значення реєстру: {0}' "$($Action.kind)") }
     if ($Action.ifKeyExists -and -not (Get-D9RegistryState $Action).keyExists) { return }
     Set-D9RegValue $Action.path $name $Action.value $Action.kind
 }
@@ -162,7 +162,7 @@ function Get-D9RegistryDescription {
     param([Parameter(Mandatory)]$Action, $State)
     $name = Get-D9RegValueName $Action
     $label = "$($Action.path)\$(if ($name) { $name } else { '(default)' })"
-    $old = if ($State -and $State.exists) { (ConvertTo-D9StateJson $State.value) } else { '<немає>' }
-    $new = if ($Action.delete) { '<видалити>' } else { ConvertTo-D9StateJson (ConvertTo-D9RegNormalized $Action.value $Action.kind) }
+    $old = if ($State -and $State.exists) { (ConvertTo-D9StateJson $State.value) } else { (T-D9 '<немає>') }
+    $new = if ($Action.delete) { (T-D9 '<видалити>') } else { ConvertTo-D9StateJson (ConvertTo-D9RegNormalized $Action.value $Action.kind) }
     return "$label : $old -> $new"
 }

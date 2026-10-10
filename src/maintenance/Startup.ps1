@@ -66,7 +66,7 @@ function Get-D9StartupItems {
                 $exe = Get-D9CommandExe "$($p.Value)"
                 [void]$items.Add([pscustomobject]@{
                     Name = $p.Name; Command = "$($p.Value)"; Exe = $exe; Publisher = (Get-D9Publisher $exe)
-                    Enabled = -not (Test-D9ApprovedDisabled $approved.($p.Name)); Where = $s.Where; Kind = 'reg'
+                    Enabled = -not (Test-D9ApprovedDisabled $approved.($p.Name)); Where = (T-D9 $s.Where); Kind = 'reg'
                     ApprovedPath = "$($s.Hive):\$script:D9StartupApproved\$($s.Approved)"; ValueName = $p.Name; Missing = ($exe -and -not (Test-Path -LiteralPath $exe))
                 })
             }
@@ -79,7 +79,7 @@ function Get-D9StartupItems {
                 }
                 [void]$items.Add([pscustomobject]@{
                     Name = $f.BaseName; Command = $target; Exe = $target; Publisher = (Get-D9Publisher $target)
-                    Enabled = -not (Test-D9ApprovedDisabled $approved.($f.Name)); Where = $s.Where; Kind = 'reg'
+                    Enabled = -not (Test-D9ApprovedDisabled $approved.($f.Name)); Where = (T-D9 $s.Where); Kind = 'reg'
                     ApprovedPath = "$($s.Hive):\$script:D9StartupApproved\$($s.Approved)"; ValueName = $f.Name; Missing = ($target -and -not (Test-Path -LiteralPath $target))
                 })
             }
@@ -99,7 +99,7 @@ function Get-D9StartupItems {
                 $exe = Get-D9CommandExe "$($exec.Command)"
                 [void]$items.Add([pscustomobject]@{
                     Name = $t.Name; Command = "$($exec.Command) $($exec.Arguments)".Trim(); Exe = $exe; Publisher = (Get-D9Publisher $exe)
-                    Enabled = [bool]$t.Enabled; Where = 'Планувальник завдань'; Kind = 'task'
+                    Enabled = [bool]$t.Enabled; Where = (T-D9 'Планувальник завдань'); Kind = 'task'
                     ApprovedPath = $null; ValueName = $t.Path; Missing = ($exe -and -not (Test-Path -LiteralPath $exe))
                 })
             }
@@ -132,7 +132,7 @@ function New-D9StartupCatalog {
         $verb = if ($c.Enable) { 'Увімкнути' } else { 'Вимкнути' }
         [pscustomobject]@{
             id = ('startup.{0:d2}' -f $i); category = 'performance'; risk = 'safe'
-            name = [pscustomobject]@{ uk = "$verb автозапуск: $($c.Item.Name)"; en = "Startup: $($c.Item.Name)" }
+            name = [pscustomobject]@{ uk = "$verb автозапуск: $($c.Item.Name)"; en = "$(if ($c.Enable) { 'Enable' } else { 'Disable' }) startup: $($c.Item.Name)" }
             description = [pscustomobject]@{ uk = $c.Item.Command; en = $c.Item.Command }
             actions = @(New-D9StartupAction $c.Item $c.Enable)
         }

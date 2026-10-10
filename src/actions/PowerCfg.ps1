@@ -16,7 +16,7 @@ function Resolve-D9PowerScheme {
     param([string]$Scheme)
     if ($script:D9PowerSchemes.ContainsKey($Scheme)) { return $script:D9PowerSchemes[$Scheme] }
     if ($Scheme -match '^[0-9a-fA-F-]{36}$') { return $Scheme.ToLower() }
-    throw "Невідома схема живлення: $Scheme"
+    throw (T-D9 'Невідома схема живлення: {0}' "$Scheme")
 }
 
 function Get-D9ActivePowerScheme {
@@ -52,7 +52,7 @@ function Invoke-D9PowerCfg {
     if ($null -ne $Action.hibernate) {
         $mode = if ($Action.hibernate) { 'on' } else { 'off' }
         powercfg /hibernate $mode | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "powercfg /hibernate $mode завершився з кодом $LASTEXITCODE" }
+        if ($LASTEXITCODE -ne 0) { throw (T-D9 'powercfg /hibernate {0} завершився з кодом {1}' $mode "$LASTEXITCODE") }
         return
     }
     $target = Resolve-D9PowerScheme $Action.scheme
@@ -61,7 +61,7 @@ function Invoke-D9PowerCfg {
     powercfg /setactive $target 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) { return }
     $output = powercfg /duplicatescheme $target
-    if ("$output" -notmatch '([0-9a-fA-F]{8}-[0-9a-fA-F-]{27})') { throw "Не вдалося створити схему живлення $($Action.scheme): $output" }
+    if ("$output" -notmatch '([0-9a-fA-F]{8}-[0-9a-fA-F-]{27})') { throw (T-D9 'Не вдалося створити схему живлення {0}: {1}' "$($Action.scheme)" "$output") }
     $newGuid = $Matches[1].ToLower()
     powercfg /setactive $newGuid | Out-Null
     if (-not (Test-Path $script:D9PowerMarkerKey)) { New-Item -Path $script:D9PowerMarkerKey -Force | Out-Null }
@@ -81,10 +81,10 @@ function Restore-D9PowerCfg {
 function Get-D9PowerCfgDescription {
     param([Parameter(Mandatory)]$Action, $State)
     if ($null -ne $Action.hibernate) {
-        $old = if ($State) { if ($State.hibernate) { 'увімкнено' } else { 'вимкнено' } } else { '?' }
-        $new = if ($Action.hibernate) { 'увімкнено' } else { 'вимкнено' }
-        return "Гібернація: $old -> $new"
+        $old = if ($State) { if ($State.hibernate) { (T-D9 'увімкнено') } else { (T-D9 'вимкнено') } } else { '?' }
+        $new = if ($Action.hibernate) { (T-D9 'увімкнено') } else { (T-D9 'вимкнено') }
+        return (T-D9 'Гібернація: {0} -> {1}' $old $new)
     }
     $old = if ($State) { $State.activeScheme } else { '?' }
-    return "Схема живлення: $old -> $($Action.scheme)"
+    return (T-D9 'Схема живлення: {0} -> {1}' "$old" "$($Action.scheme)")
 }

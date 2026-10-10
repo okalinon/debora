@@ -9,7 +9,7 @@ function Invoke-D9ActionVerb {
         $State
     )
     $type = $script:D9ActionTypes[[string]$Action.type]
-    if (-not $type) { throw "Невідомий тип дії: $($Action.type)" }
+    if (-not $type) { throw (T-D9 'Невідомий тип дії: {0}' "$($Action.type)") }
     switch ($Verb) {
         'State'    { & "Get-D9${type}State" -Action $Action }
         'Test'     { & "Test-D9$type" -Action $Action }
@@ -47,13 +47,13 @@ function New-D9Plan {
     $items = foreach ($id in ($TweakIds | Select-Object -Unique)) {
         $tweak = Get-D9Tweak $Catalog $id
         if (-not $tweak) {
-            [pscustomobject]@{ Id = $id; Tweak = $null; Run = $false; Reason = 'невідомий твік' }
+            [pscustomobject]@{ Id = $id; Tweak = $null; Run = $false; Reason = (T-D9 'невідомий твік') }
             continue
         }
         $check = Test-D9Applicable $tweak.requires $SystemInfo
         $clash = @($tweak.conflicts) | Where-Object { $accepted -contains $_ } | Select-Object -First 1
         if ($check.Applicable -and $clash) {
-            [pscustomobject]@{ Id = $id; Tweak = $tweak; Run = $false; Reason = "конфліктує з $clash" }
+            [pscustomobject]@{ Id = $id; Tweak = $tweak; Run = $false; Reason = (T-D9 'конфліктує з {0}' $clash) }
             continue
         }
         if ($check.Applicable) { $accepted += $id }
@@ -66,7 +66,7 @@ function Get-D9Preview {
     param([Parameter(Mandatory)]$Plan, [Parameter(Mandatory)]$SystemInfo)
     foreach ($item in $Plan) {
         if (-not $item.Run) {
-            [pscustomobject]@{ Tweak = $item.Id; Change = "пропущено: $($item.Reason)"; Pending = $false }
+            [pscustomobject]@{ Tweak = $item.Id; Change = (T-D9 'пропущено: {0}' "$($item.Reason)"); Pending = $false; Skipped = $true }
             continue
         }
         foreach ($a in (Get-D9ApplicableActions $item.Tweak $SystemInfo)) {
@@ -76,6 +76,7 @@ function Get-D9Preview {
                 Tweak   = $item.Id
                 Change  = (Invoke-D9ActionVerb Describe $a -State $state)
                 Pending = ($done -ne $true)
+                Skipped = $false
             }
         }
     }
@@ -109,10 +110,10 @@ function Invoke-D9Plan {
     )
     $session = New-D9Session -Selection $Selection -SystemInfo $SystemInfo
     if (-not $NoRestorePoint) {
-        Write-D9Log "Створення точки відновлення..."
+        Write-D9Log (T-D9 'Створення точки відновлення...')
         $session.restorePoint = New-D9RestorePoint
-        if ($session.restorePoint) { Write-D9Log "  Точку відновлення створено" Ok }
-        else { Write-D9Log "  Не вдалося створити точку відновлення (захист системи вимкнено?)" Warn }
+        if ($session.restorePoint) { Write-D9Log (T-D9 '  Точку відновлення створено') Ok }
+        else { Write-D9Log (T-D9 '  Не вдалося створити точку відновлення (захист системи вимкнено?)') Warn }
         Save-D9Session $session
     }
 
@@ -140,7 +141,7 @@ function Invoke-D9Plan {
             } catch {
                 $entry.result  = 'error'
                 $entry.message = $_.Exception.Message
-                Write-D9Log "    Помилка: $($_.Exception.Message)" Error
+                Write-D9Log (T-D9 '    Помилка: {0}' $_.Exception.Message) Error
             }
             Add-D9JournalEntry $session ([pscustomobject]$entry)
         }
@@ -163,18 +164,18 @@ function Undo-D9Session {
             $current = Invoke-D9ActionVerb State $e.action
             if (-not (Test-D9StateEqual $current $e.after)) {
                 $record.result  = 'conflict'
-                $record.message = 'стан змінено після застосування — пропущено'
-                Write-D9Log ("  Пропущено (змінено після нас): " + (Invoke-D9ActionVerb Describe $e.action -State $current)) Warn
+                $record.message = (T-D9 'стан змінено після застосування — пропущено')
+                Write-D9Log (T-D9 '  Пропущено (змінено після нас): {0}' (Invoke-D9ActionVerb Describe $e.action -State $current)) Warn
             } else {
                 $note = Invoke-D9ActionVerb Restore $e.action -Before $e.before
                 $record.result  = if ($note) { 'manual' } else { 'restored' }
                 $record.message = $note
-                if ($note) { Write-D9Log "  $note" Warn } else { Write-D9Log ("  Відновлено: " + (Invoke-D9ActionVerb Describe $e.action -State $current)) Detail }
+                if ($note) { Write-D9Log "  $note" Warn } else { Write-D9Log (T-D9 '  Відновлено: {0}' (Invoke-D9ActionVerb Describe $e.action -State $current)) Detail }
             }
         } catch {
             $record.result  = 'error'
             $record.message = $_.Exception.Message
-            Write-D9Log "  Помилка відкату: $($_.Exception.Message)" Error
+            Write-D9Log (T-D9 '  Помилка відкату: {0}' $_.Exception.Message) Error
         }
         [void]$session.undo.Add([pscustomobject]$record)
         [pscustomobject]$record

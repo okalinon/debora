@@ -99,7 +99,7 @@ function Test-D9EventRule {
     if ($p.ids)       { $filter.Id = @($p.ids | ForEach-Object { [int]$_ }) }
     if ($p.levels)    { $filter.Level = @($p.levels | ForEach-Object { [int]$_ }) }
     $events = Get-D9Events $filter
-    if ($null -eq $events) { return New-D9Skip $Check "Журнал $($p.log) недоступний (потрібні права адміністратора?)" }
+    if ($null -eq $events) { return New-D9Skip $Check (T-D9 'Журнал {0} недоступний (потрібні права адміністратора?)' $p.log) }
     $count = @($events).Count
     if ($count -lt [int]$p.min) { return }
     $finding = New-D9RuleFinding $Check @{ count = $count; days = $p.days }

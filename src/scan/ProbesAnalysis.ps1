@@ -27,7 +27,7 @@ function Get-D9BugcheckInfo {
     $cls = $cat.classes.$class
     [pscustomobject]@{
         Key = $Key; Name = if ($c) { $c.name } else { "0x$Key" }; Class = $class
-        Text = (@($c.uk, $cls.uk) | Where-Object { $_ }) -join ' '
+        Text = (@((Get-D9Text $c), (Get-D9Text $cls)) | Where-Object { $_ }) -join ' '
         Fix = $cls.fix
     }
 }
@@ -50,33 +50,33 @@ function Test-D9Crashes {
     $since = $Ctx.Now.AddDays(-$days)
     $bsod  = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-WER-SystemErrorReporting'; Id = 1001; StartTime = $since })
     $power = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 41; StartTime = $since })
-    $links = @((New-D9Link 'Перевірка пам''яті Windows' 'mdsched.exe'))
+    $links = @((New-D9Link (T-D9 'Перевірка пам''яті Windows') 'mdsched.exe'))
     if ($bsod.Count) {
         $infos = @($bsod | ForEach-Object { ConvertTo-D9BugcheckKey ([string]$_.Properties[0].Value) } | Where-Object { $_ } | ForEach-Object { Get-D9BugcheckInfo $_ })
         $byCode = @($infos | Group-Object Key | Sort-Object Count -Descending)
         $codes = ($byCode | ForEach-Object { "$($_.Group[0].Name) ×$($_.Count)" }) -join ', '
         $severity = if ($bsod.Count -ge $Check.thresholds.critical) { 'critical' } else { 'warning' }
-        $title = "Сині екрани за $days днів: $($bsod.Count)$(if ($codes) { " ($codes)" })"
+        $title = if ($codes) { T-D9 'Сині екрани за {0} днів: {1} ({2})' $days $bsod.Count $codes } else { T-D9 'Сині екрани за {0} днів: {1}' $days $bsod.Count }
         $last = ($bsod | Sort-Object TimeCreated -Descending | Select-Object -First 1).TimeCreated
         $classes = @($infos | Group-Object Class | Sort-Object Count -Descending)
         if ($byCode.Count -ge 3 -and $classes.Count -ge 2) {
             # Різні коди від різних підсистем — класична ознака нестабільної пам'яті чи розгону
-            $details = "Коди різні ($($byCode.Count)), тож причина, найімовірніше, не в одному драйвері, а в залізі: оперативна пам'ять, розгін/XMP, живлення або перегрів. Debora запланує перевірку пам'яті під час перезавантаження."
+            $details = T-D9 'Коди різні ({0}), тож причина, найімовірніше, не в одному драйвері, а в залізі: оперативна пам''ять, розгін/XMP, живлення або перегрів. Debora запланує перевірку пам''яті під час перезавантаження.' $byCode.Count
             $fix = ConvertTo-D9CrashFix 'memoryTest'
         } elseif ($infos) {
             $main = $byCode[0].Group[0]
             $details = "$($main.Name): $($main.Text)"
             $fix = ConvertTo-D9CrashFix $main.Fix
         } else {
-            $details = 'Можливі причини: драйвер (оновіть відео, чипсет, мережу), перегрів, оперативна пам''ять, блок живлення.'
+            $details = T-D9 'Можливі причини: драйвер (оновіть відео, чипсет, мережу), перегрів, оперативна пам''ять, блок живлення.'
             $fix = ConvertTo-D9CrashFix 'driverUpdate'
         }
-        if ($last) { $details += " Останній — $($last.ToString('dd.MM.yyyy HH:mm'))." }
-        $details += ' Точний драйвер-винуватець покаже програма WhoCrashed або BlueScreenView (вкладка «Програми» → «Діагностика заліза»).'
+        if ($last) { $details += ' ' + (T-D9 'Останній — {0}.' $last.ToString('dd.MM.yyyy HH:mm')) }
+        $details += ' ' + (T-D9 'Точний драйвер-винуватець покаже програма WhoCrashed або BlueScreenView (вкладка «Програми» → «Діагностика заліза»).')
         return New-D9Finding $Check $severity $title $details $fix $links -Data @{ codes = @($byCode | ForEach-Object { @{ code = "0x$($_.Name)"; name = $_.Group[0].Name; count = $_.Count } }) }
     }
     if ($power.Count -ge 3) {
-        New-D9Finding $Check warning "Аварійні вимкнення за $days днів: $($power.Count)" "Комп'ютер вимикався або перезавантажувався без завершення роботи, без синього екрана. Так буває при зависанні, проблемах із живленням (блок живлення, батарея, розетка) і перегріві. Якщо ви самі вимикали кнопкою — це теж рахується." @{ type = 'manual' } $links
+        New-D9Finding $Check warning (T-D9 'Аварійні вимкнення за {0} днів: {1}' $days $power.Count) (T-D9 'Комп''ютер вимикався або перезавантажувався без завершення роботи, без синього екрана. Так буває при зависанні, проблемах із живленням (блок живлення, батарея, розетка) і перегріві. Якщо ви самі вимикали кнопкою — це теж рахується.') @{ type = 'manual' } $links
     }
 }
 
@@ -113,24 +113,24 @@ function Test-D9AppCrashes {
     $names = { param($list) (@($list | Group-Object App | Sort-Object Count -Descending | Select-Object -First 5 | ForEach-Object Name)) -join ', ' }
     if (@($byClass['gpu']).Count -ge $min) {
         $g = @($byClass['gpu'])
-        New-D9Finding $Check warning "Програми падають у відеодрайвері: $($g.Count) разів ($(& $names $g))" "Збій стається в модулі драйвера відеокарти ($(@($g.Module | Sort-Object -Unique) -join ', ')). Debora знайде й встановить новіший драйвер. Якщо не допоможе — перевірте температуру відеокарти й зніміть розгін." @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):gpu"
+        New-D9Finding $Check warning (T-D9 'Програми падають у відеодрайвері: {0} разів ({1})' $g.Count (& $names $g)) (T-D9 'Збій стається в модулі драйвера відеокарти ({0}). Debora знайде й встановить новіший драйвер. Якщо не допоможе — перевірте температуру відеокарти й зніміть розгін.' (@($g.Module | Sort-Object -Unique) -join ', ')) @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):gpu"
     }
     if (@($byClass['vcrt']).Count -ge $min) {
         $v = @($byClass['vcrt'])
-        New-D9Finding $Check suggestion "Програми падають у бібліотеках Visual C++: $($v.Count) разів ($(& $names $v))" 'Пошкоджені або застарілі бібліотеки Visual C++ — часта причина вильотів ігор і програм. Debora перевстановить Visual C++ 2015–2022 (x64 і x86).' @{ type = 'maintenance'; action = 'vcRedist' } -Key "$($Check.id):vcrt"
+        New-D9Finding $Check suggestion (T-D9 'Програми падають у бібліотеках Visual C++: {0} разів ({1})' $v.Count (& $names $v)) (T-D9 'Пошкоджені або застарілі бібліотеки Visual C++ — часта причина вильотів ігор і програм. Debora перевстановить Visual C++ 2015–2022 (x64 і x86).') @{ type = 'maintenance'; action = 'vcRedist' } -Key "$($Check.id):vcrt"
     }
     if (@($byClass['dotnet']).Count -ge $min) {
         $d = @($byClass['dotnet'])
-        New-D9Finding $Check info ".NET-програми завершуються з помилкою: $($d.Count) разів ($(& $names $d))" 'Помилка всередині самої програми на .NET. Оновіть або перевстановіть її; якщо програма просить певну версію .NET — встановіть її на вкладці «Програми» → «Системні компоненти».' -Key "$($Check.id):dotnet"
+        New-D9Finding $Check info (T-D9 '.NET-програми завершуються з помилкою: {0} разів ({1})' $d.Count (& $names $d)) (T-D9 'Помилка всередині самої програми на .NET. Оновіть або перевстановіть її; якщо програма просить певну версію .NET — встановіть її на вкладці «Програми» → «Системні компоненти».') -Key "$($Check.id):dotnet"
     }
     # Різні програми з порушенням доступу до пам'яті — ознака проблем з RAM або розгоном
     $av = @($crashes | Where-Object { $_.Code -match 'c0000005' -and -not (Get-D9CrashModuleClass $_.Module) } | Group-Object App)
     if ($av.Count -ge 5) {
-        New-D9Finding $Check suggestion "$($av.Count) різних програм падають з порушенням доступу до пам'яті" 'Коли падає багато різних програм, причина часто в оперативній пам''яті або нестабільному розгоні (XMP/EXPO). Перевірте пам''ять: Debora запланує перевірку на наступне перезавантаження.' @{ type = 'maintenance'; action = 'memoryTest' } @((New-D9Link 'Перевірка пам''яті Windows' 'mdsched.exe')) -Key "$($Check.id):memory"
+        New-D9Finding $Check suggestion (T-D9 '{0} різних програм падають з порушенням доступу до пам''яті' $av.Count) (T-D9 'Коли падає багато різних програм, причина часто в оперативній пам''яті або нестабільному розгоні (XMP/EXPO). Перевірте пам''ять: Debora запланує перевірку на наступне перезавантаження.') @{ type = 'maintenance'; action = 'memoryTest' } @((New-D9Link (T-D9 'Перевірка пам''яті Windows') 'mdsched.exe')) -Key "$($Check.id):memory"
     }
     if ($apps) {
         $list = ($apps | Select-Object -First 6 | ForEach-Object { "$($_.Name) ($($_.Count))" }) -join ', '
-        New-D9Finding $Check suggestion "Програми, що часто падають або зависають: $list" 'Оновіть або перевстановіть ці програми (вкладка «Програми» → «Оновити всі»). Якщо падають різні програми — причина може бути в пам''яті чи драйверах.' @{ type = 'manual' }
+        New-D9Finding $Check suggestion (T-D9 'Програми, що часто падають або зависають: {0}' $list) (T-D9 'Оновіть або перевстановіть ці програми (вкладка «Програми» → «Оновити всі»). Якщо падають різні програми — причина може бути в пам''яті чи драйверах.') @{ type = 'manual' }
     }
 }
 
@@ -158,17 +158,18 @@ function Get-D9ReliabilitySummary {
 function Test-D9Reliability {
     param($Check, $Ctx)
     $m = try { Get-CimInstance Win32_ReliabilityStabilityMetrics -ErrorAction Stop | Sort-Object TimeGenerated -Descending | Select-Object -First 1 } catch { $null }
-    if (-not $m) { return New-D9Skip $Check 'Монітор стабільності вимкнено або ще не зібрав даних' }
+    if (-not $m) { return New-D9Skip $Check (T-D9 'Монітор стабільності вимкнено або ще не зібрав даних') }
     $index = [math]::Round([double]$m.SystemStabilityIndex, 1)
     $t = $Check.thresholds
     if ($index -ge $t.suggestion) { return }
     $summary = try { Get-D9ReliabilitySummary $Ctx.Now.AddDays(-$t.days) } catch { $null }
-    $parts = if ($summary) { @($summary.Keys | Where-Object { $summary[$_] } | ForEach-Object { "$_ — $($summary[$_])" }) } else { @() }
-    $details = 'Windows оцінює стабільність від 1 до 10 за збоями останніх тижнів.'
-    if ($parts) { $details += " За $($t.days) днів: $($parts -join ', ')." }
-    $details += ' Причини розібрано в інших пунктах цього звіту; подробиці по днях — «Монітор стабільності системи».'
+    # Ключі зведення — українські назви груп; перекладаються лише під час показу
+    $parts = if ($summary) { @($summary.Keys | Where-Object { $summary[$_] } | ForEach-Object { "$(T-D9 $_) — $($summary[$_])" }) } else { @() }
+    $details = T-D9 'Windows оцінює стабільність від 1 до 10 за збоями останніх тижнів.'
+    if ($parts) { $details += ' ' + (T-D9 'За {0} днів: {1}.' $t.days ($parts -join ', ')) }
+    $details += ' ' + (T-D9 'Причини розібрано в інших пунктах цього звіту; подробиці по днях — «Монітор стабільності системи».')
     $severity = if ($index -lt $t.warning) { 'warning' } else { 'suggestion' }
-    New-D9Finding $Check $severity "Індекс стабільності Windows: $index з 10" $details @{ type = 'manual' } @((New-D9Link 'Монітор стабільності' 'perfmon.exe'))
+    New-D9Finding $Check $severity (T-D9 'Індекс стабільності Windows: {0} з 10' "$index") $details @{ type = 'manual' } @((New-D9Link (T-D9 'Монітор стабільності') 'perfmon.exe'))
 }
 
 # ======================= Повільне завантаження =======================
@@ -198,7 +199,7 @@ function Test-D9BootTime {
     param($Check, $Ctx)
     $log = 'Microsoft-Windows-Diagnostics-Performance/Operational'
     $events = Get-D9Events @{ LogName = $log; Id = 100 }
-    if ($null -eq $events) { return New-D9Skip $Check 'журнал продуктивності недоступний (потрібні права адміністратора)' }
+    if ($null -eq $events) { return New-D9Skip $Check (T-D9 'журнал продуктивності недоступний (потрібні права адміністратора)') }
     $recent = @($events | Sort-Object TimeCreated -Descending | Select-Object -First 5)
     if (-not $recent) { return }
     $data = @($recent | ForEach-Object { Get-D9EventData $_ })
@@ -209,19 +210,20 @@ function Test-D9BootTime {
     $limit = if ($Ctx.System.SystemDisk -eq 'hdd') { $Check.thresholds.hddSec } else { $Check.thresholds.ssdSec }
     if ($sec -le $limit) { return }
     $culprits = @(Get-D9BootCulprits @(Get-D9EventCount @{ LogName = $log; Id = @(101, 102, 103, 106, 109); StartTime = $Ctx.Now.AddDays(-30) }) | Where-Object Seconds -ge 1 | Select-Object -First 6)
-    $details = "Норма для цього диска — до $limit с."
-    if ($main -and $post) { $details += (" До появи робочого столу — {0:N0} с, ще {1:N0} с довантажується автозапуск." -f $main, $post) }
-    if ($culprits) { $details += ' Найбільше сповільнюють: ' + (($culprits | ForEach-Object { "$($_.Name) ($($_.Kind), +$($_.Seconds) с)" }) -join ', ') + '.' }
+    $details = T-D9 'Норма для цього диска — до {0} с.' "$limit"
+    if ($main -and $post) { $details += ' ' + (T-D9 'До появи робочого столу — {0:N0} с, ще {1:N0} с довантажується автозапуск.' $main $post) }
+    # Kind — українська мітка з даних (за нею перевіряється логіка нижче); перекладається лише під час показу
+    if ($culprits) { $details += ' ' + (T-D9 'Найбільше сповільнюють: {0}.' (($culprits | ForEach-Object { T-D9 '{0} ({1}, +{2} с)' $_.Name (T-D9 $_.Kind) "$($_.Seconds)" }) -join ', ')) }
     $fix = @{ type = 'manual' }
     if ($post -gt $main -and $post -gt 20) {
-        $details += ' Основний час забирають програми автозапуску — вимкніть непотрібні на вкладці «Автозавантаження» (Debora позначить, які безпечно вимкнути).'
+        $details += ' ' + (T-D9 'Основний час забирають програми автозапуску — вимкніть непотрібні на вкладці «Автозавантаження» (Debora позначить, які безпечно вимкнути).')
     } elseif ($Ctx.System.SystemDisk -eq 'hdd') {
-        $details += ' Найбільше прискорить запуск заміна жорсткого диска на SSD.'
+        $details += ' ' + (T-D9 'Найбільше прискорить запуск заміна жорсткого диска на SSD.')
     } else {
-        $details += ' Оновіть драйвери з цього списку й вимкніть зайве в автозавантаженні.'
+        $details += ' ' + (T-D9 'Оновіть драйвери з цього списку й вимкніть зайве в автозавантаженні.')
         if (@($culprits | Where-Object Kind -in 'драйвер', 'пристрій')) { $fix = @{ type = 'maintenance'; action = 'driverUpdate' } }
     }
-    New-D9Finding $Check warning ("Windows завантажується в середньому {0:N0} с" -f $sec) $details $fix -Data @{ culprits = @($culprits) }
+    New-D9Finding $Check warning (T-D9 'Windows завантажується в середньому {0:N0} с' $sec) $details $fix -Data @{ culprits = @($culprits) }
 }
 
 # ======================= Мережа =======================
@@ -229,19 +231,19 @@ function Test-D9BootTime {
 function Test-D9NetworkHealth {
     param($Check, $Ctx)
     $up = @(Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object Status -eq 'Up')
-    if (-not $up) { return New-D9Skip $Check 'Немає підключених мережевих адаптерів' }
+    if (-not $up) { return New-D9Skip $Check (T-D9 'Немає підключених мережевих адаптерів') }
     # Адаптер підключено, але адреса 169.254.x.x — роутер не видав адресу (DHCP)
     $apipa = @(foreach ($a in $up) {
         $ip = @(Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue)
         if ($ip -and -not ($ip | Where-Object { $_.IPAddress -notlike '169.254.*' })) { $a.Name }
     })
     if ($apipa) {
-        New-D9Finding $Check warning "Мережа без адреси від роутера: $($apipa -join ', ')" 'Адаптер підключено, але роутер не видав IP-адресу (169.254.x.x) — інтернету не буде. Перезавантажте роутер; якщо не допоможе — Debora скине мережеві налаштування Windows.' @{ type = 'maintenance'; action = 'networkReset' } -Key "$($Check.id):apipa"
+        New-D9Finding $Check warning (T-D9 'Мережа без адреси від роутера: {0}' ($apipa -join ', ')) (T-D9 'Адаптер підключено, але роутер не видав IP-адресу (169.254.x.x) — інтернету не буде. Перезавантажте роутер; якщо не допоможе — Debora скине мережеві налаштування Windows.') @{ type = 'maintenance'; action = 'networkReset' } -Key "$($Check.id):apipa"
     }
     # Є мережа, але немає інтернету (за даними самої Windows, без запитів у мережу)
     $profiles = @(Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceIndex -in $up.ifIndex })
     if ($profiles -and -not ($profiles | Where-Object { [string]$_.IPv4Connectivity -eq 'Internet' -or [string]$_.IPv6Connectivity -eq 'Internet' }) -and -not $apipa) {
-        New-D9Finding $Check warning 'Мережа підключена, але Windows не бачить інтернету' 'Перевірте, чи працює інтернет на інших пристроях. Якщо там працює — причина в цьому ПК (DNS, проксі, VPN, мережевий стек): Debora скине мережеві налаштування.' @{ type = 'maintenance'; action = 'networkReset' } -Key "$($Check.id):internet"
+        New-D9Finding $Check warning (T-D9 'Мережа підключена, але Windows не бачить інтернету') (T-D9 'Перевірте, чи працює інтернет на інших пристроях. Якщо там працює — причина в цьому ПК (DNS, проксі, VPN, мережевий стек): Debora скине мережеві налаштування.') @{ type = 'maintenance'; action = 'networkReset' } -Key "$($Check.id):internet"
     }
     # Помилки пакетів на кабелі — поганий кабель, роз'єм або драйвер
     foreach ($a in $up) {
@@ -250,8 +252,8 @@ function Test-D9NetworkHealth {
         $total = [double]$s.ReceivedUnicastPackets + [double]$s.ReceivedMulticastPackets + [double]$s.ReceivedBroadcastPackets
         $errors = [double]$s.ReceivedPacketErrors + [double]$s.OutboundPacketErrors
         if ($total -gt 10000 -and $errors / $total -gt $Check.thresholds.errorRate) {
-            $hint = if ($a.MediaType -match '802\.3' -or $a.PhysicalMediaType -match '802\.3') { 'Замініть мережевий кабель або спробуйте інший порт роутера.' } else { 'Підійдіть ближче до роутера або змініть канал Wi-Fi.' }
-            New-D9Finding $Check suggestion ("Помилки передачі на «{0}»: {1:N2}% пакетів" -f $a.Name, ($errors * 100 / $total)) "Частина даних передається з помилками — звідси обриви й низька швидкість. $hint Також оновіть драйвер мережевого адаптера." @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):errors:$($a.Name)"
+            $hint = if ($a.MediaType -match '802\.3' -or $a.PhysicalMediaType -match '802\.3') { T-D9 'Замініть мережевий кабель або спробуйте інший порт роутера.' } else { T-D9 'Підійдіть ближче до роутера або змініть канал Wi-Fi.' }
+            New-D9Finding $Check suggestion (T-D9 'Помилки передачі на «{0}»: {1:N2}% пакетів' $a.Name ($errors * 100 / $total)) (T-D9 'Частина даних передається з помилками — звідси обриви й низька швидкість. {0} Також оновіть драйвер мережевого адаптера.' $hint) @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):errors:$($a.Name)"
         }
     }
 }
@@ -284,26 +286,26 @@ function Test-D9UnquotedServicePaths {
     })
     if (-not $bad) { return }
     $actions = @($bad | ForEach-Object { @{ type = 'registry'; path = $_.Path; name = 'ImagePath'; value = $_.Fixed; kind = $_.Kind } })
-    New-D9Finding $Check warning "Служби з незахищеним шляхом: $(($bad.Name) -join ', ')" 'Шлях до програми служби містить пробіли й не взятий у лапки — шкідлива програма може підкласти файл (наприклад, C:\Program.exe) і отримати права системи. Debora візьме шляхи в лапки (служби працюватимуть як раніше; відкат — у «Журналі змін»).' (New-D9ActionsFix $actions)
+    New-D9Finding $Check warning (T-D9 'Служби з незахищеним шляхом: {0}' (($bad.Name) -join ', ')) (T-D9 'Шлях до програми служби містить пробіли й не взятий у лапки — шкідлива програма може підкласти файл (наприклад, C:\Program.exe) і отримати права системи. Debora візьме шляхи в лапки (служби працюватимуть як раніше; відкат — у «Журналі змін»).') (New-D9ActionsFix $actions)
 }
 
 function Test-D9Tpm {
     param($Check, $Ctx)
-    if (-not $Ctx.IsAdmin) { return New-D9Skip $Check 'потрібні права адміністратора' }
+    if (-not $Ctx.IsAdmin) { return New-D9Skip $Check (T-D9 'потрібні права адміністратора') }
     $tpm = try { Get-Tpm -ErrorAction Stop } catch { $null }
-    if (-not $tpm) { return New-D9Skip $Check 'Не вдалося прочитати стан TPM' }
+    if (-not $tpm) { return New-D9Skip $Check (T-D9 'Не вдалося прочитати стан TPM') }
     $version = try { [string](Get-CimInstance -Namespace 'root\cimv2\Security\MicrosoftTpm' -ClassName Win32_Tpm -ErrorAction Stop).SpecVersion } catch { '' }
     $is20 = $version -match '^2\.0'
-    $bios = 'Увімкніть його в BIOS/UEFI: Intel PTT або AMD fTPM (розділ Security / Advanced). Дані на диску не зачіпаються.'
+    $bios = T-D9 'Увімкніть його в BIOS/UEFI: Intel PTT або AMD fTPM (розділ Security / Advanced). Дані на диску не зачіпаються.'
     if (-not $tpm.TpmPresent) {
-        $text = if ($Ctx.System.OsFamily -eq 'win10') { "Без TPM 2.0 Windows 11 не встановиться штатно, а BitLocker і Windows Hello працюють гірше. Майже всі процесори з 2017 року мають вбудований TPM — він просто вимкнений. $bios" } else { "Windows Hello, BitLocker і частина захисту працюють без апаратної підтримки. $bios" }
-        return New-D9Finding $Check suggestion 'Модуль безпеки TPM вимкнено або відсутній' $text @{ type = 'manual' }
+        $text = if ($Ctx.System.OsFamily -eq 'win10') { T-D9 'Без TPM 2.0 Windows 11 не встановиться штатно, а BitLocker і Windows Hello працюють гірше. Майже всі процесори з 2017 року мають вбудований TPM — він просто вимкнений. {0}' $bios } else { T-D9 'Windows Hello, BitLocker і частина захисту працюють без апаратної підтримки. {0}' $bios }
+        return New-D9Finding $Check suggestion (T-D9 'Модуль безпеки TPM вимкнено або відсутній') $text @{ type = 'manual' }
     }
     if ($version -and -not $is20) {
-        New-D9Finding $Check info "Версія TPM: $(($version -split ',')[0])" 'Windows 11 потребує TPM 2.0. Іноді в BIOS можна перемкнути TPM на версію 2.0 або увімкнути вбудований у процесор (PTT / fTPM).' -Key "$($Check.id):version"
+        New-D9Finding $Check info (T-D9 'Версія TPM: {0}' (($version -split ',')[0])) (T-D9 'Windows 11 потребує TPM 2.0. Іноді в BIOS можна перемкнути TPM на версію 2.0 або увімкнути вбудований у процесор (PTT / fTPM).') -Key "$($Check.id):version"
     }
     if ($tpm.TpmPresent -and -not $tpm.TpmReady) {
-        New-D9Finding $Check info 'TPM не готовий до роботи' 'Відкрийте «Безпека Windows» → «Безпека пристрою» → «Процесор безпеки» → «Усунення несправностей», або виконайте очищення TPM у BIOS (лише якщо не використовуєте BitLocker).' @{ type = 'manual' } @((New-D9Link 'Безпека пристрою' 'windowsdefender://devicesecurity')) -Key "$($Check.id):ready"
+        New-D9Finding $Check info (T-D9 'TPM не готовий до роботи') (T-D9 'Відкрийте «Безпека Windows» → «Безпека пристрою» → «Процесор безпеки» → «Усунення несправностей», або виконайте очищення TPM у BIOS (лише якщо не використовуєте BitLocker).') @{ type = 'manual' } @((New-D9Link (T-D9 'Безпека пристрою') 'windowsdefender://devicesecurity')) -Key "$($Check.id):ready"
     }
 }
 
@@ -316,19 +318,19 @@ function Test-D9SearchIndex {
     if (-not $files) { return }
     $size = [long](($files | Measure-Object Length -Sum).Sum)
     if ($size -lt $Check.thresholds.sizeGB * 1GB) { return }
-    New-D9Finding $Check suggestion "Пошуковий індекс Windows займає $(Format-D9Size $size)" 'Індекс розрісся (часто через пошту Outlook або папки з тисячами дрібних файлів) і сповільнює пошук і диск. Debora перебудує його з нуля: місце звільниться, пошук відновиться за кілька годин.' @{ type = 'maintenance'; action = 'searchReset' }
+    New-D9Finding $Check suggestion (T-D9 'Пошуковий індекс Windows займає {0}' (Format-D9Size $size)) (T-D9 'Індекс розрісся (часто через пошту Outlook або папки з тисячами дрібних файлів) і сповільнює пошук і диск. Debora перебудує його з нуля: місце звільниться, пошук відновиться за кілька годин.') @{ type = 'maintenance'; action = 'searchReset' }
 }
 
 function Test-D9HddFragmentation {
     param($Check, $Ctx)
     if ($Ctx.System.SystemDisk -ne 'hdd') { return }
-    if (-not $Ctx.IsAdmin) { return New-D9Skip $Check 'потрібні права адміністратора' }
+    if (-not $Ctx.IsAdmin) { return New-D9Skip $Check (T-D9 'потрібні права адміністратора') }
     $vol = Get-CimInstance Win32_Volume -Filter "DriveLetter = '$env:SystemDrive'" -ErrorAction SilentlyContinue
     if (-not $vol) { return }
     $r = try { Invoke-CimMethod -InputObject $vol -MethodName DefragAnalysis -ErrorAction Stop } catch { $null }
     $percent = [int]$r.DefragAnalysis.FilePercentFragmentation
     if ($percent -ge $Check.thresholds.percent) {
-        New-D9Finding $Check suggestion "Жорсткий диск фрагментовано на $percent%" 'Файли розкидано по диску частинами — HDD читає їх повільніше. Debora дефрагментує диск (до години; комп''ютером можна користуватися).' @{ type = 'maintenance'; action = 'defragHdd' }
+        New-D9Finding $Check suggestion (T-D9 'Жорсткий диск фрагментовано на {0}%' $percent) (T-D9 'Файли розкидано по диску частинами — HDD читає їх повільніше. Debora дефрагментує диск (до години; комп''ютером можна користуватися).') @{ type = 'maintenance'; action = 'defragHdd' }
     }
 }
 
@@ -342,8 +344,8 @@ function Test-D9NetworkShares {
     $list = ($shares | ForEach-Object { "$($_.Name) ($($_.Path))" }) -join ', '
     $public = @(Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { [string]$_.NetworkCategory -eq 'Public' })
     $severity = if ($public) { 'warning' } else { 'info' }
-    $why = if ($public) { ' Зараз ПК підключено до загальнодоступної мережі — переконайтеся, що доступ до папок мають лише потрібні люди (з паролем).' } else { '' }
-    New-D9Finding $Check $severity "Папки, відкриті для мережі: $list" "Їх можуть відкрити інші пристрої в мережі.$why Якщо доступ уже не потрібен — припиніть спільний доступ (властивості папки → «Доступ»)." @{ type = 'manual' } @((New-D9Link 'Спільні папки' 'fsmgmt.msc'))
+    $text = if ($public) { T-D9 'Їх можуть відкрити інші пристрої в мережі. Зараз ПК підключено до загальнодоступної мережі — переконайтеся, що доступ до папок мають лише потрібні люди (з паролем). Якщо доступ уже не потрібен — припиніть спільний доступ (властивості папки → «Доступ»).' } else { T-D9 'Їх можуть відкрити інші пристрої в мережі. Якщо доступ уже не потрібен — припиніть спільний доступ (властивості папки → «Доступ»).' }
+    New-D9Finding $Check $severity (T-D9 'Папки, відкриті для мережі: {0}' $list) $text @{ type = 'manual' } @((New-D9Link (T-D9 'Спільні папки') 'fsmgmt.msc'))
 }
 
 function Test-D9OtherDrivesSpace {
@@ -353,8 +355,8 @@ function Test-D9OtherDrivesSpace {
         $_.DeviceID -ne $env:SystemDrive -and $_.Size -gt $t.minSizeGB * 1GB -and $_.FreeSpace * 100 / $_.Size -lt $t.percent
     })
     if (-not $full) { return }
-    $list = ($full | ForEach-Object { "{0} — вільно {1} з {2}" -f $_.DeviceID, (Format-D9Size $_.FreeSpace), (Format-D9Size $_.Size) }) -join '; '
-    New-D9Finding $Check suggestion "Майже заповнені диски: $list" 'На заповненому диску не вистачає місця для нових файлів, а NTFS працює повільніше. Знайти, що займає місце, допоможуть WinDirStat чи WizTree (вкладка «Програми» → «Утиліти»).' @{ type = 'manual' }
+    $list = ($full | ForEach-Object { T-D9 '{0} — вільно {1} з {2}' $_.DeviceID (Format-D9Size $_.FreeSpace) (Format-D9Size $_.Size) }) -join '; '
+    New-D9Finding $Check suggestion (T-D9 'Майже заповнені диски: {0}' $list) (T-D9 'На заповненому диску не вистачає місця для нових файлів, а NTFS працює повільніше. Знайти, що займає місце, допоможуть WinDirStat чи WizTree (вкладка «Програми» → «Утиліти»).') @{ type = 'manual' }
 }
 
 # ======================= Записи від видалених програм =======================
@@ -364,5 +366,5 @@ function Test-D9OrphanEntries {
     $items = @(Get-D9OrphanRegistryEntries)
     if (-not $items) { return }
     $names = ($items | Select-Object -First 8 | ForEach-Object { $_.Name }) -join ', '
-    New-D9Finding $Check suggestion "Записів від уже видалених програм: $($items.Count)" "Програм і їхніх файлів на диску вже немає, а записи лишились у «Програмах і засобах» чи реєстрі: $names. Debora прибере їх (кожен — з резервною копією .reg)." @{ type = 'maintenance'; action = 'orphanEntries' }
+    New-D9Finding $Check suggestion (T-D9 'Записів від уже видалених програм: {0}' $items.Count) (T-D9 'Програм і їхніх файлів на диску вже немає, а записи лишились у «Програмах і засобах» чи реєстрі: {0}. Debora прибере їх (кожен — з резервною копією .reg).' $names) @{ type = 'maintenance'; action = 'orphanEntries' }
 }

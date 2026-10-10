@@ -135,15 +135,15 @@ Describe 'Вікно' {
         $script:D9Theme = 'dark'
         try {
             $r = Invoke-InGui {
-                $row = New-D9Row @{ Color = '#C62828' }
+                $row = New-D9Row @{ Color = '#D70015' }
                 @{ Bg = $win.Background.ToString(); Fg = $win.Foreground.ToString(); Row = $row.Color; Tabs = $ui.Tabs.Items.Count }
             }
         } finally { $script:D9Theme = 'light' }
-        $r.Bg | Should -Be '#FF16181D'
-        $r.Fg | Should -Be '#FFE6E9EF'
-        $r.Row | Should -Be '#F07070'
+        $r.Bg | Should -Be '#FF1C1C1E'
+        $r.Fg | Should -Be '#FFF5F5F7'
+        $r.Row | Should -Be '#FF453A'
         $r.Tabs | Should -BeGreaterThan 5
-        (Invoke-InGui { (New-D9Row @{ Color = '#C62828' }).Color }) | Should -Be '#C62828' -Because 'у світлій темі кольори не змінюються'
+        (Invoke-InGui { (New-D9Row @{ Color = '#D70015' }).Color }) | Should -Be '#D70015' -Because 'у світлій темі кольори не змінюються'
     }
 
     It 'програмна зміна галочок видна на екрані («Зняти все», «Вибрати профіль»)' {
@@ -209,5 +209,17 @@ Describe 'Вікно' {
         $r.Out.result.State | Should -BeIn @('applied', 'partial', 'notApplied')
         $r.Out.result.Types | Should -BeGreaterOrEqual 7
         $r.Log | Should -Match 'привіт із фону'
+    }
+}
+
+Describe 'Кільце оцінки' {
+    It 'порожнє для 0, дуга для частини, повне коло для 100' {
+        Add-Type -AssemblyName PresentationCore
+        Get-D9RingGeometry 0 118 11 | Should -BeNullOrEmpty
+        $half = Get-D9RingGeometry 50 118 11
+        $half.Bounds.Width | Should -BeLessThan 60
+        $full = Get-D9RingGeometry 100 118 11
+        [math]::Round($full.Bounds.Width) | Should -Be 107
+        [math]::Round((Get-D9RingGeometry 75 118 11).Bounds.Width) | Should -Be 107
     }
 }

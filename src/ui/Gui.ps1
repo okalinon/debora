@@ -65,10 +65,10 @@ function ConvertTo-D9UiLinks {
 }
 
 $script:D9SevUi = @{
-    critical   = @{ Badge = '✖'; Color = '#C62828'; Name = 'критично' }
-    warning    = @{ Badge = '!'; Color = '#B26A00'; Name = 'варто виправити' }
-    suggestion = @{ Badge = '•'; Color = '#1565C0'; Name = 'порада' }
-    info       = @{ Badge = 'i'; Color = '#5D6675'; Name = 'відомості' }
+    critical   = @{ Badge = '✖'; Color = '#D70015'; Name = 'критично' }
+    warning    = @{ Badge = '!'; Color = '#B25000'; Name = 'варто виправити' }
+    suggestion = @{ Badge = '•'; Color = '#007AFF'; Name = 'порада' }
+    info       = @{ Badge = 'i'; Color = '#6E6E73'; Name = 'відомості' }
 }
 
 # Вікно з текстом і кнопками «Так/Ні» (для попереднього перегляду змін)
@@ -76,20 +76,21 @@ function Show-D9TextDialog {
     param($Owner, [string]$Title, [string]$Header, [string]$Text, [string]$OkText = 'Застосувати', [switch]$InfoOnly)
     $w = New-Object Windows.Window
     $w.Title = $Title; $w.Width = 820; $w.Height = 600; $w.Owner = $Owner
-    $w.WindowStartupLocation = 'CenterOwner'; $w.FontFamily = 'Segoe UI'; $w.FontSize = 13
+    $w.WindowStartupLocation = 'CenterOwner'; $w.FontFamily = 'Segoe UI Variable Text, Segoe UI'; $w.FontSize = 13
+    if ($Owner) { $w.Resources = $Owner.Resources; $w.Background = $Owner.Background; $w.Foreground = $Owner.Foreground }
     $dock = New-Object Windows.Controls.DockPanel; $dock.Margin = '16'
     $h = New-Object Windows.Controls.TextBlock; $h.Text = $Header; $h.TextWrapping = 'Wrap'; $h.FontWeight = 'SemiBold'; $h.Margin = '0,0,0,10'
     [Windows.Controls.DockPanel]::SetDock($h, 'Top'); [void]$dock.Children.Add($h)
     $buttons = New-Object Windows.Controls.StackPanel; $buttons.Orientation = 'Horizontal'; $buttons.HorizontalAlignment = 'Right'; $buttons.Margin = '0,10,0,0'
     [Windows.Controls.DockPanel]::SetDock($buttons, 'Bottom'); [void]$dock.Children.Add($buttons)
-    $box = New-Object Windows.Controls.TextBox; $box.Text = $Text; $box.IsReadOnly = $true; $box.FontFamily = 'Consolas'; $box.FontSize = 12
+    $box = New-Object Windows.Controls.TextBox; $box.Text = $Text; $box.IsReadOnly = $true; $box.FontFamily = 'Cascadia Mono, Consolas'; $box.FontSize = 12
     $box.VerticalScrollBarVisibility = 'Auto'; $box.HorizontalScrollBarVisibility = 'Auto'
     [void]$dock.Children.Add($box)
-    $ok = New-Object Windows.Controls.Button; $ok.Content = $(if ($InfoOnly) { 'Закрити' } else { $OkText }); $ok.Padding = '16,6'; $ok.Margin = '0,0,8,0'; $ok.IsDefault = $true
+    $ok = New-Object Windows.Controls.Button; $ok.Content = $(if ($InfoOnly) { 'Закрити' } else { $OkText }); $ok.Margin = '0,0,8,0'; $ok.IsDefault = $true; if ($Owner) { $ok.Style = $Owner.FindResource('Primary') }
     $ok.Add_Click({ $w.DialogResult = $true })
     [void]$buttons.Children.Add($ok)
     if (-not $InfoOnly) {
-        $cancel = New-Object Windows.Controls.Button; $cancel.Content = 'Скасувати'; $cancel.Padding = '16,6'; $cancel.IsCancel = $true
+        $cancel = New-Object Windows.Controls.Button; $cancel.Content = 'Скасувати'; $cancel.Margin = '0'; $cancel.IsCancel = $true
         [void]$buttons.Children.Add($cancel)
     }
     $w.Content = $dock
@@ -99,11 +100,11 @@ function Show-D9TextDialog {
 # ---------- Тема ----------
 # Світлі кольори розмітки й статусів → темні відповідники
 $script:D9DarkColors = [ordered]@{
-    '#F4F5F7' = '#16181D'; '#FAFBFC' = '#1A1D23'; '#1D2330' = '#E6E9EF'; '#5D6675' = '#9AA3B2'; '#E1E4EA' = '#2C313A'
-    '#C9CFD8' = '#3A404B'; '#E9EDF3' = '#262B33'; '#E8EBF0' = '#2A2F38'; '#DCE7FD' = '#1E3A6E'; '#1D4ED8' = '#BFD3FF'
-    '#2563EB' = '#4F7FE8'; '#C62828' = '#F07070'; '#2E7D32' = '#6CCB73'; '#B26A00' = '#F0B04A'; '#1565C0' = '#6EA2FF'
+    '#F2F2F7' = '#1C1C1E'; '#E9E9EE' = '#232325'; '#DCDCE1' = '#3A3A3C'; '#1D1D1F' = '#F5F5F7'; '#6E6E73' = '#98989D'
+    '#E3E3E8' = '#38383A'; '#E5E5EA' = '#3A3A3C'; '#D1D1D6' = '#48484A'; '#C7C7CC' = '#636366'; '#007AFF' = '#0A84FF'
+    '#DCEBFF' = '#1C3A5E'; '#248A3D' = '#30D158'; '#B25000' = '#FF9F0A'; '#D70015' = '#FF453A'; '#FF9500' = '#FF9F0A'
 }
-$script:D9DarkCard = '#1F232A'
+$script:D9DarkCard = '#2C2C2E'
 $script:D9Theme = 'auto'   # auto | light | dark
 
 # Темна тема: явно або за налаштуванням Windows «Режим застосунків: темний»
@@ -121,6 +122,20 @@ function Get-D9UiColor {
     return $Color
 }
 
+# Дуга кільця: від верхньої точки за годинниковою стрілкою, value — 0–100; size — розмір кільця, thickness — товщина
+function Get-D9RingGeometry {
+    param([double]$Value, [double]$Size, [double]$Thickness)
+    $v = [math]::Max(0, [math]::Min(100, $Value))
+    $r = ($Size - $Thickness) / 2; $c = $Size / 2
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    if ($v -ge 99.95) { return [Windows.Media.Geometry]::Parse(("M {0},{1} A {2},{2} 0 1 1 {0},{3} A {2},{2} 0 1 1 {0},{1}" -f $c.ToString($inv), ($c - $r).ToString($inv), $r.ToString($inv), ($c + $r).ToString($inv))) }
+    if ($v -le 0) { return $null }
+    $a = $v / 100 * 2 * [math]::PI
+    $x = $c + $r * [math]::Sin($a); $y = $c - $r * [math]::Cos($a)
+    $large = if ($v -gt 50) { 1 } else { 0 }
+    [Windows.Media.Geometry]::Parse(("M {0},{1} A {2},{2} 0 {3} 1 {4},{5}" -f $c.ToString($inv), ($c - $r).ToString($inv), $r.ToString($inv), $large, $x.ToString($inv), $y.ToString($inv)))
+}
+
 function Convert-D9XamlTheme {
     param([Parameter(Mandatory)][string]$Xaml)
     foreach ($k in $script:D9DarkColors.Keys) { $Xaml = [regex]::Replace($Xaml, [regex]::Escape($k), $script:D9DarkColors[$k], 'IgnoreCase') }
@@ -129,22 +144,14 @@ function Convert-D9XamlTheme {
     # Системні пензлі (випадні списки, виділення, вимкнені елементи) і стандартні елементи без власних стилів
     $inject = @"
     <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="$card"/>
-    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#E6E9EF"/>
-    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#262B33"/>
-    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#E6E9EF"/>
-    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#2F5BB7"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#F5F5F7"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#3A3A3C"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#F5F5F7"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#0A84FF"/>
     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="{x:Static SystemColors.GrayTextBrushKey}" Color="#7A8291"/>
-    <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#262B33"/><Setter Property="Foreground" Value="#E6E9EF"/><Setter Property="BorderBrush" Value="#2C313A"/><Setter Property="BorderThickness" Value="0,0,1,1"/><Setter Property="Padding" Value="6,5"/></Style>
-    <Style TargetType="DataGridRow"><Setter Property="Background" Value="$card"/><Setter Property="Foreground" Value="#E6E9EF"/></Style>
-    <Style TargetType="TextBox"><Setter Property="Background" Value="$card"/><Setter Property="Foreground" Value="#E6E9EF"/><Setter Property="BorderBrush" Value="#3A404B"/><Setter Property="CaretBrush" Value="#E6E9EF"/></Style>
-    <Style TargetType="PasswordBox"><Setter Property="Background" Value="$card"/><Setter Property="Foreground" Value="#E6E9EF"/><Setter Property="BorderBrush" Value="#3A404B"/><Setter Property="CaretBrush" Value="#E6E9EF"/></Style>
-    <Style TargetType="ListBox"><Setter Property="Background" Value="$card"/><Setter Property="Foreground" Value="#E6E9EF"/></Style>
-    <Style TargetType="ComboBox"><Setter Property="Foreground" Value="#1D2330"/></Style>
-    <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="#E6E9EF"/></Style>
-    <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#E6E9EF"/></Style>
-    <Style TargetType="Expander"><Setter Property="Foreground" Value="#E6E9EF"/></Style>
-
+    <SolidColorBrush x:Key="{x:Static SystemColors.GrayTextBrushKey}" Color="#8E8E93"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.InfoBrushKey}" Color="#3A3A3C"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.InfoTextBrushKey}" Color="#F5F5F7"/>
 "@
     return $Xaml.Replace('<Window.Resources>', "<Window.Resources>`r`n$inject")
 }
@@ -169,7 +176,7 @@ function Show-D9Gui {
     }
     $win = [Windows.Markup.XamlReader]::Parse($xamlText)
     $ui = @{}
-    foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
+    foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
                    'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList',
                    'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnReboot', 'ChecklistSummary', 'ChecklistList',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
@@ -196,9 +203,9 @@ function Show-D9Gui {
     $s = $SystemInfo
     $disk = @{ hdd = 'HDD'; ssd = 'SSD'; nvme = 'NVMe SSD'; unknown = 'диск не визначено' }[[string]$s.SystemDisk]
     $ui.TitleText.Text = "Debloater9 $script:D9Version"
-    $ui.SystemLine.Text = "$($s.Manufacturer) $($s.Model) · $($s.OsName) $($s.DisplayVersion) · $($s.Cpu) · $($s.RamGB) ГБ · $disk · профіль: $($Recommendation.Preset)"
-    if ($isAdmin) { $ui.AdminBadge.Text = 'Адміністратор'; $ui.AdminBadge.Foreground = (Get-D9UiColor '#2E7D32') }
-    else { $ui.AdminBadge.Text = 'Без прав адміністратора — лише перегляд'; $ui.AdminBadge.Foreground = (Get-D9UiColor '#B26A00') }
+    $ui.SystemLine.Text = "$($s.Manufacturer) $($s.Model)`n$($s.OsName) $($s.DisplayVersion)`n$($s.RamGB) ГБ, $disk, профіль $($Recommendation.Preset)"
+    if ($isAdmin) { $ui.AdminBadge.Text = 'Адміністратор'; $ui.AdminBadge.Foreground = (Get-D9UiColor '#248A3D') }
+    else { $ui.AdminBadge.Text = 'Без прав адміністратора — лише перегляд'; $ui.AdminBadge.Foreground = (Get-D9UiColor '#B25000') }
     $ui.DriverFolder.Text = $DriverDir
 
     # ---------- фонове виконання ----------
@@ -297,16 +304,18 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     # ---------- заповнення вкладок ----------
     $fillOverview = {
         param($scan, $categories)
-        $color = Get-D9UiColor (@{ good = '#2E7D32'; attention = '#B26A00'; serious = '#C62828' }[$scan.score.verdict])
+        $color = Get-D9UiColor (@{ good = '#248A3D'; attention = '#B25000'; serious = '#D70015' }[$scan.score.verdict])
         $ui.ScoreText.Text = "$($scan.score.overall)"; $ui.ScoreText.Foreground = $color
+        $ui.ScoreRing.Stroke = $color
+        $ui.ScoreRing.Data = Get-D9RingGeometry ([double]$scan.score.overall) 118 11
         $ui.VerdictText.Text = @{ good = 'Добрий стан'; attention = 'Потребує уваги'; serious = 'Є серйозні проблеми' }[$scan.score.verdict]
         $ui.VerdictText.Foreground = $color
         $counts = foreach ($k in 'critical', 'warning', 'suggestion') { $n = @($scan.findings | Where-Object severity -eq $k).Count; if ($n) { "$n $($script:D9SevUi[$k].Name)" } }
-        $ui.CountsText.Text = "$(($counts) -join ' · ')`nПеревірок: $(@($scan.checks).Count), $($scan.durationSec) с, $(([datetime]$scan.time).ToString('dd.MM.yyyy HH:mm'))"
+        $ui.CountsText.Text = "$(($counts) -join ', ')`nПеревірок: $(@($scan.checks).Count), $($scan.durationSec) с, $(([datetime]$scan.time).ToString('dd.MM.yyyy HH:mm'))"
         $cats = foreach ($c in $categories) {
             $v = $scan.score.categories.($c.id)
             if ($null -eq $v) { continue }
-            New-D9Row @{ Title = (Get-D9Text $c.name); Number = [int]$v; Status = "$v"; Color = $(if ($v -ge 85) { '#2E7D32' } elseif ($v -ge 60) { '#E0A100' } else { '#C62828' }) }
+            New-D9Row @{ Title = (Get-D9Text $c.name); Number = [int]$v; Status = "$v"; Color = $(if ($v -ge 85) { '#248A3D' } elseif ($v -ge 60) { '#FF9500' } else { '#D70015' }) }
         }
         Set-D9Items $ui.CategoryList @($cats)
         Set-D9Items $ui.FindingsList @(foreach ($f in $scan.findings) {
@@ -328,12 +337,12 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             if ($deps -and $i.status -ne 'done') { $detail += "  (після кроку $($deps -join ', '))" }
             $kind = if ($i.status -eq 'done') { 'виконано' } elseif ($i.auto) { 'автоматично' } else { 'вручну' }
             New-D9Row @{ Selected = ($i.status -eq 'done'); Title = "$($i.number). $($i.title)"; Detail = $detail; Kind = $kind
-                         Color = $(if ($i.status -eq 'done') { '#2E7D32' } elseif ($i.auto) { '#2563EB' } else { '#B26A00' })
+                         Color = $(if ($i.status -eq 'done') { '#248A3D' } elseif ($i.auto) { '#007AFF' } else { '#B25000' })
                          Note = $(if ($i.note) { "$($i.note)" } else { '' }); Links = (ConvertTo-D9UiLinks $i.links); Tag = $i }
         })
     }
     $catNames = @{ privacy = 'Конфіденційність'; apps = 'Застосунки'; ui = 'Інтерфейс'; performance = 'Швидкодія'; gaming = 'Ігри'; cleanup = 'Очищення'; updates = 'Оновлення'; safety = 'Безпека' }
-    $riskUi = @{ safe = @('безпечно', '#2E7D32'); moderate = @('помірно', '#B26A00'); expert = @('експертний', '#C62828') }
+    $riskUi = @{ safe = @('безпечно', '#248A3D'); moderate = @('помірно', '#B25000'); expert = @('експертний', '#D70015') }
     $stateNames = @{ applied = 'застосовано'; partial = 'частково'; notApplied = 'ні'; notApplicable = 'не підходить'; unknown = '—' }
     $fillTweaks = {
         param($states)
@@ -383,13 +392,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $problems = @($rep.Problems | Sort-Object { if ($_.Class -eq 'Net') { 0 } else { 1 } } | ForEach-Object {
             $detail = "$($_.Reason). ID: $($_.Info.HardwareId)"
             if ($_.Windows -and $_.Windows -ne $_.Name) { $detail += ". Windows називає: $($_.Windows)" }
-            New-D9Row @{ Badge = '!'; Color = '#B26A00'; Title = $_.Name; Detail = $detail; Links = (ConvertTo-D9UiLinks $_.Links) }
+            New-D9Row @{ Badge = '!'; Color = '#B25000'; Title = $_.Name; Detail = $detail; Links = (ConvertTo-D9UiLinks $_.Links) }
         })
-        if (-not $problems) { $problems = @(New-D9Row @{ Badge = '✓'; Color = '#2E7D32'; Title = 'Усі пристрої мають драйвери'; Detail = 'Перевірте лише вік драйверів у таблиці нижче.' }) }
+        if (-not $problems) { $problems = @(New-D9Row @{ Badge = '✓'; Color = '#248A3D'; Title = 'Усі пристрої мають драйвери'; Detail = 'Перевірте лише вік драйверів у таблиці нижче.' }) }
         Set-D9Items $ui.DriverProblemsList $problems
         Set-D9Items $ui.DriverInstalledGrid @($rep.Important | ForEach-Object { New-D9Row @{ Group = $_.Group; Title = $_.Name; Status = $_.Version; Detail = $_.Date; Note = $_.Provider } })
     }
-    $statusUi = @{ missing = @('встановити', '#C62828'); newer = @('оновити', '#2563EB'); current = @('вже актуальний', '#5D6675') }
+    $statusUi = @{ missing = @('встановити', '#D70015'); newer = @('оновити', '#007AFF'); current = @('вже актуальний', '#6E6E73') }
     $fillPackages = {
         param($found)
         $state.Packages = @($found.Packages)
@@ -632,7 +641,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($cands)
         $state.OnlineCands = @($cands | Where-Object { $_ })
         Set-D9Items $ui.DriverOnlineGrid @($state.OnlineCands | ForEach-Object {
-            $kind = if ($_.Status -eq 'missing') { @('встановити', '#C62828') } elseif ($_.Optional) { @('необов''язково', '#5D6675') } else { @('оновити', '#2563EB') }
+            $kind = if ($_.Status -eq 'missing') { @('встановити', '#D70015') } elseif ($_.Optional) { @('необов''язково', '#6E6E73') } else { @('оновити', '#007AFF') }
             $cur = if ($_.Device.Version) { "$($_.Device.Version)$(if ($_.Device.Date -and ([datetime]$_.Device.Date).Year -ge 2010) { ' (' + ([datetime]$_.Device.Date).ToString('dd.MM.yyyy') + ')' })" } else { 'немає драйвера' }
             $new = "$($_.Row.Version)$(if ($_.Row.Date) { ' (' + ([datetime]$_.Row.Date).ToString('dd.MM.yyyy') + ')' })"
             New-D9Row @{ Title = $_.Device.Name; Id = $_.Row.Title; Kind = $kind[0]; Color = $kind[1]; Detail = "$cur → $new"
@@ -719,13 +728,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $fillStartup = {
         param($items)
         $state.StartupRows = @(foreach ($i in $items) {
-            $note = @(); $color = '#5D6675'
+            $note = @(); $color = '#6E6E73'
             switch ($i.Verdict) {
-                'disable'  { $note += "рекомендуємо вимкнути: $($i.Reason)"; $color = '#B26A00' }
+                'disable'  { $note += "рекомендуємо вимкнути: $($i.Reason)"; $color = '#B25000' }
                 'optional' { $note += "можна вимкнути: $($i.Reason)" }
-                'keep'     { $note += "потрібне: $($i.Reason)"; $color = '#2E7D32' }
+                'keep'     { $note += "потрібне: $($i.Reason)"; $color = '#248A3D' }
             }
-            if ($i.Missing) { $note += 'файл відсутній — запис можна вимкнути'; $color = '#C62828' }
+            if ($i.Missing) { $note += 'файл відсутній — запис можна вимкнути'; $color = '#D70015' }
             if (-not $i.Publisher -and -not $i.Verdict) { $note += 'видавець невідомий' }
             New-D9Row @{ Selected = [bool]$i.Enabled; Title = $i.Name; Detail = $i.Command; Group = $(if ($i.Publisher) { $i.Publisher } else { '—' })
                          Note = $i.Where; Status = ($note -join '; '); Color = $color; Tag = $i }
@@ -753,7 +762,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
 
     # ---------- кнопки: Обслуговування ----------
-    $diskColors = @{ ok = '#2E7D32'; warn = '#B26A00'; bad = '#C62828'; unknown = '#5D6675' }
+    $diskColors = @{ ok = '#248A3D'; warn = '#B25000'; bad = '#D70015'; unknown = '#6E6E73' }
     $loadDisks = {
         & $startJob 'Перевірка стану дисків' { @(Get-D9DiskHealth) } $null {
             param($r)
@@ -883,7 +892,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $state.AppUpgrades = @{}
     $state.AppFilter = 'popular'
     $state.AppRows = @($appCatalog.apps | ForEach-Object {
-        New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#5D6675'; Tag = $_ }
+        New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#6E6E73'; Tag = $_ }
     })
     $appStatus = { param($row) if ($row.Status -like 'є оновлення*') { 'update' } elseif ($row.Status -eq 'встановлено') { 'installed' } else { 'none' } }
     # Категорії ліворуч: службові + з каталогу, з кількістю
@@ -945,7 +954,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.AppCards.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateAppSelection })
     foreach ($b in @($appCatalog.bundles)) {
         $btn = New-Object Windows.Controls.Button
-        $btn.Content = Get-D9Text $b.name; $btn.ToolTip = Get-D9Text $b.description; $btn.Tag = @($b.apps); $btn.Margin = '0,0,6,4'
+        $btn.Style = $win.FindResource('Chip')
+        $btn.Content = Get-D9Text $b.name; $btn.ToolTip = Get-D9Text $b.description; $btn.Tag = @($b.apps)
         $btn.Add_Click({
             param($sender, $e)
             $ids = @($sender.Tag)
@@ -967,9 +977,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $markApp = {
         param($row, [bool]$installed)
         $up = $state.AppUpgrades[[string]$row.Id]
-        if ($installed -and $up) { $row.Status = "є оновлення: $($up.Version) → $($up.Available)"; $row.Color = '#2563EB'; $row.Enabled = $true }
-        elseif ($installed) { $row.Status = 'встановлено'; $row.Color = '#2E7D32'; $row.Selected = $false; $row.Enabled = $false }
-        else { $row.Status = 'не встановлено'; $row.Color = '#5D6675'; $row.Enabled = $true }
+        if ($installed -and $up) { $row.Status = "є оновлення: $($up.Version) → $($up.Available)"; $row.Color = '#007AFF'; $row.Enabled = $true }
+        elseif ($installed) { $row.Status = 'встановлено'; $row.Color = '#248A3D'; $row.Selected = $false; $row.Enabled = $false }
+        else { $row.Status = 'не встановлено'; $row.Color = '#6E6E73'; $row.Enabled = $true }
     }
     $loadApps = {
         if (-not $hasWinget) { return }
@@ -1006,7 +1016,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             foreach ($r in $res) {
                 $row = $state.AppRows | Where-Object Id -eq $r.id | Select-Object -First 1
                 if (-not $row) { continue }
-                if ($r.result -in 'failed', 'notFound') { $row.Status = 'помилка — див. журнал'; $row.Color = '#C62828' }
+                if ($r.result -in 'failed', 'notFound') { $row.Status = 'помилка — див. журнал'; $row.Color = '#D70015' }
                 else { $state.AppUpgrades.Remove([string]$row.Id); & $markApp $row $true }
             }
             & $fillAppCategories; & $showApps; & $updateAppSelection
@@ -1040,10 +1050,10 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($list)
         $state.UninstRows = @(@($list | Where-Object { $_ }) | Sort-Object @{ Expression = { [bool]$_.Bloat }; Descending = $true }, Name | ForEach-Object {
             $cmd = Get-D9UninstallCommand $_
-            $note = if ($_.Bloat) { @("Рекомендуємо видалити: $($_.Bloat)", '#C62828') }
-                    elseif ($_.Keep) { @('Потрібна іншим програмам або обладнанню — краще не видаляти', '#B26A00') }
-                    elseif ($cmd -and -not $cmd.Silent) { @('відкриється вікно деінсталятора', '#5D6675') }
-                    else { @('', '#5D6675') }
+            $note = if ($_.Bloat) { @("Рекомендуємо видалити: $($_.Bloat)", '#D70015') }
+                    elseif ($_.Keep) { @('Потрібна іншим програмам або обладнанню — краще не видаляти', '#B25000') }
+                    elseif ($cmd -and -not $cmd.Silent) { @('відкриється вікно деінсталятора', '#6E6E73') }
+                    else { @('', '#6E6E73') }
             New-D9Row @{ Title = $_.Name; Detail = "Версія: $($_.Version)$(if ($cmd) { '; видалення: ' + $(if ($cmd.Silent) { 'тихо' } else { 'з вікном деінсталятора' }) })"
                          Group = $_.Publisher; Note = $(if ($_.Size) { Format-D9Size $_.Size } else { '' }); Kind = $(if ($_.InstallDate) { ([datetime]$_.InstallDate).ToString('dd.MM.yyyy') } else { '' })
                          Status = $note[0]; Color = $note[1]; Tag = $_ }

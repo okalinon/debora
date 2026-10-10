@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Збирає dist\Debloater9.ps1 — один файл з усім кодом і вбудованою конфігурацією.
+    Збирає dist\Debora.ps1 — один файл з усім кодом і вбудованою конфігурацією.
 .EXAMPLE
     .\build\Compile.ps1
 .EXAMPLE
@@ -99,6 +99,22 @@ foreach ($name in 'MainWindow.xaml') {
     [void]$sb.AppendLine($xaml.TrimEnd())
     [void]$sb.AppendLine("'@")
 }
+# Іконки програм (knowledge/app-icons/*.png, збирає build\Update-AppIcons.ps1): «id<TAB>base64» у gzip
+$iconDir = Join-Path $root 'knowledge\app-icons'
+if (Test-Path $iconDir) {
+    $tsv = New-Object Text.StringBuilder
+    foreach ($f in Get-ChildItem $iconDir -Filter '*.png' | Sort-Object Name) {
+        [void]$tsv.Append($f.BaseName).Append("`t").Append([Convert]::ToBase64String([IO.File]::ReadAllBytes($f.FullName))).Append("`n")
+    }
+    $bytes = [Text.Encoding]::UTF8.GetBytes($tsv.ToString())
+    $ms = New-Object IO.MemoryStream
+    $gz = New-Object IO.Compression.GZipStream $ms, ([IO.Compression.CompressionLevel]::Optimal)
+    $gz.Write($bytes, 0, $bytes.Length); $gz.Dispose()
+    $b64 = [Convert]::ToBase64String($ms.ToArray())
+    [void]$sb.AppendLine("    'app-icons.tsv.gz' = @'")
+    [void]$sb.AppendLine((([regex]::Matches($b64, '.{1,120}') | ForEach-Object Value) -join "`n"))
+    [void]$sb.AppendLine("'@")
+}
 foreach ($name in $knowledgeFiles) {
     [void]$sb.AppendLine("    '$name.gz' = @'")
     [void]$sb.AppendLine((ConvertTo-D9EmbeddedIds (Join-Path $root "knowledge\$name")))
@@ -115,13 +131,13 @@ if ($Version) {
 # 4. Запис (UTF-8 з BOM — інакше PowerShell 5.1 ламає кирилицю)
 Write-Host "4/5 Запис..." -ForegroundColor Cyan
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
-$outFile = Join-Path $OutDir 'Debloater9.ps1'
+$outFile = Join-Path $OutDir 'Debora.ps1'
 [IO.File]::WriteAllText($outFile, $compiled, $utf8Bom)
 Copy-Item (Join-Path $PSScriptRoot 'run.bat') (Join-Path $OutDir 'run.bat') -Force
 Copy-Item (Join-Path $PSScriptRoot 'run-menu.bat') (Join-Path $OutDir 'run-menu.bat') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Інструкція.txt') (Join-Path $OutDir 'Інструкція.txt') -Force
 $hash = (Get-FileHash $outFile -Algorithm SHA256).Hash.ToLower()
-[IO.File]::WriteAllText((Join-Path $OutDir 'SHA256SUMS'), "$hash  Debloater9.ps1`n", (New-Object Text.UTF8Encoding $false))
+[IO.File]::WriteAllText((Join-Path $OutDir 'SHA256SUMS'), "$hash  Debora.ps1`n", (New-Object Text.UTF8Encoding $false))
 
 # 5. Перевірка результату парсером
 Write-Host "5/5 Перевірка парсером..." -ForegroundColor Cyan

@@ -82,7 +82,7 @@ function Get-D9Preview {
 }
 
 function New-D9RestorePoint {
-    param([string]$Description = "Debloater9 $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
+    param([string]$Description = "Debora $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
     $key = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore'
     $old = (Get-ItemProperty $key -Name SystemRestorePointCreationFrequency -ErrorAction SilentlyContinue).SystemRestorePointCreationFrequency
     try {

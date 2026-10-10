@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Поради для автозапуску. Збіг за назвою запису (name) або ім'ям файлу (exe), шаблон -like. verdict: disable — рекомендуємо вимкнути (Debloater9 може зробити сам), optional — на розсуд людини, keep — потрібне (безпека, звук, тачпад, драйвери). Оновлювачі браузерів не вимикаємо: від них залежить безпека.",
+  "note": "Поради для автозапуску. Збіг за назвою запису (name) або ім'ям файлу (exe), шаблон -like. verdict: disable — рекомендуємо вимкнути (Debora може зробити сам), optional — на розсуд людини, keep — потрібне (безпека, звук, тачпад, драйвери). Оновлювачі браузерів не вимикаємо: від них залежить безпека.",
   "rules": [
     { "exe": "SecurityHealthSystray.exe", "verdict": "keep", "reason": { "uk": "значок «Безпека Windows»", "en": "Windows Security icon" } },
     { "exe": "RtkAudUService64.exe", "verdict": "keep", "reason": { "uk": "служба звуку Realtek", "en": "Realtek audio service" } },

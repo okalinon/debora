@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Програми з відомими вразливостями (minVersion — перша безпечна версія) або без підтримки (eol — дата кінця підтримки). winget — ID пакета, щоб Debloater9 оновив програму сам. ПЕРЕВІРЯТИ ПЕРЕД КОЖНИМ РЕЛІЗОМ за офіційними повідомленнями виробників.",
+  "note": "Програми з відомими вразливостями (minVersion — перша безпечна версія) або без підтримки (eol — дата кінця підтримки). winget — ID пакета, щоб Debora оновив програму сам. ПЕРЕВІРЯТИ ПЕРЕД КОЖНИМ РЕЛІЗОМ за офіційними повідомленнями виробників.",
   "programs": [
     { "pattern": "WinRAR*", "winget": "RARLab.WinRAR", "minVersion": "7.13", "exploited": true, "url": "https://www.win-rar.com/",
       "reason": { "uk": "У старих версіях WinRAR є вразливості, які активно використовують у фішингових архівах.", "en": "Older WinRAR versions have actively exploited archive vulnerabilities." } },

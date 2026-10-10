@@ -10,15 +10,15 @@
 
 ### Флешка-набір (Driver Kit)
 
-Одна флешка: інсталятор Windows + Debloater9 + бібліотека драйверів.
+Одна флешка: інсталятор Windows + Debora + бібліотека драйверів.
 
 ```
 USB:\
 ├─ sources\, boot\ ...            # інсталятор Windows (Media Creation Tool / Rufus)
 ├─ $WinpeDriver$\                 # драйвери, які Windows Setup підхоплює САМ під час встановлення
 │  └─ <копія потрібних драйверів диска й мережі>
-└─ Debloater9\
-   ├─ Debloater9.ps1, run.bat
+└─ Debora\
+   ├─ Debora.ps1, run.bat
    └─ Drivers\
       ├─ Acer_Aspire ES1-522\     # набір конкретної моделі (знятий з робочого ПК)
       │  ├─ manifest.json         # модель, SKU, дата, список HWID і драйверів
@@ -48,9 +48,9 @@ USB:\
 
 ### Повністю автоматична флешка (пізніше)
 
-`autounattend.xml` на флешці, який Debloater9 генерує сам:
+`autounattend.xml` на флешці, який Debora генерує сам:
 - локальний акаунт без входу в Microsoft (той самий обхід, що й вручну, але без дій);
-- після першого входу (`FirstLogonCommands`) — запуск Debloater9: драйвери з флешки → профіль твіків → драйвери з Windows Update.
+- після першого входу (`FirstLogonCommands`) — запуск Debora: драйвери з флешки → профіль твіків → драйвери з Windows Update.
 
 Результат: вставили флешку, вибрали диск — і отримали готову, оптимізовану Windows з драйверами.
 
@@ -121,12 +121,12 @@ USB:\
 ## CLI
 
 ```powershell
-.\Debloater9.ps1 -DriverExport E:\Debloater9\Drivers        # режим 1: зняти драйвери з цього ПК
-.\Debloater9.ps1 -DriverPrepareUsb E: -Model "Acer_Aspire ES1-522"   # режим 2: $WinpeDriver$
-.\Debloater9.ps1 -DriverInstall E:\Debloater9\Drivers -Yes  # режим 3: встановити з бібліотеки
-.\Debloater9.ps1 -Drivers                       # звіт: проблемні пристрої, доступні оновлення
-.\Debloater9.ps1 -Drivers -Install All -Yes     # встановити всі оновлення драйверів з Windows Update
-.\Debloater9.ps1 -Drivers -Install <UpdateID>   # одне оновлення
+.\Debora.ps1 -DriverExport E:\Debora\Drivers        # режим 1: зняти драйвери з цього ПК
+.\Debora.ps1 -DriverPrepareUsb E: -Model "Acer_Aspire ES1-522"   # режим 2: $WinpeDriver$
+.\Debora.ps1 -DriverInstall E:\Debora\Drivers -Yes  # режим 3: встановити з бібліотеки
+.\Debora.ps1 -Drivers                       # звіт: проблемні пристрої, доступні оновлення
+.\Debora.ps1 -Drivers -Install All -Yes     # встановити всі оновлення драйверів з Windows Update
+.\Debora.ps1 -Drivers -Install <UpdateID>   # одне оновлення
 ```
 
 ## Технічні нотатки

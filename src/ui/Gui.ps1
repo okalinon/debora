@@ -35,9 +35,25 @@ public class D9Row : INotifyPropertyChanged {
     public static System.Collections.Generic.Dictionary<string, string> ColorMap = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
     public string Color { get { return color; } set { string m; color = (value != null && ColorMap.TryGetValue(value, out m)) ? m : value; On("Color"); } }
     public object Links { get; set; }
+    public object Icon { get; set; }
+    public string Initial { get; set; }
     public object Tag { get; set; }
 }
 '@
+}
+
+# base64 PNG → заморожене зображення WPF (для іконок програм)
+function ConvertTo-D9Image {
+    param([string]$Base64)
+    if (-not $Base64) { return $null }
+    try {
+        $img = New-Object Windows.Media.Imaging.BitmapImage
+        $img.BeginInit()
+        $img.StreamSource = New-Object IO.MemoryStream (, [Convert]::FromBase64String($Base64))
+        $img.CacheOption = 'OnLoad'
+        $img.EndInit(); $img.Freeze()
+        return $img
+    } catch { return $null }
 }
 
 function New-D9Row {
@@ -202,7 +218,7 @@ function Show-D9Gui {
     # ---------- шапка ----------
     $s = $SystemInfo
     $disk = @{ hdd = 'HDD'; ssd = 'SSD'; nvme = 'NVMe SSD'; unknown = 'диск не визначено' }[[string]$s.SystemDisk]
-    $ui.TitleText.Text = "Debloater9 $script:D9Version"
+    $ui.TitleText.Text = "Debora $script:D9Version"
     $ui.SystemLine.Text = "$($s.Manufacturer) $($s.Model)`n$($s.OsName) $($s.DisplayVersion)`n$($s.RamGB) ГБ, $disk, профіль $($Recommendation.Preset)"
     if ($isAdmin) { $ui.AdminBadge.Text = 'Адміністратор'; $ui.AdminBadge.Foreground = (Get-D9UiColor '#248A3D') }
     else { $ui.AdminBadge.Text = 'Без прав адміністратора — лише перегляд'; $ui.AdminBadge.Foreground = (Get-D9UiColor '#B25000') }
@@ -255,7 +271,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $log = { param([string]$text) $ui.LogBox.AppendText("$text`r`n"); $ui.LogBox.ScrollToEnd() }
     $needAdmin = {
         if ($isAdmin) { return $true }
-        [void][Windows.MessageBox]::Show($win, 'Для змін потрібні права адміністратора. Закрийте програму й запустіть її через run.bat.', 'Debloater9', 'OK', 'Warning')
+        [void][Windows.MessageBox]::Show($win, 'Для змін потрібні права адміністратора. Закрийте програму й запустіть її через run.bat.', 'Debora', 'OK', 'Warning')
         return $false
     }
 
@@ -284,7 +300,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             if (-not $res.ok) {
                 & $log "ПОМИЛКА: $($res.error)"
                 $ui.LogExpander.IsExpanded = $true
-                [void][Windows.MessageBox]::Show($win, "Не вдалося виконати: $($res.error)", 'Debloater9', 'OK', 'Error')
+                [void][Windows.MessageBox]::Show($win, "Не вдалося виконати: $($res.error)", 'Debora', 'OK', 'Error')
             } elseif ($job.Done) {
                 try { & $job.Done $res.result $job.Context } catch { & $log "ПОМИЛКА інтерфейсу: $($_.Exception.Message)" }
             }
@@ -307,7 +323,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $color = Get-D9UiColor (@{ good = '#248A3D'; attention = '#B25000'; serious = '#D70015' }[$scan.score.verdict])
         $ui.ScoreText.Text = "$($scan.score.overall)"; $ui.ScoreText.Foreground = $color
         $ui.ScoreRing.Stroke = $color
-        $ui.ScoreRing.Data = Get-D9RingGeometry ([double]$scan.score.overall) 118 11
+        $ui.ScoreRing.Data = Get-D9RingGeometry ([double]$scan.score.overall) 156 14
         $ui.VerdictText.Text = @{ good = 'Добрий стан'; attention = 'Потребує уваги'; serious = 'Є серйозні проблеми' }[$scan.score.verdict]
         $ui.VerdictText.Foreground = $color
         $counts = foreach ($k in 'critical', 'warning', 'suggestion') { $n = @($scan.findings | Where-Object severity -eq $k).Count; if ($n) { "$n $($script:D9SevUi[$k].Name)" } }
@@ -470,10 +486,10 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             & $onScanned $r
             $before = $r.Scan.score.overall
             $todo = @($r.Checklist.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' })
-            if (-not $todo) { [void][Windows.MessageBox]::Show($win, "Оцінка: $before/100. Автоматично виправляти нічого — решта порад на вкладці «Чекліст».", 'Debloater9'); return }
+            if (-not $todo) { [void][Windows.MessageBox]::Show($win, "Оцінка: $before/100. Автоматично виправляти нічого — решта порад на вкладці «Чекліст».", 'Debora'); return }
             $text = ($todo | ForEach-Object { "$($_.number). $($_.title)" }) -join "`r`n"
             $manual = @($r.Checklist.items | Where-Object { -not $_.auto -and $_.status -ne 'done' }).Count
-            if (-not (Show-D9TextDialog $win 'Виправити все' "Оцінка зараз: $before/100. Debloater9 виконає $($todo.Count) кроків сам (спершу — точка відновлення; усе відкочується в «Журналі змін»)$(if ($manual) { ". Ще $manual порад потребують вашого рішення — вони лишаться на вкладці «Чекліст»" })." $text 'Виконати')) { return }
+            if (-not (Show-D9TextDialog $win 'Виправити все' "Оцінка зараз: $before/100. Debora виконає $($todo.Count) кроків сам (спершу — точка відновлення; усе відкочується в «Журналі змін»)$(if ($manual) { ". Ще $manual порад потребують вашого рішення — вони лишаться на вкладці «Чекліст»" })." $text 'Виконати')) { return }
             & $startJob 'Виправлення' $runChecklistWork @{ Catalog = $Catalog; Sys = $SystemInfo } {
                 param($list, $c)
                 & $fillChecklist $list
@@ -485,16 +501,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                     & $onScanned $r2
                     $left = @($r2.Checklist.items | Where-Object { $_.status -ne 'done' -and $_.action.action -ne 'reboot' }).Count
                     $msg = "Оцінка: $($c2.Before) → $($r2.Scan.score.overall)/100.$(if ($left) { "`nЛишилось порад: $left — вкладка «Чекліст»." })`n`nПерезавантажити комп'ютер зараз, щоб усі зміни запрацювали?"
-                    if ([Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
+                    if ([Windows.MessageBox]::Show($win, $msg, 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
                 } @{ Before = $c.Before }
             } @{ Before = $before }
         }
     })
     $ui.BtnRunAuto.Add_Click({
-        if (-not $state.Checklist) { [void][Windows.MessageBox]::Show($win, 'Спочатку проскануйте комп''ютер.', 'Debloater9'); return }
+        if (-not $state.Checklist) { [void][Windows.MessageBox]::Show($win, 'Спочатку проскануйте комп''ютер.', 'Debora'); return }
         if (-not (& $needAdmin)) { return }
         $todo = @($state.Checklist.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' })
-        if (-not $todo) { [void][Windows.MessageBox]::Show($win, 'Автоматичних кроків не залишилось.', 'Debloater9'); return }
+        if (-not $todo) { [void][Windows.MessageBox]::Show($win, 'Автоматичних кроків не залишилось.', 'Debora'); return }
         $text = ($todo | ForEach-Object { "$($_.number). $($_.title)" }) -join "`r`n"
         if (-not (Show-D9TextDialog $win 'Автоматичні кроки' "Буде виконано $($todo.Count) кроків. Перед змінами створюється точка відновлення; усе можна відкотити на вкладці «Журнал змін»." $text 'Виконати')) { return }
         & $startJob 'Виконання кроків чекліста' {
@@ -514,13 +530,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             & $fillChecklist $list
             & $fillSessions
             & $loadTweakStates
-            $answer = [Windows.MessageBox]::Show($win, 'Готово. Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?', 'Debloater9', 'YesNo', 'Question')
+            $answer = [Windows.MessageBox]::Show($win, 'Готово. Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?', 'Debora', 'YesNo', 'Question')
             if ($answer -eq 'Yes') { Restart-Computer -Force }
         }
     })
     $ui.BtnMarkDone.Add_Click({
         $row = $ui.ChecklistList.SelectedItem
-        if (-not $row) { [void][Windows.MessageBox]::Show($win, 'Виберіть крок у списку.', 'Debloater9'); return }
+        if (-not $row) { [void][Windows.MessageBox]::Show($win, 'Виберіть крок у списку.', 'Debora'); return }
         $item = $state.Checklist.items | Where-Object id -eq $row.Tag.id | Select-Object -First 1
         $item.status = 'done'; $item.doneAt = (Get-Date).ToString('s'); $item.note = 'позначено вручну'
         Save-D9Checklist $state.Checklist
@@ -537,7 +553,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         } @{ Catalog = $Catalog; Sys = $SystemInfo } { param($list) & $fillChecklist $list }
     })
     $ui.BtnReboot.Add_Click({
-        if ([Windows.MessageBox]::Show($win, 'Перезавантажити комп''ютер зараз? Збережіть відкриті документи.', 'Debloater9', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
+        if ([Windows.MessageBox]::Show($win, 'Перезавантажити комп''ютер зараз? Збережіть відкриті документи.', 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
     })
 
     # ---------- кнопки: Налаштування ----------
@@ -564,18 +580,18 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $selectedIds = { @($state.TweakRows | Where-Object Selected | ForEach-Object Id) }
     $ui.BtnPreview.Add_Click({
         $ids = & $selectedIds
-        if (-not $ids) { [void][Windows.MessageBox]::Show($win, 'Нічого не вибрано.', 'Debloater9'); return }
+        if (-not $ids) { [void][Windows.MessageBox]::Show($win, 'Нічого не вибрано.', 'Debora'); return }
         & $startJob 'Підготовка попереднього перегляду' $previewWork @{ Catalog = $Catalog; Sys = $SystemInfo; Ids = $ids } {
             param($r) [void](Show-D9TextDialog $win 'Що зміниться' "Змін до застосування: $($r.Count)" $r.Text -InfoOnly)
         }
     })
     $ui.BtnApply.Add_Click({
         $ids = & $selectedIds
-        if (-not $ids) { [void][Windows.MessageBox]::Show($win, 'Нічого не вибрано.', 'Debloater9'); return }
+        if (-not $ids) { [void][Windows.MessageBox]::Show($win, 'Нічого не вибрано.', 'Debora'); return }
         if (-not (& $needAdmin)) { return }
         & $startJob 'Підготовка попереднього перегляду' $previewWork @{ Catalog = $Catalog; Sys = $SystemInfo; Ids = $ids } {
             param($r, $c)
-            if (-not $r.Count) { [void][Windows.MessageBox]::Show($win, 'Усе вибране вже застосовано.', 'Debloater9'); return }
+            if (-not $r.Count) { [void][Windows.MessageBox]::Show($win, 'Усе вибране вже застосовано.', 'Debora'); return }
             if (-not (Show-D9TextDialog $win 'Застосувати налаштування' "Змін до застосування: $($r.Count). Перед змінами створюється точка відновлення." $r.Text)) { return }
             & $startJob 'Застосування налаштувань' {
                 param($a)
@@ -587,7 +603,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                 $err = @($session.entries | Where-Object result -eq 'error').Count
                 & $fillSessions
                 & $loadTweakStates
-                [void][Windows.MessageBox]::Show($win, "Готово. Змінено: $ok, помилок: $err.`nЧастина змін запрацює після перезавантаження. Відкат — на вкладці «Журнал змін».", 'Debloater9', 'OK', $(if ($err) { 'Warning' } else { 'Information' }))
+                [void][Windows.MessageBox]::Show($win, "Готово. Змінено: $ok, помилок: $err.`nЧастина змін запрацює після перезавантаження. Відкат — на вкладці «Журнал змін».", 'Debora', 'OK', $(if ($err) { 'Warning' } else { 'Information' }))
             }
         } @{ Ids = $ids }
     })
@@ -606,7 +622,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $folder = $ui.DriverFolder.Text
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         if (-not (Get-ChildItem -LiteralPath $folder -Recurse -File -ErrorAction SilentlyContinue)) {
-            [void][Windows.MessageBox]::Show($win, "Папка порожня. Завантажте драйвери з сайту виробника (кнопка вгорі) і покладіть файли сюди як є — .zip теж можна:`n$folder", 'Debloater9')
+            [void][Windows.MessageBox]::Show($win, "Папка порожня. Завантажте драйвери з сайту виробника (кнопка вгорі) і покладіть файли сюди як є — .zip теж можна:`n$folder", 'Debora')
             Start-Process explorer.exe $folder
             return
         }
@@ -614,7 +630,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     $ui.BtnInstallDrivers.Add_Click({
         $chosen = @($ui.DriverPackageGrid.ItemsSource | Where-Object Selected | ForEach-Object Tag)
-        if (-not $chosen) { [void][Windows.MessageBox]::Show($win, 'Нічого не вибрано.', 'Debloater9'); return }
+        if (-not $chosen) { [void][Windows.MessageBox]::Show($win, 'Нічого не вибрано.', 'Debora'); return }
         if (-not (& $needAdmin)) { return }
         $text = ($chosen | Sort-Object Order, Name | ForEach-Object { "$($_.Name) — $($_.Package.Inf.Version) ($(Split-Path $_.Package.Inf.Path -Leaf))" }) -join "`r`n"
         if (-not (Show-D9TextDialog $win 'Встановлення драйверів' "Буде встановлено $($chosen.Count) драйвер(ів) у такому порядку. Попередні драйвери буде збережено для відкату." $text 'Встановити')) { return }
@@ -631,7 +647,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $msg = "Встановлено: $ok, помилок: $($err.Count)."
             if ($err) { $msg += "`n" + (($err | ForEach-Object { "• $($_.action.name): $($_.message)" }) -join "`n") }
             $msg += "`n`nПерезавантажити комп'ютер зараз, щоб драйвери запрацювали?"
-            if ([Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'YesNo', $(if ($err) { 'Warning' } else { 'Question' })) -eq 'Yes') { Restart-Computer -Force }
+            if ([Windows.MessageBox]::Show($win, $msg, 'Debora', 'YesNo', $(if ($err) { 'Warning' } else { 'Question' })) -eq 'Yes') { Restart-Computer -Force }
             & $driverReport
         }
     })
@@ -657,13 +673,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.BtnOemTool.Add_Click({
         if (-not (& $needAdmin)) { return }
         $t = Get-D9OemTool $SystemInfo
-        if ([Windows.MessageBox]::Show($win, "Встановити (за потреби) і запустити $($t.Name)?`nЦе фірмова утиліта $($t.Vendor): вона сама поставить драйвери, прошивки й BIOS для вашої моделі. Триває 10–30 хвилин; не вимикайте ПК, ноутбук — від мережі.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        if ([Windows.MessageBox]::Show($win, "Встановити (за потреби) і запустити $($t.Name)?`nЦе фірмова утиліта $($t.Vendor): вона сама поставить драйвери, прошивки й BIOS для вашої моделі. Триває 10–30 хвилин; не вимикайте ПК, ноутбук — від мережі.", 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
         $ui.LogExpander.IsExpanded = $true
         & $startJob "Запуск $($t.Name)" { param($a) Invoke-D9OemDriverTool -SystemInfo $a.Sys } @{ Sys = $SystemInfo } {
             param($r)
             $msg = if ($r.Done) { "$($r.Tool) завершила роботу." } else { "$($r.Tool) завершилась з кодом $($r.Code) — подробиці в журналі виконання." }
-            if ($r.RebootRecommended) { if ([Windows.MessageBox]::Show($win, "$msg`n`nПерезавантажити комп'ютер зараз?", 'Debloater9', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force } }
-            else { [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9') }
+            if ($r.RebootRecommended) { if ([Windows.MessageBox]::Show($win, "$msg`n`nПерезавантажити комп'ютер зараз?", 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force } }
+            else { [void][Windows.MessageBox]::Show($win, $msg, 'Debora') }
             & $driverReport
         }
     })
@@ -672,12 +688,12 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $startJob 'Пошук драйверів онлайн' { param($a) @(Find-D9DriverUpdates -SystemInfo $a.Sys -IncludeWindowsUpdate) } @{ Sys = $SystemInfo } {
             param($r)
             & $fillOnline @($r)
-            if (-not $state.OnlineCands) { [void][Windows.MessageBox]::Show($win, 'Новіших драйверів у каталозі Microsoft не знайдено — встановлені драйвери актуальні.', 'Debloater9') }
+            if (-not $state.OnlineCands) { [void][Windows.MessageBox]::Show($win, 'Новіших драйверів у каталозі Microsoft не знайдено — встановлені драйвери актуальні.', 'Debora') }
         }
     })
     $ui.BtnDriverOnlineInstall.Add_Click({
         $chosen = @($ui.DriverOnlineGrid.ItemsSource | Where-Object Selected | ForEach-Object Tag)
-        if (-not $chosen) { [void][Windows.MessageBox]::Show($win, 'Позначте драйвери галочками.', 'Debloater9'); return }
+        if (-not $chosen) { [void][Windows.MessageBox]::Show($win, 'Позначте драйвери галочками.', 'Debora'); return }
         if (-not (& $needAdmin)) { return }
         $mb = [long](($chosen | ForEach-Object { $_.Row.Size } | Measure-Object -Sum).Sum)
         $text = ($chosen | ForEach-Object { "$($_.Device.Name): $($_.Row.Version) — $($_.Row.Title)" }) -join "`r`n"
@@ -694,14 +710,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         } @{ Cands = $chosen; Folder = (Join-Path $DriverDir 'Завантажені'); Sys = $SystemInfo } {
             param($r)
             & $fillSessions
-            if (-not $r.Session) { [void][Windows.MessageBox]::Show($win, 'Після перевірки пакетів встановлювати нічого: поточні драйвери не старші.', 'Debloater9'); return }
+            if (-not $r.Session) { [void][Windows.MessageBox]::Show($win, 'Після перевірки пакетів встановлювати нічого: поточні драйвери не старші.', 'Debora'); return }
             $ok = @($r.Session.entries | Where-Object result -eq 'ok').Count
             $err = @($r.Session.entries | Where-Object result -eq 'error')
             $msg = "Встановлено: $ok з $($r.Count), помилок: $($err.Count)."
             if ($err) { $msg += "`n" + (($err | Select-Object -First 6 | ForEach-Object { "• $($_.action.name): $($_.message)" }) -join "`n") }
             $msg += "`nЗавантажені пакети лежать у папці «Драйвери\Завантажені» — їх можна використати на такому самому ПК без інтернету."
             $msg += "`n`nПерезавантажити комп'ютер зараз, щоб драйвери запрацювали?"
-            if ([Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'YesNo', $(if ($err) { 'Warning' } else { 'Question' })) -eq 'Yes') { Restart-Computer -Force }
+            if ([Windows.MessageBox]::Show($win, $msg, 'Debora', 'YesNo', $(if ($err) { 'Warning' } else { 'Question' })) -eq 'Yes') { Restart-Computer -Force }
             & $driverReport
         }
     })
@@ -718,7 +734,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $err = @($session.entries | Where-Object result -eq 'error')
             & $fillSessions
             if ($err) {
-                [void][Windows.MessageBox]::Show($win, "Частина змін не застосувалась:`n" + (($err | Select-Object -First 8 | ForEach-Object { "• $($_.message)" }) -join "`n"), 'Debloater9', 'OK', 'Warning')
+                [void][Windows.MessageBox]::Show($win, "Частина змін не застосувалась:`n" + (($err | Select-Object -First 8 | ForEach-Object { "• $($_.message)" }) -join "`n"), 'Debora', 'OK', 'Warning')
             }
             if ($c.After) { & $c.After $session }
         } @{ After = $after }
@@ -754,7 +770,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     $ui.BtnStartupApply.Add_Click({
         $changes = @($state.StartupRows | Where-Object { $_.Selected -ne [bool]$_.Tag.Enabled } | ForEach-Object { @{ Item = $_.Tag; Enable = $_.Selected } })
-        if (-not $changes) { [void][Windows.MessageBox]::Show($win, 'Змін немає: поставте або зніміть галочки.', 'Debloater9'); return }
+        if (-not $changes) { [void][Windows.MessageBox]::Show($win, 'Змін немає: поставте або зніміть галочки.', 'Debora'); return }
         if (-not (& $needAdmin)) { return }
         $text = ($changes | ForEach-Object { "$(if ($_.Enable) { 'Увімкнути' } else { 'Вимкнути' }): $($_.Item.Name)" }) -join "`r`n"
         if (-not (Show-D9TextDialog $win 'Автозавантаження' "Змін: $($changes.Count). Подіють після наступного входу в Windows." $text)) { return }
@@ -787,8 +803,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     }
     $ui.BtnDisksRefresh.Add_Click($loadDisks)
     $ui.BtnIconCache.Add_Click({
-        if ([Windows.MessageBox]::Show($win, "Скинути кеш значків і ескізів?`nПровідник перезапуститься: панель задач на мить зникне, відкриті вікна папок закриються. Файли не зачіпаються.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
-        & $startJob 'Скидання кешу значків' { Reset-D9IconCache } $null { param($r) [void][Windows.MessageBox]::Show($win, "Готово: видалено файлів кешу — $($r.Removed). Значки з'являться заново за хвилину.", 'Debloater9') }
+        if ([Windows.MessageBox]::Show($win, "Скинути кеш значків і ескізів?`nПровідник перезапуститься: панель задач на мить зникне, відкриті вікна папок закриються. Файли не зачіпаються.", 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
+        & $startJob 'Скидання кешу значків' { Reset-D9IconCache } $null { param($r) [void][Windows.MessageBox]::Show($win, "Готово: видалено файлів кешу — $($r.Removed). Значки з'являться заново за хвилину.", 'Debora') }
     })
     $refreshMaintenance = {
         $ux = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings' -ErrorAction SilentlyContinue
@@ -805,14 +821,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $maintenanceJob = {
         param([string]$title, [string]$confirm, [string]$function)
         if (-not (& $needAdmin)) { return }
-        if ([Windows.MessageBox]::Show($win, $confirm, 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        if ([Windows.MessageBox]::Show($win, $confirm, 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
         $ui.LogExpander.IsExpanded = $true
         & $startJob $title { param($a) & $a.Fn } @{ Fn = $function } {
             param($r)
             $msg = 'Готово. Подробиці — у журналі виконання внизу.'
             if ($r.RebootRecommended) {
-                if ([Windows.MessageBox]::Show($win, "$msg`n`nПерезавантажити комп'ютер зараз?", 'Debloater9', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
-            } else { [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9') }
+                if ([Windows.MessageBox]::Show($win, "$msg`n`nПерезавантажити комп'ютер зараз?", 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
+            } else { [void][Windows.MessageBox]::Show($win, $msg, 'Debora') }
         }
     }
     $ui.BtnRepair.Add_Click({ & $maintenanceJob 'Відновлення системних файлів' "Перевірити й відновити системні файли Windows?`nЦе триває 10–40 хвилин; комп'ютером можна користуватися." 'Invoke-D9RepairSystem' })
@@ -824,19 +840,19 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if (-not (& $needAdmin)) { return }
         & $startJob 'Створення точки відновлення' { New-D9RestorePoint } $null {
             param($name)
-            if ($name) { [void][Windows.MessageBox]::Show($win, "Точку відновлення створено: $name", 'Debloater9') }
-            else { [void][Windows.MessageBox]::Show($win, 'Не вдалося створити точку відновлення. Можливо, вимкнено захист системи (кнопка «Відновлення системи Windows» → Налаштувати).', 'Debloater9', 'OK', 'Warning') }
+            if ($name) { [void][Windows.MessageBox]::Show($win, "Точку відновлення створено: $name", 'Debora') }
+            else { [void][Windows.MessageBox]::Show($win, 'Не вдалося створити точку відновлення. Можливо, вимкнено захист системи (кнопка «Відновлення системи Windows» → Налаштувати).', 'Debora', 'OK', 'Warning') }
         }
     })
     $ui.BtnCleanNow.Add_Click({
         if (-not (& $needAdmin)) { return }
-        if ([Windows.MessageBox]::Show($win, "Видалити тимчасові файли, кеш оновлень Windows, дампи збоїв і залишки інсталяторів?`nЦе не можна відкотити, але ці файли не потрібні.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        if ([Windows.MessageBox]::Show($win, "Видалити тимчасові файли, кеш оновлень Windows, дампи збоїв і залишки інсталяторів?`nЦе не можна відкотити, але ці файли не потрібні.", 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
         $ids = 'cleanup.temp', 'cleanup.update-cache', 'cleanup.leftovers', 'cleanup.do-cache'
         $cat = [pscustomobject]@{ Tweaks = @($Catalog.Tweaks | Where-Object { $ids -contains $_.id }); Presets = @() }
         $state.FreeBefore = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID = '$env:SystemDrive'").FreeSpace
         & $applyCatalog $cat 'Очищення диска' 'очищення диска' {
             $after = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID = '$env:SystemDrive'").FreeSpace
-            [void][Windows.MessageBox]::Show($win, "Звільнено: $(Format-D9Size ([math]::Max(0, $after - $state.FreeBefore)))", 'Debloater9')
+            [void][Windows.MessageBox]::Show($win, "Звільнено: $(Format-D9Size ([math]::Max(0, $after - $state.FreeBefore)))", 'Debora')
         } -NoRestorePoint
     })
     $ui.BtnPause.Add_Click({
@@ -851,7 +867,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.BtnWuDrivers.Add_Click({
         if (-not (& $needAdmin)) { return }
         $t = Get-D9Tweak $Catalog 'updates.no-wu-drivers'
-        if ([Windows.MessageBox]::Show($win, "$(Get-D9Text $t.description)`n`nВимкнути встановлення драйверів через Windows Update?", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        if ([Windows.MessageBox]::Show($win, "$(Get-D9Text $t.description)`n`nВимкнути встановлення драйверів через Windows Update?", 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
         & $applyCatalog ([pscustomobject]@{ Tweaks = @($t); Presets = @() }) 'Драйвери з Windows Update' (Get-D9Text $t.name) { & $refreshMaintenance; & $loadTweakStates }
     })
 
@@ -868,9 +884,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     $ui.BtnUndo.Add_Click({
         $row = $ui.SessionGrid.SelectedItem
-        if (-not $row) { [void][Windows.MessageBox]::Show($win, 'Виберіть сесію в таблиці.', 'Debloater9'); return }
+        if (-not $row) { [void][Windows.MessageBox]::Show($win, 'Виберіть сесію в таблиці.', 'Debora'); return }
         if (-not (& $needAdmin)) { return }
-        if ([Windows.MessageBox]::Show($win, "Відкотити зміни сесії «$($row.Detail)» ($($row.Title))?", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        if ([Windows.MessageBox]::Show($win, "Відкотити зміни сесії «$($row.Detail)» ($($row.Title))?", 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
         & $startJob 'Відкат змін' { param($a) Undo-D9Session -Id $a.Id } @{ Id = $row.Id } {
             param($report)
             $report = @($report)
@@ -880,7 +896,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             if ($other) { $msg += "`nПотребує уваги ($($other.Count)):`n" + (($other | Select-Object -First 10 | ForEach-Object { "• $($_.tweak): $($_.message)" }) -join "`n") }
             & $fillSessions
             & $loadTweakStates
-            [void][Windows.MessageBox]::Show($win, "$msg`n`nДеякі зміни повернуться після перезавантаження.", 'Debloater9')
+            [void][Windows.MessageBox]::Show($win, "$msg`n`nДеякі зміни повернуться після перезавантаження.", 'Debora')
         }
     })
 
@@ -891,9 +907,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     foreach ($c in $appCatalog.categories) { $appCats[[string]$c.id] = Get-D9Text $c.name }
     $state.AppUpgrades = @{}
     $state.AppFilter = 'popular'
+    $appIcons = Get-D9AppIconData
     $state.AppRows = @($appCatalog.apps | ForEach-Object {
-        New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#6E6E73'; Tag = $_ }
+        New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#6E6E73'; Tag = $_
+                     Icon = (ConvertTo-D9Image $appIcons[$_.id]); Initial = ([string]$_.name).Substring(0, 1).ToUpper() }
     })
+    # Картки програм заповнюють усю ширину: кількість колонок — за шириною області
+    $ui.AppCards.Tag = 2
+    $ui.AppCards.Parent.Add_SizeChanged({ param($sender, $e) $ui.AppCards.Tag = [math]::Max(1, [math]::Floor(($e.NewSize.Width - 14) / 290)) })
     $appStatus = { param($row) if ($row.Status -like 'є оновлення*') { 'update' } elseif ($row.Status -eq 'встановлено') { 'installed' } else { 'none' } }
     # Категорії ліворуч: службові + з каталогу, з кількістю
     $fillAppCategories = {
@@ -968,11 +989,11 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.BtnAppsClear.Add_Click({ foreach ($r in $state.AppRows) { $r.Selected = $false }; if ($state.AppFilter -eq 'selected') { & $showApps }; & $updateAppSelection })
 
     if (-not $hasWinget) {
-        $ui.AppsSummary.Text = 'winget не знайдено — без нього програми не встановлюються. Встановіть «Інсталятор застосунків» з Microsoft Store і перезапустіть Debloater9.'
+        $ui.AppsSummary.Text = 'winget не знайдено — без нього програми не встановлюються. Встановіть «Інсталятор застосунків» з Microsoft Store і перезапустіть Debora.'
         $ui.BtnWingetStore.Visibility = 'Visible'
     }
     $ui.BtnWingetStore.Add_Click({ Start-Process 'ms-windows-store://pdp/?productid=9NBLGGH4NNS1' })
-    $noWinget = { [void][Windows.MessageBox]::Show($win, 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store (посилання на вкладці).', 'Debloater9', 'OK', 'Warning') }
+    $noWinget = { [void][Windows.MessageBox]::Show($win, 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store (посилання на вкладці).', 'Debora', 'OK', 'Warning') }
     # Стан картки: встановлено / є оновлення (можна вибрати й оновити) / не встановлено
     $markApp = {
         param($row, [bool]$installed)
@@ -1025,7 +1046,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $msg = "Готово: $($res.Count - $bad.Count) з $($res.Count)."
             if ($bad) { $msg += "`nНе вдалося: $(($bad | ForEach-Object { $names[[string]$_.id] }) -join ', '). Подробиці — у журналі виконання внизу." }
             if (@($res | Where-Object result -eq 'reboot')) { $msg += "`nДеякі програми запрацюють після перезавантаження." }
-            [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'OK', $(if ($bad) { 'Warning' } else { 'Information' }))
+            [void][Windows.MessageBox]::Show($win, $msg, 'Debora', 'OK', $(if ($bad) { 'Warning' } else { 'Information' }))
         }
     })
     $ui.BtnAppsUpgrade.Add_Click({
@@ -1033,14 +1054,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $startJob 'Пошук оновлень програм' { @(Get-D9AppUpgrades) } $null {
             param($up)
             $up = @($up | Where-Object { $_ })
-            if (-not $up) { [void][Windows.MessageBox]::Show($win, 'Усі програми актуальні.', 'Debloater9'); return }
+            if (-not $up) { [void][Windows.MessageBox]::Show($win, 'Усі програми актуальні.', 'Debora'); return }
             $text = ($up | ForEach-Object { "$($_.Name)    $($_.Version) → $($_.Available)" }) -join "`r`n"
             if (-not (Show-D9TextDialog $win 'Оновити програми' "Оновлення є для $($up.Count) програм (усі, не лише з каталогу). Відкриті програми краще закрити — їх не вдасться оновити." $text)) { return }
             $ui.LogExpander.IsExpanded = $true
             & $startJob 'Оновлення програм' { Invoke-D9AppUpgradeAll } $null {
                 param($r)
                 $ok = $r.Result -in 'installed', 'upToDate'
-                [void][Windows.MessageBox]::Show($win, $(if ($ok) { 'Програми оновлено.' } else { 'Оновлення завершено, але частину програм (наприклад, відкритих зараз) оновити не вдалося. Подробиці — у журналі виконання внизу.' }), 'Debloater9', 'OK', $(if ($ok) { 'Information' } else { 'Warning' }))
+                [void][Windows.MessageBox]::Show($win, $(if ($ok) { 'Програми оновлено.' } else { 'Оновлення завершено, але частину програм (наприклад, відкритих зараз) оновити не вдалося. Подробиці — у журналі виконання внизу.' }), 'Debora', 'OK', $(if ($ok) { 'Information' } else { 'Warning' }))
                 & $loadApps
             }
         }
@@ -1103,7 +1124,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $msg = "Видалено: $($ok.Count) з $($res.Count)."
             if ($bad) { $msg += "`n" + (($bad | ForEach-Object { "• $($_.name): $($_.message)" }) -join "`n") }
             if (@($res | Where-Object result -eq 'reboot')) { $msg += "`nДля завершення потрібне перезавантаження." }
-            [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9', 'OK', $(if ($bad) { 'Warning' } else { 'Information' }))
+            [void][Windows.MessageBox]::Show($win, $msg, 'Debora', 'OK', $(if ($bad) { 'Warning' } else { 'Information' }))
             & $loadUninst
         }
     })
@@ -1134,13 +1155,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     }
     $ui.BtnScheduleOn.Add_Click({
         if (-not (& $needAdmin)) { return }
-        $src = Join-Path (Split-Path $DriverDir) 'Debloater9.ps1'
-        if (-not $script:D9Embedded -or -not (Test-Path $src)) { [void][Windows.MessageBox]::Show($win, 'Розклад працює лише зі зібраним Debloater9.ps1 (запуск через run.bat).', 'Debloater9', 'OK', 'Warning'); return }
+        $src = Join-Path (Split-Path $DriverDir) 'Debora.ps1'
+        if (-not $script:D9Embedded -or -not (Test-Path $src)) { [void][Windows.MessageBox]::Show($win, 'Розклад працює лише зі зібраним Debora.ps1 (запуск через run.bat).', 'Debora', 'OK', 'Warning'); return }
         $cfg = & $readSchedule
-        if (-not $cfg.Steps) { [void][Windows.MessageBox]::Show($win, 'Позначте хоча б одну дію.', 'Debloater9'); return }
-        if ($cfg.Time -notmatch '^\d{1,2}:\d{2}$') { [void][Windows.MessageBox]::Show($win, 'Час — у форматі 12:00.', 'Debloater9'); return }
+        if (-not $cfg.Steps) { [void][Windows.MessageBox]::Show($win, 'Позначте хоча б одну дію.', 'Debora'); return }
+        if ($cfg.Time -notmatch '^\d{1,2}:\d{2}$') { [void][Windows.MessageBox]::Show($win, 'Час — у форматі 12:00.', 'Debora'); return }
         try { Register-D9MaintenanceTask -SourceScript $src -Config $cfg; & $refreshSchedule }
-        catch { [void][Windows.MessageBox]::Show($win, "Не вдалося створити розклад: $($_.Exception.Message)", 'Debloater9', 'OK', 'Error') }
+        catch { [void][Windows.MessageBox]::Show($win, "Не вдалося створити розклад: $($_.Exception.Message)", 'Debora', 'OK', 'Error') }
     })
     $ui.BtnScheduleOff.Add_Click({
         if (-not (& $needAdmin)) { return }
@@ -1150,16 +1171,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.BtnMaintainNow.Add_Click({
         if (-not (& $needAdmin)) { return }
         $cfg = & $readSchedule
-        if (-not $cfg.Steps) { [void][Windows.MessageBox]::Show($win, 'Позначте хоча б одну дію.', 'Debloater9'); return }
-        if ([Windows.MessageBox]::Show($win, "Виконати обслуговування зараз?`n$(($cfg.Steps | ForEach-Object { '• ' + $script:D9MaintenanceSteps[$_] }) -join "`n")`n`nСпершу буде створено точку відновлення. Може тривати від кількох хвилин до години.", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        if (-not $cfg.Steps) { [void][Windows.MessageBox]::Show($win, 'Позначте хоча б одну дію.', 'Debora'); return }
+        if ([Windows.MessageBox]::Show($win, "Виконати обслуговування зараз?`n$(($cfg.Steps | ForEach-Object { '• ' + $script:D9MaintenanceSteps[$_] }) -join "`n")`n`nСпершу буде створено точку відновлення. Може тривати від кількох хвилин до години.", 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
         Save-D9MaintenanceConfig $cfg
         $ui.LogExpander.IsExpanded = $true
         & $startJob 'Автоматичне обслуговування' { param($a) Invoke-D9Maintenance -Catalog $a.Catalog -SystemInfo $a.Sys -Steps $a.Steps } @{ Catalog = $Catalog; Sys = $SystemInfo; Steps = $cfg.Steps } {
             param($s)
             & $refreshSchedule; & $fillSessions
             $msg = "Готово. $(Format-D9MaintenanceSummary $s)."
-            if ($s.reboot) { if ([Windows.MessageBox]::Show($win, "$msg`n`nПерезавантажити комп'ютер зараз?", 'Debloater9', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force } }
-            else { [void][Windows.MessageBox]::Show($win, $msg, 'Debloater9') }
+            if ($s.reboot) { if ([Windows.MessageBox]::Show($win, "$msg`n`nПерезавантажити комп'ютер зараз?", 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force } }
+            else { [void][Windows.MessageBox]::Show($win, $msg, 'Debora') }
         }
     })
 
@@ -1172,27 +1193,27 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
         if ($state.UsbMedia) {
             $ui.UsbBox.SelectedIndex = 0
-            $ui.UsbInfo.Text = 'Буде додано autounattend.xml, папку Debloater9 і (за бажанням) драйвери цього ПК. Решта вмісту флешки не змінюється.'
+            $ui.UsbInfo.Text = 'Буде додано autounattend.xml, папку Debora і (за бажанням) драйвери цього ПК. Решта вмісту флешки не змінюється.'
         } else {
             $ui.UsbInfo.Text = 'Флешку з Windows не знайдено. Створіть її через Media Creation Tool (microsoft.com/software-download) або Rufus, вставте й натисніть «Оновити список».'
         }
     }
     $ui.BtnUsbRefresh.Add_Click({ & $fillUsb })
     $ui.BtnPrepareUsb.Add_Click({
-        if (-not $state.UsbMedia -or $ui.UsbBox.SelectedIndex -lt 0) { [void][Windows.MessageBox]::Show($win, 'Вставте флешку з файлами встановлення Windows і натисніть «Оновити список».', 'Debloater9'); return }
+        if (-not $state.UsbMedia -or $ui.UsbBox.SelectedIndex -lt 0) { [void][Windows.MessageBox]::Show($win, 'Вставте флешку з файлами встановлення Windows і натисніть «Оновити список».', 'Debora'); return }
         $drivers = [bool]$ui.ChkUsbDrivers.IsChecked
         if ($drivers -and -not (& $needAdmin)) { return }
         $media = $state.UsbMedia[$ui.UsbBox.SelectedIndex]
         $opts = @{ UserName = $ui.UserNameBox.Text.Trim(); Password = $ui.AccountPasswordBox.Password; Edition = @('', 'Home', 'Pro')[$ui.EditionBox.SelectedIndex]
                    BypassRequirements = [bool]$ui.ChkUsbBypass.IsChecked; BypassNetwork = $true
                    PostInstall = $(if ($ui.ChkUsbPost.IsChecked) { 'Recommended' } else { '' }); DriverUpdate = [bool]$ui.ChkUsbPost.IsChecked }
-        try { [void](New-D9AutounattendXml -Options $opts) } catch { [void][Windows.MessageBox]::Show($win, $_.Exception.Message, 'Debloater9', 'OK', 'Warning'); return }
+        try { [void](New-D9AutounattendXml -Options $opts) } catch { [void][Windows.MessageBox]::Show($win, $_.Exception.Message, 'Debora', 'OK', 'Warning'); return }
         $warn = if ($opts.Password) { "`n`nПароль зберігається у файлі на флешці відкритим текстом — не залишайте її без нагляду." } else { '' }
-        if ([Windows.MessageBox]::Show($win, "Підготувати флешку $($media.Drive)?`nОбліковий запис: $($opts.UserName)$(if ($drivers) { "`nДрайвери цього ПК буде скопійовано (кілька хвилин)." })$warn", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        if ([Windows.MessageBox]::Show($win, "Підготувати флешку $($media.Drive)?`nОбліковий запис: $($opts.UserName)$(if ($drivers) { "`nДрайвери цього ПК буде скопійовано (кілька хвилин)." })$warn", 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
         $ui.LogExpander.IsExpanded = $true
         & $startJob 'Підготовка флешки' { param($a) Initialize-D9InstallUsb -Drive $a.Drive -Options $a.Opts -ProgramFolder $a.Prog -IncludeDrivers:$a.Drivers } @{ Drive = $media.Drive; Opts = $opts; Prog = (Split-Path $DriverDir); Drivers = $drivers } {
             param($r)
-            [void][Windows.MessageBox]::Show($win, "Флешку $($r.Drive) підготовлено:`n• $($r.Done -join "`n• ")`n`nЗавантажтеся з неї (меню завантаження — зазвичай F12, F9, Esc або F2) і виберіть диск для Windows. Решта — автоматично.", 'Debloater9')
+            [void][Windows.MessageBox]::Show($win, "Флешку $($r.Drive) підготовлено:`n• $($r.Done -join "`n• ")`n`nЗавантажтеся з неї (меню завантаження — зазвичай F12, F9, Esc або F2) і виберіть диск для Windows. Решта — автоматично.", 'Debora')
             & $fillUsb
         }
     })
@@ -1205,7 +1226,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $ui.LogExpander.IsExpanded = $true
         & $startJob 'Збереження драйверів' { param($a) Export-D9Drivers -Folder $a.Folder } @{ Folder = $folder } {
             param($r)
-            [void][Windows.MessageBox]::Show($win, "Збережено драйверів: $($r.Count) ($(Format-D9Size $r.Bytes))`n$($r.Folder)", 'Debloater9')
+            [void][Windows.MessageBox]::Show($win, "Збережено драйверів: $($r.Count) ($(Format-D9Size $r.Bytes))`n$($r.Folder)", 'Debora')
         }
     })
 
@@ -1240,7 +1261,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job) {
-            if ([Windows.MessageBox]::Show($win, 'Зараз виконується операція. Закрити програму все одно?', 'Debloater9', 'YesNo', 'Warning') -ne 'Yes') { $e.Cancel = $true }
+            if ([Windows.MessageBox]::Show($win, 'Зараз виконується операція. Закрити програму все одно?', 'Debora', 'YesNo', 'Warning') -ne 'Yes') { $e.Cancel = $true }
         }
     })
     $win.Add_Closed({ $timer.Stop() })

@@ -156,7 +156,7 @@ function Test-D9GpuDriver {
             New-D9Finding $Check warning "Відеокарта працює без драйвера ($($g.Name))" 'Без драйвера немає апаратного прискорення, нормальної частоти екрана й енергозбереження.' @{ type = 'drivers' } -Key "$($Check.id):$($g.PNPDeviceID)"
         } elseif ($age -gt $limit) {
             $years = [math]::Round($age / 365, 1)
-            New-D9Finding $Check suggestion "Драйверу відеокарти $($g.Name) вже $years р. (версія $($g.DriverVersion))" 'Нові драйвери виправляють збої та додають продуктивність в іграх і браузерах. Debloater9 пошукає новіший у каталозі Microsoft; найсвіжіші версії — також у NVIDIA App, AMD Adrenalin, Intel Driver & Support Assistant (вкладка «Програми» / сайт виробника).' @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):$($g.PNPDeviceID)"
+            New-D9Finding $Check suggestion "Драйверу відеокарти $($g.Name) вже $years р. (версія $($g.DriverVersion))" 'Нові драйвери виправляють збої та додають продуктивність в іграх і браузерах. Debora пошукає новіший у каталозі Microsoft; найсвіжіші версії — також у NVIDIA App, AMD Adrenalin, Intel Driver & Support Assistant (вкладка «Програми» / сайт виробника).' @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):$($g.PNPDeviceID)"
         }
     }
 }

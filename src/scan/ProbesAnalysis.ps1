@@ -1,4 +1,4 @@
-﻿# Глибокий аналіз: не лише «є проблема», а що саме її спричиняє і що Debloater9 зробить.
+﻿# Глибокий аналіз: не лише «є проблема», а що саме її спричиняє і що Debora зробить.
 # Сині екрани (коди BugCheck → причина), збої програм (модуль, у якому падають), індекс стабільності,
 # повільне завантаження (хто і скільки секунд забирає), мережа, служби з вразливими шляхами, пошуковий індекс, HDD, TPM.
 
@@ -61,7 +61,7 @@ function Test-D9Crashes {
         $classes = @($infos | Group-Object Class | Sort-Object Count -Descending)
         if ($byCode.Count -ge 3 -and $classes.Count -ge 2) {
             # Різні коди від різних підсистем — класична ознака нестабільної пам'яті чи розгону
-            $details = "Коди різні ($($byCode.Count)), тож причина, найімовірніше, не в одному драйвері, а в залізі: оперативна пам'ять, розгін/XMP, живлення або перегрів. Debloater9 запланує перевірку пам'яті під час перезавантаження."
+            $details = "Коди різні ($($byCode.Count)), тож причина, найімовірніше, не в одному драйвері, а в залізі: оперативна пам'ять, розгін/XMP, живлення або перегрів. Debora запланує перевірку пам'яті під час перезавантаження."
             $fix = ConvertTo-D9CrashFix 'memoryTest'
         } elseif ($infos) {
             $main = $byCode[0].Group[0]
@@ -113,11 +113,11 @@ function Test-D9AppCrashes {
     $names = { param($list) (@($list | Group-Object App | Sort-Object Count -Descending | Select-Object -First 5 | ForEach-Object Name)) -join ', ' }
     if (@($byClass['gpu']).Count -ge $min) {
         $g = @($byClass['gpu'])
-        New-D9Finding $Check warning "Програми падають у відеодрайвері: $($g.Count) разів ($(& $names $g))" "Збій стається в модулі драйвера відеокарти ($(@($g.Module | Sort-Object -Unique) -join ', ')). Debloater9 знайде й встановить новіший драйвер. Якщо не допоможе — перевірте температуру відеокарти й зніміть розгін." @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):gpu"
+        New-D9Finding $Check warning "Програми падають у відеодрайвері: $($g.Count) разів ($(& $names $g))" "Збій стається в модулі драйвера відеокарти ($(@($g.Module | Sort-Object -Unique) -join ', ')). Debora знайде й встановить новіший драйвер. Якщо не допоможе — перевірте температуру відеокарти й зніміть розгін." @{ type = 'maintenance'; action = 'driverUpdate' } -Key "$($Check.id):gpu"
     }
     if (@($byClass['vcrt']).Count -ge $min) {
         $v = @($byClass['vcrt'])
-        New-D9Finding $Check suggestion "Програми падають у бібліотеках Visual C++: $($v.Count) разів ($(& $names $v))" 'Пошкоджені або застарілі бібліотеки Visual C++ — часта причина вильотів ігор і програм. Debloater9 перевстановить Visual C++ 2015–2022 (x64 і x86).' @{ type = 'maintenance'; action = 'vcRedist' } -Key "$($Check.id):vcrt"
+        New-D9Finding $Check suggestion "Програми падають у бібліотеках Visual C++: $($v.Count) разів ($(& $names $v))" 'Пошкоджені або застарілі бібліотеки Visual C++ — часта причина вильотів ігор і програм. Debora перевстановить Visual C++ 2015–2022 (x64 і x86).' @{ type = 'maintenance'; action = 'vcRedist' } -Key "$($Check.id):vcrt"
     }
     if (@($byClass['dotnet']).Count -ge $min) {
         $d = @($byClass['dotnet'])
@@ -126,7 +126,7 @@ function Test-D9AppCrashes {
     # Різні програми з порушенням доступу до пам'яті — ознака проблем з RAM або розгоном
     $av = @($crashes | Where-Object { $_.Code -match 'c0000005' -and -not (Get-D9CrashModuleClass $_.Module) } | Group-Object App)
     if ($av.Count -ge 5) {
-        New-D9Finding $Check suggestion "$($av.Count) різних програм падають з порушенням доступу до пам'яті" 'Коли падає багато різних програм, причина часто в оперативній пам''яті або нестабільному розгоні (XMP/EXPO). Перевірте пам''ять: Debloater9 запланує перевірку на наступне перезавантаження.' @{ type = 'maintenance'; action = 'memoryTest' } @((New-D9Link 'Перевірка пам''яті Windows' 'mdsched.exe')) -Key "$($Check.id):memory"
+        New-D9Finding $Check suggestion "$($av.Count) різних програм падають з порушенням доступу до пам'яті" 'Коли падає багато різних програм, причина часто в оперативній пам''яті або нестабільному розгоні (XMP/EXPO). Перевірте пам''ять: Debora запланує перевірку на наступне перезавантаження.' @{ type = 'maintenance'; action = 'memoryTest' } @((New-D9Link 'Перевірка пам''яті Windows' 'mdsched.exe')) -Key "$($Check.id):memory"
     }
     if ($apps) {
         $list = ($apps | Select-Object -First 6 | ForEach-Object { "$($_.Name) ($($_.Count))" }) -join ', '
@@ -214,7 +214,7 @@ function Test-D9BootTime {
     if ($culprits) { $details += ' Найбільше сповільнюють: ' + (($culprits | ForEach-Object { "$($_.Name) ($($_.Kind), +$($_.Seconds) с)" }) -join ', ') + '.' }
     $fix = @{ type = 'manual' }
     if ($post -gt $main -and $post -gt 20) {
-        $details += ' Основний час забирають програми автозапуску — вимкніть непотрібні на вкладці «Автозавантаження» (Debloater9 позначить, які безпечно вимкнути).'
+        $details += ' Основний час забирають програми автозапуску — вимкніть непотрібні на вкладці «Автозавантаження» (Debora позначить, які безпечно вимкнути).'
     } elseif ($Ctx.System.SystemDisk -eq 'hdd') {
         $details += ' Найбільше прискорить запуск заміна жорсткого диска на SSD.'
     } else {
@@ -236,12 +236,12 @@ function Test-D9NetworkHealth {
         if ($ip -and -not ($ip | Where-Object { $_.IPAddress -notlike '169.254.*' })) { $a.Name }
     })
     if ($apipa) {
-        New-D9Finding $Check warning "Мережа без адреси від роутера: $($apipa -join ', ')" 'Адаптер підключено, але роутер не видав IP-адресу (169.254.x.x) — інтернету не буде. Перезавантажте роутер; якщо не допоможе — Debloater9 скине мережеві налаштування Windows.' @{ type = 'maintenance'; action = 'networkReset' } -Key "$($Check.id):apipa"
+        New-D9Finding $Check warning "Мережа без адреси від роутера: $($apipa -join ', ')" 'Адаптер підключено, але роутер не видав IP-адресу (169.254.x.x) — інтернету не буде. Перезавантажте роутер; якщо не допоможе — Debora скине мережеві налаштування Windows.' @{ type = 'maintenance'; action = 'networkReset' } -Key "$($Check.id):apipa"
     }
     # Є мережа, але немає інтернету (за даними самої Windows, без запитів у мережу)
     $profiles = @(Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceIndex -in $up.ifIndex })
     if ($profiles -and -not ($profiles | Where-Object { [string]$_.IPv4Connectivity -eq 'Internet' -or [string]$_.IPv6Connectivity -eq 'Internet' }) -and -not $apipa) {
-        New-D9Finding $Check warning 'Мережа підключена, але Windows не бачить інтернету' 'Перевірте, чи працює інтернет на інших пристроях. Якщо там працює — причина в цьому ПК (DNS, проксі, VPN, мережевий стек): Debloater9 скине мережеві налаштування.' @{ type = 'maintenance'; action = 'networkReset' } -Key "$($Check.id):internet"
+        New-D9Finding $Check warning 'Мережа підключена, але Windows не бачить інтернету' 'Перевірте, чи працює інтернет на інших пристроях. Якщо там працює — причина в цьому ПК (DNS, проксі, VPN, мережевий стек): Debora скине мережеві налаштування.' @{ type = 'maintenance'; action = 'networkReset' } -Key "$($Check.id):internet"
     }
     # Помилки пакетів на кабелі — поганий кабель, роз'єм або драйвер
     foreach ($a in $up) {
@@ -284,7 +284,7 @@ function Test-D9UnquotedServicePaths {
     })
     if (-not $bad) { return }
     $actions = @($bad | ForEach-Object { @{ type = 'registry'; path = $_.Path; name = 'ImagePath'; value = $_.Fixed; kind = $_.Kind } })
-    New-D9Finding $Check warning "Служби з незахищеним шляхом: $(($bad.Name) -join ', ')" 'Шлях до програми служби містить пробіли й не взятий у лапки — шкідлива програма може підкласти файл (наприклад, C:\Program.exe) і отримати права системи. Debloater9 візьме шляхи в лапки (служби працюватимуть як раніше; відкат — у «Журналі змін»).' (New-D9ActionsFix $actions)
+    New-D9Finding $Check warning "Служби з незахищеним шляхом: $(($bad.Name) -join ', ')" 'Шлях до програми служби містить пробіли й не взятий у лапки — шкідлива програма може підкласти файл (наприклад, C:\Program.exe) і отримати права системи. Debora візьме шляхи в лапки (служби працюватимуть як раніше; відкат — у «Журналі змін»).' (New-D9ActionsFix $actions)
 }
 
 function Test-D9Tpm {
@@ -316,7 +316,7 @@ function Test-D9SearchIndex {
     if (-not $files) { return }
     $size = [long](($files | Measure-Object Length -Sum).Sum)
     if ($size -lt $Check.thresholds.sizeGB * 1GB) { return }
-    New-D9Finding $Check suggestion "Пошуковий індекс Windows займає $(Format-D9Size $size)" 'Індекс розрісся (часто через пошту Outlook або папки з тисячами дрібних файлів) і сповільнює пошук і диск. Debloater9 перебудує його з нуля: місце звільниться, пошук відновиться за кілька годин.' @{ type = 'maintenance'; action = 'searchReset' }
+    New-D9Finding $Check suggestion "Пошуковий індекс Windows займає $(Format-D9Size $size)" 'Індекс розрісся (часто через пошту Outlook або папки з тисячами дрібних файлів) і сповільнює пошук і диск. Debora перебудує його з нуля: місце звільниться, пошук відновиться за кілька годин.' @{ type = 'maintenance'; action = 'searchReset' }
 }
 
 function Test-D9HddFragmentation {
@@ -328,7 +328,7 @@ function Test-D9HddFragmentation {
     $r = try { Invoke-CimMethod -InputObject $vol -MethodName DefragAnalysis -ErrorAction Stop } catch { $null }
     $percent = [int]$r.DefragAnalysis.FilePercentFragmentation
     if ($percent -ge $Check.thresholds.percent) {
-        New-D9Finding $Check suggestion "Жорсткий диск фрагментовано на $percent%" 'Файли розкидано по диску частинами — HDD читає їх повільніше. Debloater9 дефрагментує диск (до години; комп''ютером можна користуватися).' @{ type = 'maintenance'; action = 'defragHdd' }
+        New-D9Finding $Check suggestion "Жорсткий диск фрагментовано на $percent%" 'Файли розкидано по диску частинами — HDD читає їх повільніше. Debora дефрагментує диск (до години; комп''ютером можна користуватися).' @{ type = 'maintenance'; action = 'defragHdd' }
     }
 }
 

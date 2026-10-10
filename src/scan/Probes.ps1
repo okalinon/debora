@@ -116,7 +116,7 @@ function Test-D9Antivirus {
     $enabled  = @($products | Where-Object Enabled)
     $settings = New-D9Link 'Відкрити «Безпека Windows»' 'windowsdefender:'
     if ($products.Count -and -not $enabled.Count) {
-        return New-D9Finding $Check critical 'Антивірусний захист вимкнено' 'Жоден антивірус не працює. Debloater9 увімкне Захисник Windows і оновить бази.' @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
+        return New-D9Finding $Check critical 'Антивірусний захист вимкнено' 'Жоден антивірус не працює. Debora увімкне Захисник Windows і оновить бази.' @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
     }
     if ($enabled.Count -gt 1) {
         New-D9Finding $Check warning "Працюють кілька антивірусів одночасно: $($enabled.Name -join ', ')" 'Два антивіруси конфліктують і сильно гальмують ПК. Залиште один (для більшості достатньо Захисника Windows).' @{ type = 'manual' } @((New-D9Link 'Програми та компоненти' 'ms-settings:appsfeatures'))
@@ -126,13 +126,13 @@ function Test-D9Antivirus {
         $mp = try { Get-MpComputerStatus -ErrorAction Stop } catch { $null }
         if ($mp) {
             if (-not $mp.RealTimeProtectionEnabled) {
-                New-D9Finding $Check critical 'Захист у реальному часі вимкнено' 'Захисник Windows не перевіряє файли під час відкриття. Debloater9 увімкне «Захист у реальному часі».' @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
+                New-D9Finding $Check critical 'Захист у реальному часі вимкнено' 'Захисник Windows не перевіряє файли під час відкриття. Debora увімкне «Захист у реальному часі».' @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
             }
             if ($mp.AntivirusSignatureAge -gt $Check.thresholds.signatureAgeDays) {
                 # Причина: остання помилка оновлення баз (подія 2001) — коли Windows сама не може їх оновити
                 $fail = @(Get-D9EventCount @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 2001; StartTime = $Ctx.Now.AddDays(-14) }) | Sort-Object TimeCreated -Descending | Select-Object -First 1
-                $why = if ($fail) { " Windows намагалася оновити їх сама, але отримала помилку ($($fail.TimeCreated.ToString('dd.MM.yyyy'))): $((([string]$fail.Message -split "`r?`n" | Where-Object { $_ -match '0x[0-9a-fA-F]{8}' } | Select-Object -First 1)).Trim()). Якщо після оновлення через Debloater9 бази знову застаріють — скиньте Windows Update на вкладці «Обслуговування»." } else { '' }
-                New-D9Finding $Check warning "Антивірусні бази застаріли ($($mp.AntivirusSignatureAge) дн.)" "Debloater9 оновить бази (потрібен інтернет).$why" @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
+                $why = if ($fail) { " Windows намагалася оновити їх сама, але отримала помилку ($($fail.TimeCreated.ToString('dd.MM.yyyy'))): $((([string]$fail.Message -split "`r?`n" | Where-Object { $_ -match '0x[0-9a-fA-F]{8}' } | Select-Object -First 1)).Trim()). Якщо після оновлення через Debora бази знову застаріють — скиньте Windows Update на вкладці «Обслуговування»." } else { '' }
+                New-D9Finding $Check warning "Антивірусні бази застаріли ($($mp.AntivirusSignatureAge) дн.)" "Debora оновить бази (потрібен інтернет).$why" @{ type = 'maintenance'; action = 'defenderUpdate' } @($settings)
             }
         }
     }
@@ -147,17 +147,17 @@ function Test-D9Firewall {
     $names = ($off.Name -join ',')
     $fix = New-D9ActionsFix @(@{ type = 'command'; run = "Set-NetFirewallProfile -Profile $names -Enabled True"; undoRun = "Set-NetFirewallProfile -Profile $names -Enabled False"
                                  test = "-not @(Get-NetFirewallProfile -Profile $names | Where-Object { -not `$_.Enabled })"; label = @{ uk = "Увімкнути брандмауер ($names)"; en = "Enable firewall ($names)" } })
-    New-D9Finding $Check critical "Брандмауер вимкнено для мереж: $($off.Name -join ', ')" 'Debloater9 увімкне брандмауер Windows для цих мереж.' $fix @((New-D9Link 'Брандмауер і захист мережі' 'windowsdefender://network'))
+    New-D9Finding $Check critical "Брандмауер вимкнено для мереж: $($off.Name -join ', ')" 'Debora увімкне брандмауер Windows для цих мереж.' $fix @((New-D9Link 'Брандмауер і захист мережі' 'windowsdefender://network'))
 }
 
 function Test-D9Uac {
     param($Check, $Ctx)
     $p = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue
     if ($p.EnableLUA -eq 0) {
-        return New-D9Finding $Check critical 'Контроль облікових записів (UAC) вимкнено' 'Будь-яка програма може непомітно отримати права адміністратора. Debloater9 увімкне UAC; запрацює після перезавантаження.' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'; name = 'EnableLUA'; value = 1; kind = 'DWord' }) -Reboot) @((New-D9Link 'Параметри UAC' 'UserAccountControlSettings.exe'))
+        return New-D9Finding $Check critical 'Контроль облікових записів (UAC) вимкнено' 'Будь-яка програма може непомітно отримати права адміністратора. Debora увімкне UAC; запрацює після перезавантаження.' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'; name = 'EnableLUA'; value = 1; kind = 'DWord' }) -Reboot) @((New-D9Link 'Параметри UAC' 'UserAccountControlSettings.exe'))
     }
     if ($p.ConsentPromptBehaviorAdmin -eq 0) {
-        return New-D9Finding $Check warning 'UAC не питає підтвердження для адміністратора' 'Підвищення прав відбувається без запиту. Debloater9 поверне стандартний рівень «Повідомляти лише коли програми намагаються внести зміни».' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'; name = 'ConsentPromptBehaviorAdmin'; value = 5; kind = 'DWord' })) @((New-D9Link 'Параметри UAC' 'UserAccountControlSettings.exe'))
+        return New-D9Finding $Check warning 'UAC не питає підтвердження для адміністратора' 'Підвищення прав відбувається без запиту. Debora поверне стандартний рівень «Повідомляти лише коли програми намагаються внести зміни».' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'; name = 'ConsentPromptBehaviorAdmin'; value = 5; kind = 'DWord' })) @((New-D9Link 'Параметри UAC' 'UserAccountControlSettings.exe'))
     }
 }
 
@@ -180,7 +180,7 @@ function Test-D9LastUpdate {
     if (-not $last) { return New-D9Skip $Check 'Історія оновлень недоступна' }
     $days = [int]($Ctx.Now - $last.InstalledOn).TotalDays
     if ($days -gt $Check.thresholds.warnDays) {
-        New-D9Finding $Check warning "Windows не оновлювалась $days дн. (останнє: $($last.HotFixID), $($last.InstalledOn.ToString('dd.MM.yyyy')))" 'Debloater9 знайде й встановить оновлення Windows (лише програмні; драйвери — окремо, на вкладці «Драйвери»).' @{ type = 'maintenance'; action = 'windowsUpdate' } @((New-D9Link 'Windows Update' 'ms-settings:windowsupdate'))
+        New-D9Finding $Check warning "Windows не оновлювалась $days дн. (останнє: $($last.HotFixID), $($last.InstalledOn.ToString('dd.MM.yyyy')))" 'Debora знайде й встановить оновлення Windows (лише програмні; драйвери — окремо, на вкладці «Драйвери»).' @{ type = 'maintenance'; action = 'windowsUpdate' } @((New-D9Link 'Windows Update' 'ms-settings:windowsupdate'))
     }
 }
 
@@ -216,7 +216,7 @@ function Test-D9ProblemDevices {
         $reason = $script:D9DeviceErrors[[int]$d.ConfigManagerErrorCode]
         if (-not $reason) { $reason = "код помилки $($d.ConfigManagerErrorCode)" }
         $links = @(Get-D9DriverLinks $info $oem) + @(New-D9Link 'Диспетчер пристроїв' 'devmgmt.msc')
-        $details = "ID обладнання: $hwid. Debloater9 спершу сам пошукає драйвер у каталозі Microsoft і Windows Update та встановить його."
+        $details = "ID обладнання: $hwid. Debora спершу сам пошукає драйвер у каталозі Microsoft і Windows Update та встановить його."
         if ($oem) { $details += " Якщо не знайде — драйвер з сайту $($oem.Name) для вашої моделі: завантажте в папку «Драйвери» й виберіть «Встановити драйвери з папки»." }
         New-D9Finding $Check warning "$name — $reason" $details @{ type = 'drivers' } $links -Key "$($Check.id):$($d.PNPDeviceID)" -Data ([pscustomobject]@{
             name = $name; hwid = $hwid; class = $d.PNPClass; code = [int]$d.ConfigManagerErrorCode; deviceId = $d.PNPDeviceID
@@ -233,7 +233,7 @@ function Test-D9DriverUpdates {
     $list = ($main | Select-Object -First 8 | ForEach-Object { "$($_.Device.Name) ($(if ($_.Device.Version) { $_.Device.Version } else { 'без драйвера' }) → $($_.Row.Version))" }) -join '; '
     $extra = if ($all.Count -gt $main.Count) { " Ще $($all.Count - $main.Count) необов'язкових — на вкладці «Драйвери»." } else { '' }
     $severity = if ($main | Where-Object Status -eq 'missing') { 'warning' } else { 'suggestion' }
-    New-D9Finding $Check $severity "Новіші драйвери в каталозі Microsoft: $($main.Count)" "$list. Debloater9 завантажить і встановить їх, зберігши попередні для відкату.$extra" @{ type = 'maintenance'; action = 'driverUpdate' }
+    New-D9Finding $Check $severity "Новіші драйвери в каталозі Microsoft: $($main.Count)" "$list. Debora завантажить і встановить їх, зберігши попередні для відкату.$extra" @{ type = 'maintenance'; action = 'driverUpdate' }
 }
 
 function Test-D9AppUpdates {
@@ -299,11 +299,11 @@ function Test-D9Startup {
     param($Check, $Ctx)
     $system  = @('SecurityHealth', 'Windows Defender', 'WindowsDefender')   # значок «Безпека Windows» — не чіпаємо
     $all = @(Get-D9StartupItems)
-    # Те, що безпечно вимкнути (лаунчери ігор, «помічники», реклама виробника) — Debloater9 вимкне сам, з відкатом
+    # Те, що безпечно вимкнути (лаунчери ігор, «помічники», реклама виробника) — Debora вимкне сам, з відкатом
     $rec = @($all | Where-Object { $_.Enabled -and $_.Verdict -eq 'disable' })
     if ($rec) {
         $list = ($rec | ForEach-Object { "$($_.Name) ($($_.Reason))" }) -join '; '
-        New-D9Finding $Check $(if ($rec.Count -ge 3) { 'warning' } else { 'suggestion' }) "Непотрібне в автозапуску: $($rec.Count)" "Debloater9 вимкне автозапуск (програми не видаляються, відкат — у «Журналі змін»): $list" (New-D9ActionsFix @($rec | ForEach-Object { New-D9StartupAction $_ $false })) -Key "$($Check.id):recommended"
+        New-D9Finding $Check $(if ($rec.Count -ge 3) { 'warning' } else { 'suggestion' }) "Непотрібне в автозапуску: $($rec.Count)" "Debora вимкне автозапуск (програми не видаляються, відкат — у «Журналі змін»): $list" (New-D9ActionsFix @($rec | ForEach-Object { New-D9StartupAction $_ $false })) -Key "$($Check.id):recommended"
     }
     $enabled = @($all | Where-Object { $_.Kind -eq 'reg' -and $_.Enabled -and $system -notcontains $_.Name -and $_.Verdict -ne 'disable' })
     $t = $Check.thresholds
@@ -311,7 +311,7 @@ function Test-D9Startup {
     $limit = if ($weak) { $t.weakPcSuggestion } else { $t.suggestion }
     if ($enabled.Count -le $limit) { return }
     $severity = if ($enabled.Count -gt $t.warning -or ($weak -and $enabled.Count -gt $t.suggestion)) { 'warning' } else { 'suggestion' }
-    New-D9Finding $Check $severity "$($enabled.Count) програм запускаються разом із Windows" ("Вимкніть непотрібні: вкладка «Автозавантаження» в Debloater9 (з можливістю відкату) або Диспетчер завдань. Зараз: " + ($enabled.Name -join ', ')) @{ type = 'manual' } @((New-D9Link 'Програми автозавантаження' 'ms-settings:startupapps'))
+    New-D9Finding $Check $severity "$($enabled.Count) програм запускаються разом із Windows" ("Вимкніть непотрібні: вкладка «Автозавантаження» в Debora (з можливістю відкату) або Диспетчер завдань. Зараз: " + ($enabled.Name -join ', ')) @{ type = 'manual' } @((New-D9Link 'Програми автозавантаження' 'ms-settings:startupapps'))
 }
 
 function Test-D9Memory {
@@ -340,7 +340,7 @@ function Test-D9HardwareFit {
     if ($sys.SystemDisk -in 'ssd', 'nvme') {
         $svc = Get-D9ServiceState ([pscustomobject]@{ name = 'SysMain' })
         if ($svc.exists -and $svc.startup -eq 'Disabled') {
-            New-D9Finding $Check suggestion 'SysMain вимкнено, хоча диск — SSD' 'На SSD служба SysMain пришвидшує запуск програм. Debloater9 увімкне її знову.' (New-D9ActionsFix @(@{ type = 'service'; name = 'SysMain'; startup = 'Automatic'; start = $true })) -Key "$($Check.id):sysmain-ssd"
+            New-D9Finding $Check suggestion 'SysMain вимкнено, хоча диск — SSD' 'На SSD служба SysMain пришвидшує запуск програм. Debora увімкне її знову.' (New-D9ActionsFix @(@{ type = 'service'; name = 'SysMain'; startup = 'Automatic'; start = $true })) -Key "$($Check.id):sysmain-ssd"
         }
     }
     $active = Get-D9ActivePowerScheme
@@ -374,7 +374,7 @@ function Test-D9KnownBloat {
     $found = @($found | Sort-Object Name -Unique)
     if (-not $found.Count) { return }
     $details = ($found | ForEach-Object { "$($_.Name) — $($_.Reason)" }) -join '; '
-    New-D9Finding $Check warning "Знайдено небажані програми: $($found.Count)" "Debloater9 видалить їх (перед цим — точка відновлення): $details" @{ type = 'uninstall'; names = @($found.Name) } @((New-D9Link 'Встановлені програми' 'ms-settings:appsfeatures')) -Data ([pscustomobject]@{ programs = @($found.Name) })
+    New-D9Finding $Check warning "Знайдено небажані програми: $($found.Count)" "Debora видалить їх (перед цим — точка відновлення): $details" @{ type = 'uninstall'; names = @($found.Name) } @((New-D9Link 'Встановлені програми' 'ms-settings:appsfeatures')) -Data ([pscustomobject]@{ programs = @($found.Name) })
 }
 
 # Твіки рекомендованого профілю з указаних категорій, які ще не застосовано
@@ -474,7 +474,7 @@ function Test-D9DiskErrors {
     $details += if ($Ctx.IsAdmin) { ' Стан SMART (температура, знос, помилки) — вкладка «Обслуговування» → «Стан дисків».' } else { ' Для перевірки SMART запустіть сканування від адміністратора.' }
     if ($bad.Count) {
         $severity = if ($bad.Count -ge 3) { 'critical' } else { 'warning' }
-        return New-D9Finding $Check $severity "Пошкоджені сектори або помилки файлової системи на системному диску: $($bad.Count) за $days днів (остання $($last.ToString('dd.MM.yyyy')))" "$details Debloater9 перевірить файлову систему (chkdsk) і, якщо треба, виправить її під час перезавантаження." @{ type = 'maintenance'; action = 'chkdskScan' }
+        return New-D9Finding $Check $severity "Пошкоджені сектори або помилки файлової системи на системному диску: $($bad.Count) за $days днів (остання $($last.ToString('dd.MM.yyyy')))" "$details Debora перевірить файлову систему (chkdsk) і, якщо треба, виправить її під час перезавантаження." @{ type = 'maintenance'; action = 'chkdskScan' }
     }
     if ($onSystem.Count) {
         return New-D9Finding $Check warning "Помилки звернення до системного диска: $($onSystem.Count) за $days днів" "Можливо, поганий кабель, перегрів або початок проблем з диском. $details" @{ type = 'manual' }

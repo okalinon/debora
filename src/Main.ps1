@@ -1,60 +1,60 @@
 ﻿<#
 .SYNOPSIS
-    Debloater9 — оптимізація та деблоат Windows 10/11 з точним відкатом.
+    Debora — оптимізація та деблоат Windows 10/11 з точним відкатом.
 
 .DESCRIPTION
     Етап 1: режим командного рядка. Графічний інтерфейс з'явиться на етапі 2.
 
 .EXAMPLE
-    .\Debloater9.ps1                              # відомості про систему й рекомендований профіль
+    .\Debora.ps1                              # відомості про систему й рекомендований профіль
 .EXAMPLE
-    .\Debloater9.ps1 -ListTweaks                  # каталог із поточним станом
+    .\Debora.ps1 -ListTweaks                  # каталог із поточним станом
 .EXAMPLE
-    .\Debloater9.ps1 -Preset Recommended -WhatIf  # що зміниться, без змін
+    .\Debora.ps1 -Preset Recommended -WhatIf  # що зміниться, без змін
 .EXAMPLE
-    .\Debloater9.ps1 -Preset WeakPC -Yes          # застосувати профіль
+    .\Debora.ps1 -Preset WeakPC -Yes          # застосувати профіль
 .EXAMPLE
-    .\Debloater9.ps1 -Tweak ui.explorer,perf.game-dvr -Yes
+    .\Debora.ps1 -Tweak ui.explorer,perf.game-dvr -Yes
 .EXAMPLE
-    .\Debloater9.ps1 -ListSessions
+    .\Debora.ps1 -ListSessions
 .EXAMPLE
-    .\Debloater9.ps1 -Undo 2026-10-10T14-32-05-a1b2 -Yes
+    .\Debora.ps1 -Undo 2026-10-10T14-32-05-a1b2 -Yes
 .EXAMPLE
-    .\Debloater9.ps1 -Scan                        # сканування стану, оцінка й чекліст
+    .\Debora.ps1 -Scan                        # сканування стану, оцінка й чекліст
 .EXAMPLE
-    .\Debloater9.ps1 -Scan -Deep -Report C:\report.html
+    .\Debora.ps1 -Scan -Deep -Report C:\report.html
 .EXAMPLE
-    .\Debloater9.ps1 -Checklist                   # чекліст з автоматичними галочками
+    .\Debora.ps1 -Checklist                   # чекліст з автоматичними галочками
 .EXAMPLE
-    .\Debloater9.ps1 -Checklist -Run All -Yes     # виконати всі автоматичні кроки
+    .\Debora.ps1 -Checklist -Run All -Yes     # виконати всі автоматичні кроки
 .EXAMPLE
-    .\Debloater9.ps1 -Checklist -Done 3           # позначити ручний крок 3 виконаним
+    .\Debora.ps1 -Checklist -Done 3           # позначити ручний крок 3 виконаним
 .EXAMPLE
-    .\Debloater9.ps1 -Drivers                     # які драйвери потрібні і де їх взяти
+    .\Debora.ps1 -Drivers                     # які драйвери потрібні і де їх взяти
 .EXAMPLE
-    .\Debloater9.ps1 -DriverInstall D:\Драйвери   # встановити підходящі драйвери з папки
+    .\Debora.ps1 -DriverInstall D:\Драйвери   # встановити підходящі драйвери з папки
 .EXAMPLE
-    .\Debloater9.ps1 -DriverUpdate -WhatIf        # які новіші драйвери є в каталозі Microsoft
+    .\Debora.ps1 -DriverUpdate -WhatIf        # які новіші драйвери є в каталозі Microsoft
 .EXAMPLE
-    .\Debloater9.ps1 -DriverUpdate -Yes           # знайти, завантажити й встановити (з відкатом)
+    .\Debora.ps1 -DriverUpdate -Yes           # знайти, завантажити й встановити (з відкатом)
 .EXAMPLE
-    .\Debloater9.ps1 -ExportDrivers D:\Драйвери-ПК       # зберегти всі драйвери цього ПК
+    .\Debora.ps1 -ExportDrivers D:\Драйвери-ПК       # зберегти всі драйвери цього ПК
 .EXAMPLE
-    .\Debloater9.ps1 -PrepareUsb E: -UserName Оля       # флешка з Windows → встановлення без запитань + драйвери
+    .\Debora.ps1 -PrepareUsb E: -UserName Оля       # флешка з Windows → встановлення без запитань + драйвери
 .EXAMPLE
-    .\Debloater9.ps1 -Schedule Sunday -At 12:00     # щотижневе автоматичне обслуговування
+    .\Debora.ps1 -Schedule Sunday -At 12:00     # щотижневе автоматичне обслуговування
 .EXAMPLE
-    .\Debloater9.ps1 -Maintain                      # обслуговування зараз (його ж запускає розклад)
+    .\Debora.ps1 -Maintain                      # обслуговування зараз (його ж запускає розклад)
 .EXAMPLE
-    .\Debloater9.ps1 -Apps                        # каталог програм і що вже встановлено
+    .\Debora.ps1 -Apps                        # каталог програм і що вже встановлено
 .EXAMPLE
-    .\Debloater9.ps1 -InstallApp Google.Chrome,7zip.7zip -Yes
+    .\Debora.ps1 -InstallApp Google.Chrome,7zip.7zip -Yes
 .EXAMPLE
-    .\Debloater9.ps1 -UpgradeApps -Yes            # оновити всі програми (winget upgrade --all)
+    .\Debora.ps1 -UpgradeApps -Yes            # оновити всі програми (winget upgrade --all)
 .EXAMPLE
-    .\Debloater9.ps1 -Disks                       # стан дисків: температура, знос, помилки (SMART)
+    .\Debora.ps1 -Disks                       # стан дисків: температура, знос, помилки (SMART)
 .EXAMPLE
-    .\Debloater9.ps1 -Diagnostics                 # зібрати zip для розбору проблеми (у папку «Звіти»)
+    .\Debora.ps1 -Diagnostics                 # зібрати zip для розбору проблеми (у папку «Звіти»)
 #>
 [CmdletBinding(DefaultParameterSetName = 'Info')]
 param(
@@ -232,7 +232,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.18.0-dev'
+$script:D9Version  = '0.19.0-dev'
 $script:D9Language = $Language
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
@@ -243,7 +243,7 @@ function Write-D9SystemSummary {
     param($Sys, $Recommendation)
     $disk = @{ hdd = 'HDD'; ssd = 'SSD'; nvme = 'NVMe SSD'; unknown = 'не визначено' }[$Sys.SystemDisk]
     Write-Host ""
-    Write-Host "Debloater9 $script:D9Version" -ForegroundColor Cyan
+    Write-Host "Debora $script:D9Version" -ForegroundColor Cyan
     Write-Host ("  Система   {0} {1} ({2})" -f $Sys.OsName, $Sys.DisplayVersion, $Sys.Build)
     Write-Host ("  ПК        {0} {1}" -f $Sys.Manufacturer, $Sys.Model)
     Write-Host ("  Процесор  {0}, ядер: {1}" -f $Sys.Cpu, $Sys.Cores)
@@ -362,7 +362,7 @@ switch ($PSCmdlet.ParameterSetName) {
             # Якщо вікно не відкрилось (немає WPF, пошкоджені шрифти тощо) — показуємо текстове меню
             # run.bat запускає вікно з прихованою консоллю — меню відкриваємо в новому видимому вікні
             $err = $_.Exception.Message
-            try { Add-Type -AssemblyName PresentationFramework; [void][Windows.MessageBox]::Show("Не вдалося відкрити вікно програми:`n$err`n`nЗараз відкриється текстове меню.", 'Debloater9', 'OK', 'Warning') } catch { }
+            try { Add-Type -AssemblyName PresentationFramework; [void][Windows.MessageBox]::Show("Не вдалося відкрити вікно програми:`n$err`n`nЗараз відкриється текстове меню.", 'Debora', 'OK', 'Warning') } catch { }
             Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Menu"
         }
         exit $ExitCodes.Ok
@@ -377,7 +377,7 @@ switch ($PSCmdlet.ParameterSetName) {
         if (-not (Test-D9IsAdmin)) { Write-D9Log "Увага: запущено без прав адміністратора — частина перевірок і всі зміни недоступні. Запускайте через run.bat." Warn }
         while ($true) {
             Write-Host ""
-            Write-Host "Debloater9 $script:D9Version — $($sys.Manufacturer) $($sys.Model), $($sys.OsName) $($sys.DisplayVersion)" -ForegroundColor Cyan
+            Write-Host "Debora $script:D9Version — $($sys.Manufacturer) $($sys.Model), $($sys.OsName) $($sys.DisplayVersion)" -ForegroundColor Cyan
             Write-Host "Рекомендований профіль: $($recommendation.Preset) ($($recommendation.Reasons -join '; '))" -ForegroundColor DarkGray
             Write-Host ""
             Write-Host "  1. Перевірити комп'ютер (сканування й звіт)"
@@ -485,14 +485,14 @@ switch ($PSCmdlet.ParameterSetName) {
     'Maintain' {
         if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора.' Error; exit $ExitCodes.NotAdmin }
         $summary = Invoke-D9Maintenance -Catalog $catalog -SystemInfo $sys
-        Show-D9Toast 'Debloater9: обслуговування завершено' (Format-D9MaintenanceSummary $summary)
+        Show-D9Toast 'Debora: обслуговування завершено' (Format-D9MaintenanceSummary $summary)
         exit $(if (@($summary.results | Where-Object { -not $_.ok })) { $ExitCodes.Partial } elseif ($summary.reboot) { $ExitCodes.Reboot } else { $ExitCodes.Ok })
     }
 
     'Schedule' {
         if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора (запускайте через run.bat).' Error; exit $ExitCodes.NotAdmin }
         if ($Schedule -eq 'Off') { Unregister-D9MaintenanceTask; exit $ExitCodes.Ok }
-        if (-not $script:D9Embedded) { Write-D9Log 'Розклад працює лише зі зібраним Debloater9.ps1 (build\Compile.ps1).' Error; exit $ExitCodes.BadArgs }
+        if (-not $script:D9Embedded) { Write-D9Log 'Розклад працює лише зі зібраним Debora.ps1 (build\Compile.ps1).' Error; exit $ExitCodes.BadArgs }
         $cfg = Get-D9MaintenanceConfig
         $cfg.Day = $Schedule; $cfg.Time = $At
         try { Register-D9MaintenanceTask -SourceScript $PSCommandPath -Config $cfg; exit $ExitCodes.Ok }
@@ -522,12 +522,12 @@ switch ($PSCmdlet.ParameterSetName) {
         $opts = @{ UserName = $UserName; Password = $AccountPassword; Edition = $Edition; BypassRequirements = -not $KeepRequirements
                    PostInstall = $(if ($Preset) { $Preset } else { 'Recommended' }); DriverUpdate = $true }
         Write-Host ""
-        Write-Host "Флешка $PrepareUsb буде доповнена: autounattend.xml$(if (-not $NoDrivers) { ', драйвери цього ПК' }), Debloater9." -ForegroundColor Cyan
+        Write-Host "Флешка $PrepareUsb буде доповнена: autounattend.xml$(if (-not $NoDrivers) { ', драйвери цього ПК' }), Debora." -ForegroundColor Cyan
         Write-Host "Під час встановлення вручну лишиться тільки вибір диска. Усе на флешці, крім autounattend.xml, не змінюється." -ForegroundColor DarkGray
         try {
             $r = Initialize-D9InstallUsb -Drive $PrepareUsb -Options $opts -ProgramFolder (Split-Path $PSCommandPath) -IncludeDrivers:(-not $NoDrivers)
             Write-D9Log "Готово ($($r.Language)): $($r.Done -join '; ')." Ok
-            Write-D9Log 'Завантажтеся з флешки й виберіть диск — решта автоматично. Після першого входу Debloater9 застосує налаштування й доставить драйвери (потрібен інтернет).' Detail
+            Write-D9Log 'Завантажтеся з флешки й виберіть диск — решта автоматично. Після першого входу Debora застосує налаштування й доставить драйвери (потрібен інтернет).' Detail
             exit $ExitCodes.Ok
         } catch { Write-D9Log $_.Exception.Message Error; exit $ExitCodes.Partial }
     }
@@ -682,7 +682,7 @@ switch ($PSCmdlet.ParameterSetName) {
         $scanConfig = Import-D9ScanConfig
         $ctx = New-D9ScanContext -Catalog $catalog -SystemInfo $sys -ScanConfig $scanConfig -Deep:$Deep
         Write-Host ""
-        Write-Host ("Debloater9 {0} — сканування{1}: {2} {3}" -f $script:D9Version, $(if ($Deep) { ' (глибоке)' } else { '' }), $sys.Manufacturer, $sys.Model) -ForegroundColor Cyan
+        Write-Host ("Debora {0} — сканування{1}: {2} {3}" -f $script:D9Version, $(if ($Deep) { ' (глибоке)' } else { '' }), $sys.Manufacturer, $sys.Model) -ForegroundColor Cyan
         if (-not $ctx.IsAdmin) { Write-D9Log "Без прав адміністратора частину перевірок пропущено. Для повного сканування запустіть від адміністратора." Warn }
         $result = Invoke-D9Scan -Context $ctx
         $path = Save-D9Scan $result
@@ -752,7 +752,7 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host "  -ListTweaks                     каталог твіків і їхній стан"
         Write-Host "  -Preset Recommended -WhatIf     що зміниться за рекомендованим профілем"
         Write-Host "  -Preset Recommended -Yes        застосувати"
-        Write-Host "  Get-Help .\Debloater9.ps1 -Examples"
+        Write-Host "  Get-Help .\Debora.ps1 -Examples"
         exit $ExitCodes.Ok
     }
 
@@ -829,7 +829,7 @@ switch ($PSCmdlet.ParameterSetName) {
         $errors  = @($entries | Where-Object result -eq 'error').Count
         Write-Host ""
         Write-D9Log ("Готово. Змінено: {0}, помилок: {1}. Сесія: {2}" -f $ok, $errors, $session.id) $(if ($errors) { 'Warn' } else { 'Ok' })
-        Write-D9Log "Відкат: .\Debloater9.ps1 -Undo $($session.id)"
+        Write-D9Log "Відкат: .\Debora.ps1 -Undo $($session.id)"
         $reboot = @($plan | Where-Object { $_.Run -and $_.Tweak.rebootRequired }).Count -gt 0
         if ($reboot) { Write-D9Log "Деякі зміни запрацюють після перезавантаження." Warn }
         if ($errors) { exit $ExitCodes.Partial }

@@ -47,7 +47,7 @@ function New-D9DiagnosticsBundle {
     Write-D9Log "Збираю діагностику (до хвилини)..."
     try {
         Add-D9DiagSection $work 'system.txt' {
-            "Debloater9 $script:D9Version, зібрано $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $(if (Test-D9IsAdmin) { 'адміністратор' } else { 'без прав адміністратора' })"
+            "Debora $script:D9Version, зібрано $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $(if (Test-D9IsAdmin) { 'адміністратор' } else { 'без прав адміністратора' })"
             ''
             if ($SystemInfo) { $SystemInfo | Format-List }
             $os = Get-CimInstance Win32_OperatingSystem
@@ -103,7 +103,7 @@ function New-D9DiagnosticsBundle {
             if (Test-Path $b) { Get-ChildItem $b -Directory | Format-Table Name, LastWriteTime -AutoSize } else { 'Резервних копій драйверів немає.' }
         }
         Add-D9DiagSection $work 'README.txt' {
-            "Пакет діагностики Debloater9 — $env:COMPUTERNAME, $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+            "Пакет діагностики Debora — $env:COMPUTERNAME, $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
             'Містить відомості про систему, пристрої, драйвери, служби, автозапуск, помилки з журналів подій і файли програми:'
             foreach ($k in $copied.Keys) { "  $k — $($copied[$k])" }
             'Особистих файлів і паролів немає. Є ім''я комп''ютера й користувача (у шляхах до файлів).'

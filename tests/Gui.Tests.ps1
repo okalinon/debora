@@ -14,7 +14,7 @@ AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 Describe 'Вікно' {
     It 'розмітка завантажується, усі елементи знайдено, шапка заповнена' {
         $r = Invoke-InGui { @{ Title = $ui.TitleText.Text; Line = $ui.SystemLine.Text; Presets = $ui.PresetBox.Items.Count; Preset = $ui.PresetBox.SelectedItem } }
-        $r.Title | Should -Match '^Debloater9'
+        $r.Title | Should -Match '^Debora'
         $r.Line | Should -Match 'Test'
         $r.Presets | Should -Be @($catalog.Presets).Count
         $r.Preset | Should -Be 'Стандартний'

@@ -60,7 +60,7 @@ function Test-D9CleanBrowserCache {
     param($Check, $Ctx)
     $dirs = @(Get-D9BrowserCacheDirs | ForEach-Object { $_.Dirs })
     $b = [long](($dirs | ForEach-Object { Get-D9FolderSize $_ 1500 } | Measure-Object -Sum).Sum)
-    New-D9SpaceFinding $Check $b 'Кеш браузерів: {size}' 'Браузери самі обмежують кеш, але на маленькому диску його варто почистити. Debloater9 очистить кеш закритих браузерів; паролі, історію й вкладки не зачіпає.' @{ type = 'maintenance'; action = 'browserCache' }
+    New-D9SpaceFinding $Check $b 'Кеш браузерів: {size}' 'Браузери самі обмежують кеш, але на маленькому диску його варто почистити. Debora очистить кеш закритих браузерів; паролі, історію й вкладки не зачіпає.' @{ type = 'maintenance'; action = 'browserCache' }
 }
 
 function Test-D9CleanOldDownloads {
@@ -133,11 +133,11 @@ function Test-D9Pagefile {
     $link = New-D9Link 'Параметри швидкодії → Віртуальна пам''ять' 'SystemPropertiesPerformance.exe'
     if (-not $files) {
         $severity = if ($Ctx.System.RamGB -le 16) { 'warning' } else { 'suggestion' }
-        return New-D9Finding $Check $severity 'Файл підкачки вимкнено' "З $($Ctx.System.RamGB) ГБ пам'яті програми можуть аварійно закриватися при її нестачі, а Windows не збереже дамп збою. Debloater9 поверне «Автоматично вибирати розмір файлу підкачки» (після перезавантаження)." (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'; name = 'PagingFiles'; value = @('?:\pagefile.sys'); kind = 'MultiString' }) -Reboot) @($link)
+        return New-D9Finding $Check $severity 'Файл підкачки вимкнено' "З $($Ctx.System.RamGB) ГБ пам'яті програми можуть аварійно закриватися при її нестачі, а Windows не збереже дамп збою. Debora поверне «Автоматично вибирати розмір файлу підкачки» (після перезавантаження)." (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'; name = 'PagingFiles'; value = @('?:\pagefile.sys'); kind = 'MultiString' }) -Reboot) @($link)
     }
     $maxMB = ($files | Measure-Object MaximumSize -Sum).Sum
     if ($maxMB -gt 0 -and $maxMB -lt $Ctx.System.RamGB * 1024 / 2 -and $Ctx.System.RamGB -le 8) {
-        New-D9Finding $Check warning "Файл підкачки обмежено до $maxMB МБ" 'Для ПК з малим обсягом пам''яті це замало. Debloater9 поверне автоматичний розмір (після перезавантаження).' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'; name = 'PagingFiles'; value = @('?:\pagefile.sys'); kind = 'MultiString' }) -Reboot) @($link)
+        New-D9Finding $Check warning "Файл підкачки обмежено до $maxMB МБ" 'Для ПК з малим обсягом пам''яті це замало. Debora поверне автоматичний розмір (після перезавантаження).' (New-D9ActionsFix @(@{ type = 'registry'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'; name = 'PagingFiles'; value = @('?:\pagefile.sys'); kind = 'MultiString' }) -Reboot) @($link)
     }
 }
 
@@ -176,7 +176,7 @@ function Test-D9ThirdPartyServices {
         New-D9Finding $Check suggestion "Сторонніх служб із автозапуском: $($services.Count)" ("Кожна стартує разом із Windows. Перегляньте непотрібні (services.msc): " + (($services | Select-Object -First 12).DisplayName -join ', ')) @{ type = 'manual' } @((New-D9Link 'Служби' 'services.msc')) -Key "$($Check.id):count"
     }
     if ($updaters.Count -ge 3) {
-        New-D9Finding $Check suggestion "Служб-оновлювачів сторонніх програм: $($updaters.Count)" ("Debloater9 переведе їх на «Вручну» — програми оновлюватимуться, коли ви їх запускаєте: " + ($updaters.DisplayName -join ', ')) (New-D9ActionsFix @($updaters | ForEach-Object { @{ type = 'service'; name = $_.Name; startup = 'Manual' } })) @((New-D9Link 'Служби' 'services.msc')) -Key "$($Check.id):updaters"
+        New-D9Finding $Check suggestion "Служб-оновлювачів сторонніх програм: $($updaters.Count)" ("Debora переведе їх на «Вручну» — програми оновлюватимуться, коли ви їх запускаєте: " + ($updaters.DisplayName -join ', ')) (New-D9ActionsFix @($updaters | ForEach-Object { @{ type = 'service'; name = $_.Name; startup = 'Manual' } })) @((New-D9Link 'Служби' 'services.msc')) -Key "$($Check.id):updaters"
     }
 }
 
@@ -252,7 +252,7 @@ function Test-D9PrintSpooler {
     if (-not $svc.exists -or $svc.status -ne 'Running') { return }
     $real = @(Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue | Where-Object { $_.PortName -notmatch '^(PORTPROMPT:|nul:|SHRFAX:|FILE:)' -and $_.Name -notmatch 'PDF|XPS|OneNote|Fax' })
     if (-not $real) {
-        New-D9Finding $Check suggestion 'Служба друку працює, хоча принтерів немає' 'Debloater9 переведе «Диспетчер черги друку» на «Вручну»: менше фонових процесів і закриті вразливості на кшталт PrintNightmare. Якщо підключите принтер — відкотіть у «Журналі змін».' (New-D9ActionsFix @(@{ type = 'service'; name = 'Spooler'; startup = 'Manual'; stop = $true })) @((New-D9Link 'Служби' 'services.msc'))
+        New-D9Finding $Check suggestion 'Служба друку працює, хоча принтерів немає' 'Debora переведе «Диспетчер черги друку» на «Вручну»: менше фонових процесів і закриті вразливості на кшталт PrintNightmare. Якщо підключите принтер — відкотіть у «Журналі змін».' (New-D9ActionsFix @(@{ type = 'service'; name = 'Spooler'; startup = 'Manual'; stop = $true })) @((New-D9Link 'Служби' 'services.msc'))
     }
 }
 
@@ -262,7 +262,7 @@ function Test-D9ServiceFailures {
     param($Check, $Ctx)
     $events = Get-D9Events @{ LogName = 'System'; ProviderName = 'Service Control Manager'; Id = @(7000, 7009, 7023, 7031, 7034); StartTime = $Ctx.Now.AddDays(-$Check.thresholds.days) }
     if (-not $events) { return }
-    # Вимкнені служби (зокрема вимкнені самим Debloater9) — не збій: Windows лише пише, що не змогла їх запустити
+    # Вимкнені служби (зокрема вимкнені самим Debora) — не збій: Windows лише пише, що не змогла їх запустити
     $disabled = @{}
     foreach ($s in @(Get-CimInstance Win32_Service -Filter "StartMode = 'Disabled'" -ErrorAction SilentlyContinue)) { $disabled[$s.Name] = $true; $disabled[$s.DisplayName] = $true }
     $services = @($events | Where-Object { -not ($_.Id -eq 7000 -and [string]$_.Properties[1].Value -match '1058') } |

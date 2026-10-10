@@ -21,12 +21,12 @@ Describe 'autounattend.xml' {
         $shell.UserAccounts.LocalAccounts.LocalAccount.Group | Should -Be 'Administrators'
         $shell.AutoLogon.LogonCount | Should -Be '1'
     }
-    It 'після першого входу запускає Debloater9: профіль і драйвери з інтернету' {
+    It 'після першого входу запускає Debora: профіль і драйвери з інтернету' {
         $cmds = @((Get-Component (Get-Xml @{ PostInstall = 'WeakPC' }) 'oobeSystem' 'Microsoft-Windows-Shell-Setup').FirstLogonCommands.SynchronousCommand)
         $cmds.Count | Should -Be 2
         $cmds[0].CommandLine | Should -Match '-Preset WeakPC -Yes'
         $cmds[1].CommandLine | Should -Match '-DriverUpdate -Yes'
-        $cmds[0].CommandLine | Should -Match 'Debloater9\\Debloater9\.ps1'
+        $cmds[0].CommandLine | Should -Match 'Debora\\Debora\.ps1'
     }
     It 'команда після входу — коректний PowerShell' {
         $line = (@((Get-Component (Get-Xml @{}) 'oobeSystem' 'Microsoft-Windows-Shell-Setup').FirstLogonCommands.SynchronousCommand)[0]).CommandLine

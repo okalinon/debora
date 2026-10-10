@@ -56,7 +56,7 @@ function New-D9Checklist {
     $rank = { param($d) if ($d.data.class -eq 'Net') { 30 } elseif ($d.data.class -eq 'System' -or "$($d.data.hwid)" -like 'ACPI\*') { 31 } else { 32 } }
     # 29 — спершу автоматичний пошук драйверів в інтернеті; ручні кроки нижче лишаються запасним варіантом
     if ($devices) {
-        & $add (New-D9ChecklistItem 29 'driverUpdate' $script:D9MaintenanceActions['driverUpdate'].Title "Пристроїв без драйвера: $($devices.Count). Debloater9 знайде драйвери в каталозі Microsoft і Windows Update, завантажить і встановить (з відкатом)." @() @{ type = 'maintenance'; action = 'driverUpdate' } @{ type = 'executed' }) | Out-Null
+        & $add (New-D9ChecklistItem 29 'driverUpdate' $script:D9MaintenanceActions['driverUpdate'].Title "Пристроїв без драйвера: $($devices.Count). Debora знайде драйвери в каталозі Microsoft і Windows Update, завантажить і встановить (з відкатом)." @() @{ type = 'maintenance'; action = 'driverUpdate' } @{ type = 'executed' }) | Out-Null
     }
     foreach ($d in ($devices | Sort-Object { & $rank $_ })) {
         $group = & $rank $d

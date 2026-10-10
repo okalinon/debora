@@ -14,7 +14,7 @@ function Initialize-D9Web {
     if (-not $script:D9Http) {
         $script:D9Http = New-Object System.Net.Http.HttpClient
         $script:D9Http.Timeout = [TimeSpan]::FromSeconds(60)
-        $script:D9Http.DefaultRequestHeaders.UserAgent.ParseAdd('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Debloater9')
+        $script:D9Http.DefaultRequestHeaders.UserAgent.ParseAdd('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Debora')
     }
     return $script:D9Http
 }
@@ -163,7 +163,7 @@ function Test-D9DriverNewer {
 function Get-D9WuaDriverUpdates {
     try {
         $session = New-Object -ComObject Microsoft.Update.Session
-        $session.ClientApplicationID = 'Debloater9'
+        $session.ClientApplicationID = 'Debora'
         $r = $session.CreateUpdateSearcher().Search("IsInstalled=0 and Type='Driver'")
         foreach ($u in $r.Updates) {
             [pscustomobject]@{ Title = $u.Title; Version = $(if ($u.Title -match '\(([\d.]+)\)\s*$') { $Matches[1] }); Date = $u.DriverVerDate; HardwareId = [string]$u.DriverHardwareID }

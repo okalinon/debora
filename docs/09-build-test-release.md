@@ -3,8 +3,8 @@
 ## Збірка
 
 ```powershell
-.\build\Compile.ps1                 # → dist\Debloater9.ps1 + SHA256SUMS
-.\build\Compile.ps1 -Exe            # + dist\Debloater9.exe (ps2exe)
+.\build\Compile.ps1                 # → dist\Debora.ps1 + SHA256SUMS
+.\build\Compile.ps1 -Exe            # + dist\Debora.exe (ps2exe)
 .\build\Compile.ps1 -Sign -Cert ... # підпис Authenticode
 ```
 
@@ -12,7 +12,7 @@
 1. Перевірка `config/*.json` за схемами — помилка зупиняє збірку.
 2. `PSScriptAnalyzer` для `src/` — помилки зупиняють збірку, попередження в звіт.
 3. Конкатенація `src/` у фіксованому порядку, вбудовування JSON і XAML.
-4. Запис `dist/Debloater9.ps1` у **UTF-8 з BOM** (PowerShell 5.1 без BOM читає файл як ANSI й ламає кирилицю).
+4. Запис `dist/Debora.ps1` у **UTF-8 з BOM** (PowerShell 5.1 без BOM читає файл як ANSI й ламає кирилицю).
 5. Перевірка, що отриманий файл розбирається парсером PowerShell і вікно будується (`-BuildTest`).
 
 ## Тести
@@ -45,6 +45,6 @@
 ## Релізи
 
 - Семантичні версії: `0.x` — до стабільного каталогу; `1.0` — підписаний реліз.
-- Артефакти: `Debloater9.ps1`, `Debloater9.exe`, `run.bat`, `SHA256SUMS`, `CHANGELOG.md`.
+- Артефакти: `Debora.ps1`, `Debora.exe`, `run.bat`, `SHA256SUMS`, `CHANGELOG.md`.
 - Кожен новий твік у changelog з `id` і ризиком.
 - Ліцензія: MIT (відкритий код — довіра до утиліти, що змінює систему).

@@ -20,9 +20,9 @@ Describe 'Налаштування автообслуговування' {
         $c.Time | Should -Be '9:30'
     }
     It 'команда завдання: прихований запуск зібраного скрипта з -Maintain' {
-        $cmd = Get-D9MaintenanceTaskCommand 'C:\ProgramData\Debloater9\app\Debloater9.ps1'
+        $cmd = Get-D9MaintenanceTaskCommand 'C:\ProgramData\Debloater9\app\Debora.ps1'
         $cmd.Execute | Should -Be 'powershell.exe'
-        $cmd.Argument | Should -Match '-WindowStyle Hidden -File "C:\\ProgramData\\Debloater9\\app\\Debloater9\.ps1" -Maintain$'
+        $cmd.Argument | Should -Match '-WindowStyle Hidden -File "C:\\ProgramData\\Debloater9\\app\\Debora\.ps1" -Maintain$'
     }
 }
 

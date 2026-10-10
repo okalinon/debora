@@ -27,7 +27,7 @@ function ConvertTo-D9ScanHtml {
     $w = { param($t) [void]$sb.AppendLine($t) }
 
     & $w '<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-    & $w "<title>Debloater9 — звіт $(ConvertTo-D9Html $Scan.id)</title>"
+    & $w "<title>Debora — звіт $(ConvertTo-D9Html $Scan.id)</title>"
     & $w @'
 <style>
 :root{--bg:#f6f7f9;--card:#fff;--text:#1d2330;--muted:#5d6675;--line:#e3e6eb;--crit:#c62828;--warn:#b26a00;--sugg:#1565c0;--good:#2e7d32;--info:#5d6675}
@@ -79,7 +79,7 @@ ol.cl{list-style:none;padding:0;margin:0}ol.cl li{display:flex;gap:12px;padding:
             if (@($i.links).Count) { & $w "<div class=""links"">$((@($i.links) | ForEach-Object { ConvertTo-D9LinkHtml $_ }) -join '')</div>" }
             & $w '</div></li>'
         }
-        & $w '</ol></div><p class="muted">Автоматичні кроки виконує Debloater9: <code>Debloater9.ps1 -Checklist -Run All</code>. Галочки ставляться самі після перевірки.</p>'
+        & $w '</ol></div><p class="muted">Автоматичні кроки виконує Debora: <code>Debora.ps1 -Checklist -Run All</code>. Галочки ставляться самі після перевірки.</p>'
     }
 
     & $w '<h2>Знахідки</h2>'
@@ -107,6 +107,6 @@ ol.cl{list-style:none;padding:0;margin:0}ol.cl li{display:flex;gap:12px;padding:
         & $w (($skipped | ForEach-Object { "$(ConvertTo-D9Html $_.name): $(ConvertTo-D9Html $_.note)" }) -join '<br>')
         & $w '</div>'
     }
-    & $w "<p class=""muted"">Звіт створено Debloater9 $script:D9Version. Звіт зберігається лише на цьому комп'ютері.</p></main></body></html>"
+    & $w "<p class=""muted"">Звіт створено Debora $script:D9Version. Звіт зберігається лише на цьому комп'ютері.</p></main></body></html>"
     return $sb.ToString()
 }

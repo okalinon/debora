@@ -95,7 +95,7 @@ function Invoke-D9DefenderScan {
 function Install-D9WindowsUpdates {
     Write-D9Log 'Пошук оновлень Windows (може тривати кілька хвилин)...'
     $session = New-Object -ComObject Microsoft.Update.Session
-    $session.ClientApplicationID = 'Debloater9'
+    $session.ClientApplicationID = 'Debora'
     $result = $session.CreateUpdateSearcher().Search("IsInstalled=0 and IsHidden=0 and Type='Software'")
     $list = New-Object -ComObject Microsoft.Update.UpdateColl
     foreach ($u in $result.Updates) {

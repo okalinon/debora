@@ -74,7 +74,7 @@ Restore-D9<Type>     -Snapshot $s # → повернути стан зі зні�
   "session": "2026-10-10T14-32-05-a1b2",
   "machine": "DESKTOP-A4JHUQ7",
   "os": "Windows 10 Home 22H2 (19045)",
-  "restorePoint": "Debloater9 2026-10-10 14:32",
+  "restorePoint": "Debora 2026-10-10 14:32",
   "entries": [
     {
       "tweak": "perf.disable-sysmain",

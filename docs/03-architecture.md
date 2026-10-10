@@ -51,7 +51,7 @@ flowchart TB
 ## Структура репозиторію
 
 ```
-Debloater9/
+Debora/
 ├─ src/
 │  ├─ Main.ps1                 # точка входу: параметри, права адміністратора, вибір UI/CLI
 │  ├─ core/
@@ -82,7 +82,7 @@ Debloater9/
 │  ├─ locales/uk.json, en.json
 │  └─ schema/*.schema.json
 ├─ build/
-│  ├─ Compile.ps1              # збирає dist/Debloater9.ps1
+│  ├─ Compile.ps1              # збирає dist/Debora.ps1
 │  └─ Sign.ps1
 ├─ tests/                      # Pester
 ├─ dist/                       # артефакти збірки (не в git)
@@ -112,10 +112,10 @@ Debloater9/
 `build/Compile.ps1`:
 1. Конкатенує `src/**/*.ps1` у фіксованому порядку (core → actions → ui → cli → Main).
 2. Вбудовує `config/*.json` і `ui/**/*.xaml` як here-string змінні (`$D9Embedded['tweaks.json'] = @'...'@`).
-3. Пише `dist/Debloater9.ps1` (UTF-8 з BOM — інакше PowerShell 5.1 ламає кирилицю) і `SHA256SUMS`.
+3. Пише `dist/Debora.ps1` (UTF-8 з BOM — інакше PowerShell 5.1 ламає кирилицю) і `SHA256SUMS`.
 4. Опційно: підпис Authenticode, `.exe` через ps2exe.
 
 ## Розповсюдження
 
-- GitHub Releases: `Debloater9.ps1`, `Debloater9.exe`, `run.bat`, `SHA256SUMS`.
+- GitHub Releases: `Debora.ps1`, `Debora.exe`, `run.bat`, `SHA256SUMS`.
 - Однорядковий запуск як у WinUtil (`irm <url> | iex`) — можливий, але в документації рекомендуємо завантажувати файл і перевіряти хеш.

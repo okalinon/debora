@@ -3,7 +3,7 @@
 #   autounattend.xml — без запитань (мова, EULA, акаунт Microsoft, мережа, приватність), локальний обліковий запис,
 #                      за бажанням — обхід вимог Windows 11 (TPM, Secure Boot, пам'ять, процесор);
 #   $WinpeDriver$\   — драйвери цього ПК: Windows Setup ставить їх сам під час встановлення;
-#   Debloater9\      — після першого входу застосовує профіль налаштувань і доставляє драйвери з інтернету.
+#   Debora\      — після першого входу застосовує профіль налаштувань і доставляє драйвери з інтернету.
 # Розбиття диска лишається ручним (вибір розділу) — автоматичне стирання диска надто небезпечне.
 
 # Експорт усіх сторонніх драйверів (oemNN.inf) у папку. Потрібні права адміністратора.
@@ -69,25 +69,25 @@ function New-D9AutounattendXml {
     if ($o.BypassNetwork) { $spec.Add('<RunSynchronousCommand wcm:action="add"><Order>1</Order><Path>reg.exe add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f</Path></RunSynchronousCommand>') }
     $specRun = if ($spec.Count) { "<component name=`"Microsoft-Windows-Deployment`" $c><RunSynchronous>$($spec -join '')</RunSynchronous></component>" } else { '' }
 
-    # Після першого входу: знайти Debloater9 на будь-якому диску й запустити профіль та онлайн-драйвери
+    # Після першого входу: знайти Debora на будь-якому диску й запустити профіль та онлайн-драйвери
     $first = New-Object Collections.Generic.List[string]
-    $find = '$f = Get-PSDrive -PSProvider FileSystem | ForEach-Object { Join-Path $_.Root ''Debloater9\Debloater9.ps1'' } | Where-Object { Test-Path $_ } | Select-Object -First 1'
+    $find = '$f = Get-PSDrive -PSProvider FileSystem | ForEach-Object { Join-Path $_.Root ''Debora\Debora.ps1'' } | Where-Object { Test-Path $_ } | Select-Object -First 1'
     $n = 0
     if ($o.PostInstall) {
         $n++
-        $cmd = "$find; if (`$f) { & `$f -Preset $($o.PostInstall) -Yes -NoRestorePoint -LogPath `$env:PUBLIC\Debloater9-firstlogon.log }"
-        $first.Add("<SynchronousCommand wcm:action=`"add`"><Order>$n</Order><Description>Debloater9: профіль налаштувань</Description><CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$(ConvertTo-D9XmlText $cmd)&quot;</CommandLine></SynchronousCommand>")
+        $cmd = "$find; if (`$f) { & `$f -Preset $($o.PostInstall) -Yes -NoRestorePoint -LogPath `$env:PUBLIC\Debora-firstlogon.log }"
+        $first.Add("<SynchronousCommand wcm:action=`"add`"><Order>$n</Order><Description>Debora: профіль налаштувань</Description><CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$(ConvertTo-D9XmlText $cmd)&quot;</CommandLine></SynchronousCommand>")
     }
     if ($o.DriverUpdate) {
         $n++
-        $cmd = "$find; if (`$f) { & `$f -DriverUpdate -Yes -NoRestorePoint -LogPath `$env:PUBLIC\Debloater9-firstlogon.log }"
-        $first.Add("<SynchronousCommand wcm:action=`"add`"><Order>$n</Order><Description>Debloater9: драйвери з інтернету</Description><CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$(ConvertTo-D9XmlText $cmd)&quot;</CommandLine></SynchronousCommand>")
+        $cmd = "$find; if (`$f) { & `$f -DriverUpdate -Yes -NoRestorePoint -LogPath `$env:PUBLIC\Debora-firstlogon.log }"
+        $first.Add("<SynchronousCommand wcm:action=`"add`"><Order>$n</Order><Description>Debora: драйвери з інтернету</Description><CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$(ConvertTo-D9XmlText $cmd)&quot;</CommandLine></SynchronousCommand>")
     }
     $firstXml = if ($first.Count) { "<FirstLogonCommands>$($first -join '')</FirstLogonCommands>" } else { '' }
 
     $xml = @"
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Створено Debloater9. Пароль облікового запису (якщо задано) зберігається тут відкритим текстом — не залишайте флешку без нагляду. -->
+<!-- Створено Debora. Пароль облікового запису (якщо задано) зберігається тут відкритим текстом — не залишайте флешку без нагляду. -->
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
   <settings pass="windowsPE">
     <component name="Microsoft-Windows-International-Core-WinPE" $c>
@@ -130,7 +130,7 @@ function New-D9AutounattendXml {
     return $xml
 }
 
-# Готує флешку: autounattend.xml, драйвери в $WinpeDriver$, копія Debloater9. Повертає опис зробленого.
+# Готує флешку: autounattend.xml, драйвери в $WinpeDriver$, копія Debora. Повертає опис зробленого.
 function Initialize-D9InstallUsb {
     param([Parameter(Mandatory)][string]$Drive, [Parameter(Mandatory)][hashtable]$Options, [string]$ProgramFolder, [switch]$IncludeDrivers)
     $root = "$($Drive.TrimEnd('\', ':')):\"
@@ -148,12 +148,12 @@ function Initialize-D9InstallUsb {
         $r = Export-D9Drivers -Folder "${root}`$WinpeDriver`$\$model"
         $done += "драйвери цього ПК: $($r.Count) ($(Format-D9Size $r.Bytes))"
     }
-    if ($ProgramFolder -and (Test-Path (Join-Path $ProgramFolder 'Debloater9.ps1'))) {
-        $dst = "${root}Debloater9"
+    if ($ProgramFolder -and (Test-Path (Join-Path $ProgramFolder 'Debora.ps1'))) {
+        $dst = "${root}Debora"
         New-Item -ItemType Directory -Path $dst -Force | Out-Null
         Get-ChildItem $ProgramFolder -File | Where-Object Extension -in '.ps1', '.bat', '.txt', '' | Copy-Item -Destination $dst -Force
-        Write-D9Log "Debloater9 скопійовано на флешку ($dst)" Ok
-        $done += 'Debloater9 (запуститься після першого входу)'
+        Write-D9Log "Debora скопійовано на флешку ($dst)" Ok
+        $done += 'Debora (запуститься після першого входу)'
     }
     [pscustomobject]@{ Drive = $root; Done = $done; Language = $Options.Language }
 }

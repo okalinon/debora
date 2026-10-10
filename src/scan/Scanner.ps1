@@ -84,7 +84,7 @@ function Invoke-D9ProbesParallel {
                 $results[$j.Check.id] = $r
                 $j.PS.Dispose()
                 $done++
-                Write-Progress -Activity 'Debloater9: сканування' -Status "$done / $($jobs.Count): $(Get-D9Text $j.Check.name)" -PercentComplete ($done * 100 / $jobs.Count)
+                Write-Progress -Activity 'Debora: сканування' -Status "$done / $($jobs.Count): $(Get-D9Text $j.Check.name)" -PercentComplete ($done * 100 / $jobs.Count)
                 if ($script:D9OnProgress) { & $script:D9OnProgress $done $jobs.Count (Get-D9Text $j.Check.name) }
             }
             if ($done -lt $jobs.Count) { Start-Sleep -Milliseconds 50 }
@@ -119,7 +119,7 @@ function Invoke-D9Scan {
         $runner = [scriptblock]::Create($script:D9ProbeRunner.ToString())   # прив'язка до поточного runspace (у вікні це фоновий потік)
         foreach ($check in $run) {
             $n++
-            Write-Progress -Activity 'Debloater9: сканування' -Status "$n / $($run.Count): $(Get-D9Text $check.name)" -PercentComplete ($n * 100 / $run.Count)
+            Write-Progress -Activity 'Debora: сканування' -Status "$n / $($run.Count): $(Get-D9Text $check.name)" -PercentComplete ($n * 100 / $run.Count)
             if ($script:D9OnProgress) { & $script:D9OnProgress $n $run.Count (Get-D9Text $check.name) }
             $outputs[$check.id] = & $runner $check $Context
         }
@@ -145,7 +145,7 @@ function Invoke-D9Scan {
         })
     }
 
-    Write-Progress -Activity 'Debloater9: сканування' -Completed
+    Write-Progress -Activity 'Debora: сканування' -Completed
     $checked = @($results | Where-Object { $_.status -in 'ok', 'found' } | ForEach-Object category | Sort-Object -Unique)
     $order = @{ critical = 0; warning = 1; suggestion = 2; info = 3 }
     $sorted = @($findings | Sort-Object { $order[$_.severity] }, category)

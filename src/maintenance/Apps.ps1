@@ -144,3 +144,23 @@ function Invoke-D9AppUpgradeAll {
     else { Write-D9Log "winget завершився з кодом $($r.Code): частина програм могла не оновитися (наприклад, відкриті зараз)." Warn }
     [pscustomobject]@{ Code = $r.Code; Result = $result }
 }
+
+# Іконки програм каталогу: id → base64 PNG 64×64. У зібраному файлі — вбудований блок, у розробці — knowledge/app-icons.
+$script:D9AppIconData = $null
+function Get-D9AppIconData {
+    if ($null -ne $script:D9AppIconData) { return $script:D9AppIconData }
+    $table = @{}
+    $text = Get-D9KnowledgeText 'app-icons.tsv'
+    if ($text) {
+        foreach ($line in $text -split "`n") {
+            $i = $line.IndexOf("`t")
+            if ($i -gt 0) { $table[$line.Substring(0, $i)] = $line.Substring($i + 1).Trim() }
+        }
+    } elseif ($script:D9KnowledgeDir -and (Test-Path (Join-Path $script:D9KnowledgeDir 'app-icons'))) {
+        foreach ($f in Get-ChildItem (Join-Path $script:D9KnowledgeDir 'app-icons') -Filter '*.png') {
+            $table[$f.BaseName] = [Convert]::ToBase64String([IO.File]::ReadAllBytes($f.FullName))
+        }
+    }
+    $script:D9AppIconData = $table
+    return $table
+}

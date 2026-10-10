@@ -328,16 +328,16 @@ Describe 'Універсальні правила' {
         Test-D9RegistryRule $ex $ruleCtx | Should -BeNullOrEmpty
     }
     It 'журнал: відсутній у системі провайдер — «подій немає», а не «журнал недоступний»' {
-        $events = Get-D9Events @{ LogName = 'System'; ProviderName = 'Debloater9-NoSuchProvider'; Id = 1 }
+        $events = Get-D9Events @{ LogName = 'System'; ProviderName = 'Debora-NoSuchProvider'; Id = 1 }
         $null -eq $events | Should -BeFalse
         @($events).Count | Should -Be 0
-        $c = New-RuleCheck 'Test-D9EventRule' @{ log = 'System'; providers = @('Debloater9-NoSuchProvider'); ids = @(1); days = 30; min = 1 }
+        $c = New-RuleCheck 'Test-D9EventRule' @{ log = 'System'; providers = @('Debora-NoSuchProvider'); ids = @(1); days = 30; min = 1 }
         Test-D9EventRule $c $ruleCtx | Should -BeNullOrEmpty
     }
     It 'журнал: відсутні провайдери у списку не ламають пошук за наявними' {
         $f = @{ LogName = 'System'; ProviderName = 'Service Control Manager'; StartTime = (Get-Date).AddDays(-30) }
         $plain = Get-D9Events $f
-        $f.ProviderName = @('Service Control Manager', 'Debloater9-NoSuchProvider')
+        $f.ProviderName = @('Service Control Manager', 'Debora-NoSuchProvider')
         @(Get-D9Events $f).Count | Should -Be @($plain).Count
     }
 }

@@ -1,18 +1,18 @@
 # 8. CLI та автоматизація
 
-Той самий `Debloater9.ps1` без інтерфейсу — для сервісних центрів і масового налаштування.
+Той самий `Debora.ps1` без інтерфейсу — для сервісних центрів і масового налаштування.
 
 ## Параметри
 
 ```powershell
-.\Debloater9.ps1                                  # звичайний запуск з інтерфейсом
-.\Debloater9.ps1 -Preset WeakPC -Yes              # застосувати профіль без питань
-.\Debloater9.ps1 -Preset Recommended -WhatIf      # показати план для профілю під це залізо
-.\Debloater9.ps1 -Profile .\office.json -Yes      # власний набір твіків
-.\Debloater9.ps1 -ListTweaks -Format Json         # каталог із поточним станом
-.\Debloater9.ps1 -ListSessions
-.\Debloater9.ps1 -Undo 2026-10-10T14-32-05-a1b2 -Yes
-.\Debloater9.ps1 -Preset Standard -NoRestorePoint -LogPath C:\logs\d9.log
+.\Debora.ps1                                  # звичайний запуск з інтерфейсом
+.\Debora.ps1 -Preset WeakPC -Yes              # застосувати профіль без питань
+.\Debora.ps1 -Preset Recommended -WhatIf      # показати план для профілю під це залізо
+.\Debora.ps1 -Profile .\office.json -Yes      # власний набір твіків
+.\Debora.ps1 -ListTweaks -Format Json         # каталог із поточним станом
+.\Debora.ps1 -ListSessions
+.\Debora.ps1 -Undo 2026-10-10T14-32-05-a1b2 -Yes
+.\Debora.ps1 -Preset Standard -NoRestorePoint -LogPath C:\logs\d9.log
 ```
 
 | Параметр | Опис |
@@ -29,7 +29,7 @@
 | `-Schedule <день>\|Off [-At 12:00]` | Щотижневий запуск `-Maintain` через Планувальник (від поточного користувача з найвищими правами); копія програми — у `%ProgramData%\Debloater9\app` із доступом на запис лише для SYSTEM і адміністраторів |
 | `-Uninstall "Назва*"[,…] [-Yes]` | Видалити встановлені програми за назвою (тихо, де можливо: QuietUninstallString, MSI, Inno Setup, NSIS); перед цим — точка відновлення |
 | `-ExportDrivers <папка>` | Зберегти всі сторонні драйвери цього ПК (`pnputil /export-driver *`) |
-| `-PrepareUsb <диск> [-UserName] [-AccountPassword] [-Edition Home\|Pro] [-Preset] [-KeepRequirements] [-NoDrivers]` | Доповнити флешку з Windows: `autounattend.xml` (без запитань, локальний акаунт, обхід вимог Windows 11), драйвери цього ПК у `$WinpeDriver$`, Debloater9 для налаштування після першого входу |
+| `-PrepareUsb <диск> [-UserName] [-AccountPassword] [-Edition Home\|Pro] [-Preset] [-KeepRequirements] [-NoDrivers]` | Доповнити флешку з Windows: `autounattend.xml` (без запитань, локальний акаунт, обхід вимог Windows 11), драйвери цього ПК у `$WinpeDriver$`, Debora для налаштування після першого входу |
 | `-Apps` | Каталог програм (`config/apps.json`) і що вже встановлено |
 | `-InstallApp <ID>[,<ID>…] [-Yes]` | Встановити програми через winget (ID з каталогу, назва або будь-який точний ID winget) |
 | `-UpgradeApps [-Yes]` | Оновити всі програми (`winget upgrade --all`) |

@@ -38,7 +38,7 @@
 
 ## Порівняння з WinUtil
 
-| | WinUtil | Debloater9 |
+| | WinUtil | Debora |
 |---|---|---|
 | Мова інтерфейсу | англійська | українська + англійська |
 | Рекомендації під залізо | ні (пресети Minimal/Standard/Advanced) | так: визначення HDD/SSD, RAM, CPU, батареї |

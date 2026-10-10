@@ -1,7 +1,7 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Debloater9" Width="1200" Height="800" MinWidth="960" MinHeight="620"
-        WindowStartupLocation="CenterScreen" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        Title="Debora" Width="1340" Height="900" MinWidth="1060" MinHeight="680"
+        WindowStartupLocation="CenterScreen" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="15"
         Background="#F2F2F7" Foreground="#1D1D1F" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
   <!-- Палітра (світла → темна в Convert-D9XamlTheme):
        тло #F2F2F7, бічна панель #E9E9EE, картки White, текст #1D1D1F, другорядний #6E6E73,
@@ -28,7 +28,7 @@
 
     <!-- ===== Кнопки (macOS push button) ===== -->
     <Style TargetType="Button">
-      <Setter Property="Padding" Value="13,6"/>
+      <Setter Property="Padding" Value="17,9"/>
       <Setter Property="Margin" Value="0,0,8,0"/>
       <Setter Property="Background" Value="#E5E5EA"/>
       <Setter Property="Foreground" Value="#1D1D1F"/>
@@ -38,7 +38,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="9" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -57,13 +57,13 @@
     </Style>
     <!-- Готові набори програм: «пігулки» -->
     <Style x:Key="Chip" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-      <Setter Property="Padding" Value="12,5"/>
-      <Setter Property="Margin" Value="0,0,6,6"/>
+      <Setter Property="Padding" Value="15,7"/>
+      <Setter Property="Margin" Value="0,0,8,8"/>
       <Setter Property="Background" Value="White"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="#D1D1D6" BorderThickness="1" CornerRadius="14" Padding="{TemplateBinding Padding}">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="#D1D1D6" BorderThickness="1" CornerRadius="18" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -76,7 +76,7 @@
       </Setter>
     </Style>
     <Style x:Key="LinkButton" TargetType="Button">
-      <Setter Property="Margin" Value="0,4,16,0"/>
+      <Setter Property="Margin" Value="0,5,18,0"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Foreground" Value="#007AFF"/>
       <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
@@ -97,51 +97,51 @@
       <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
     </Style>
     <Style x:Key="Section" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontSize" Value="15"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="#6E6E73"/>
-      <Setter Property="Margin" Value="16,22,0,7"/>
+      <Setter Property="Margin" Value="20,26,0,9"/>
     </Style>
     <Style x:Key="RowTitle" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="13.5"/>
+      <Setter Property="FontSize" Value="16.5"/>
       <Setter Property="FontWeight" Value="Medium"/>
       <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
     <Style x:Key="RowNote" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontSize" Value="14"/>
       <Setter Property="Foreground" Value="#6E6E73"/>
       <Setter Property="TextWrapping" Value="Wrap"/>
-      <Setter Property="Margin" Value="0,2,0,0"/>
+      <Setter Property="Margin" Value="0,3,0,0"/>
     </Style>
     <Style x:Key="Intro" TargetType="TextBlock">
       <Setter Property="Foreground" Value="#6E6E73"/>
       <Setter Property="TextWrapping" Value="Wrap"/>
-      <Setter Property="MaxWidth" Value="760"/>
+      <Setter Property="MaxWidth" Value="1100"/>
       <Setter Property="HorizontalAlignment" Value="Left"/>
     </Style>
 
     <!-- ===== Згруповані блоки (inset grouped) ===== -->
     <Style x:Key="Card" TargetType="Border">
       <Setter Property="Background" Value="White"/>
-      <Setter Property="CornerRadius" Value="10"/>
-      <Setter Property="Padding" Value="16,14"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="Padding" Value="22,18"/>
     </Style>
     <Style x:Key="Group" TargetType="Border">
       <Setter Property="Background" Value="White"/>
-      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="CornerRadius" Value="12"/>
     </Style>
     <Style x:Key="Panel" TargetType="Border">
       <Setter Property="Background" Value="White"/>
-      <Setter Property="CornerRadius" Value="10"/>
-      <Setter Property="Padding" Value="6"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="Padding" Value="8"/>
     </Style>
     <Style x:Key="Sep" TargetType="Border">
       <Setter Property="Height" Value="1"/>
       <Setter Property="Background" Value="#E3E3E8"/>
-      <Setter Property="Margin" Value="16,0,0,0"/>
+      <Setter Property="Margin" Value="22,0,0,0"/>
     </Style>
     <Style x:Key="Row" TargetType="DockPanel">
-      <Setter Property="Margin" Value="16,11,14,11"/>
+      <Setter Property="Margin" Value="22,15,20,15"/>
       <Setter Property="LastChildFill" Value="True"/>
     </Style>
 
@@ -152,12 +152,12 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="TabItem">
-            <Border x:Name="Bd" Margin="10,1" Padding="8,5" CornerRadius="7" Background="Transparent" Cursor="Hand">
+            <Border x:Name="Bd" Margin="12,2" Padding="10,7" CornerRadius="9" Background="Transparent" Cursor="Hand">
               <DockPanel>
-                <Border Width="22" Height="22" CornerRadius="6" Background="{TemplateBinding Background}" Margin="0,0,10,0">
-                  <TextBlock Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Border Width="28" Height="28" CornerRadius="7" Background="{TemplateBinding Background}" Margin="0,0,12,0">
+                  <TextBlock Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="15" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
-                <ContentPresenter x:Name="Hd" ContentSource="Header" VerticalAlignment="Center" TextElement.FontSize="13.5" TextElement.Foreground="{TemplateBinding Foreground}"/>
+                <ContentPresenter x:Name="Hd" ContentSource="Header" VerticalAlignment="Center" TextElement.FontSize="15.5" TextElement.Foreground="{TemplateBinding Foreground}"/>
               </DockPanel>
             </Border>
             <ControlTemplate.Triggers>
@@ -178,12 +178,12 @@
         <Setter.Value>
           <ControlTemplate TargetType="TabControl">
             <Grid>
-              <Grid.ColumnDefinitions><ColumnDefinition Width="236"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-              <StackPanel IsItemsHost="True" Margin="0,112,0,0" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="272"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <StackPanel IsItemsHost="True" Margin="0,132,0,0" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Cycle"/>
               <DockPanel Grid.Column="1">
                 <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedItem.Header, RelativeSource={RelativeSource TemplatedParent}}"
-                           FontFamily="{StaticResource Display}" FontSize="26" FontWeight="Bold" Margin="32,26,32,10"/>
-                <ContentPresenter ContentSource="SelectedContent" Margin="16,0,16,0"/>
+                           FontFamily="{StaticResource Display}" FontSize="32" FontWeight="Bold" Margin="40,30,40,14"/>
+                <ContentPresenter ContentSource="SelectedContent" Margin="20,0,20,0"/>
               </DockPanel>
             </Grid>
           </ControlTemplate>
@@ -198,7 +198,7 @@
       <Setter Property="Foreground" Value="#1D1D1F"/>
       <Setter Property="BorderBrush" Value="#D1D1D6"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Padding" Value="8,5"/>
+      <Setter Property="Padding" Value="10,7"/>
       <Setter Property="CaretBrush" Value="#1D1D1F"/>
       <Setter Property="SelectionBrush" Value="#007AFF"/>
       <Setter Property="Template">
@@ -218,8 +218,8 @@
     <Style x:Key="Search" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
       <Setter Property="Background" Value="#E5E5EA"/>
       <Setter Property="BorderBrush" Value="#E5E5EA"/>
-      <Setter Property="Padding" Value="32,7,10,7"/>
-      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Padding" Value="38,10,12,10"/>
+      <Setter Property="FontSize" Value="16"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
     <Style TargetType="PasswordBox">
@@ -227,7 +227,7 @@
       <Setter Property="Background" Value="White"/>
       <Setter Property="Foreground" Value="#1D1D1F"/>
       <Setter Property="BorderBrush" Value="#D1D1D6"/>
-      <Setter Property="Padding" Value="8,5"/>
+      <Setter Property="Padding" Value="10,7"/>
       <Setter Property="CaretBrush" Value="#1D1D1F"/>
       <Setter Property="Template">
         <Setter.Value>
@@ -244,7 +244,7 @@
     </Style>
     <Style TargetType="ComboBox">
       <Setter Property="Foreground" Value="#1D1D1F"/>
-      <Setter Property="MinHeight" Value="30"/>
+      <Setter Property="MinHeight" Value="36"/>
       <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
       <Setter Property="Template">
         <Setter.Value>
@@ -264,7 +264,7 @@
                 </ToggleButton.Template>
               </ToggleButton>
               <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                Margin="10,5,28,5" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                Margin="12,6,30,6" VerticalAlignment="Center" HorizontalAlignment="Left"/>
               <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
                 <Border Background="White" BorderBrush="#D1D1D6" BorderThickness="1" CornerRadius="9" Padding="4" Margin="0,4,0,0"
                         MinWidth="{Binding ActualWidth, ElementName=Toggle}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
@@ -284,7 +284,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ComboBoxItem">
-            <Border x:Name="Bd" CornerRadius="6" Padding="9,5" Background="Transparent">
+            <Border x:Name="Bd" CornerRadius="7" Padding="11,7" Background="Transparent">
               <ContentPresenter/>
             </Border>
             <ControlTemplate.Triggers>
@@ -301,7 +301,7 @@
     <!-- ===== Прапорці (квадрат із заокругленням, акцентна заливка) ===== -->
     <Style TargetType="CheckBox">
       <Setter Property="Foreground" Value="#1D1D1F"/>
-      <Setter Property="Padding" Value="8,0,0,0"/>
+      <Setter Property="Padding" Value="10,0,0,0"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
       <Setter Property="Template">
@@ -309,8 +309,8 @@
           <ControlTemplate TargetType="CheckBox">
             <Grid Background="Transparent">
               <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-              <Border x:Name="Box" Width="16" Height="16" CornerRadius="4" Background="White" BorderBrush="#C7C7CC" BorderThickness="1" VerticalAlignment="Top" Margin="0,1,0,0">
-                <Path x:Name="Mark" Data="M3,7 L6,10 L11,4" Stroke="#FFFFFF" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Visibility="Collapsed"/>
+              <Border x:Name="Box" Width="19" Height="19" CornerRadius="5" Background="White" BorderBrush="#C7C7CC" BorderThickness="1" VerticalAlignment="Top" Margin="0,1,0,0">
+                <Path x:Name="Mark" Data="M3.5,8.5 L7,12 L13.5,5" Stroke="#FFFFFF" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Visibility="Collapsed"/>
               </Border>
               <ContentPresenter x:Name="Content" Grid.Column="1" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="False"/>
             </Grid>
@@ -406,7 +406,7 @@
       <Setter Property="Foreground" Value="#1D1D1F"/>
     </Style>
     <Style TargetType="ListBoxItem">
-      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="Padding" Value="14,11"/>
       <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
       <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Template">
@@ -440,9 +440,9 @@
     <Style TargetType="DataGridColumnHeader">
       <Setter Property="Background" Value="White"/>
       <Setter Property="Foreground" Value="#6E6E73"/>
-      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontSize" Value="14"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Padding" Value="9,7"/>
+      <Setter Property="Padding" Value="12,10"/>
       <Setter Property="BorderBrush" Value="#E3E3E8"/>
       <Setter Property="BorderThickness" Value="0,0,0,1"/>
     </Style>
@@ -451,7 +451,7 @@
       <Setter Property="Foreground" Value="#1D1D1F"/>
     </Style>
     <Style TargetType="DataGridCell">
-      <Setter Property="Padding" Value="9,7"/>
+      <Setter Property="Padding" Value="12,10"/>
       <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Template">
         <Setter.Value>
@@ -503,12 +503,12 @@
     <!-- Знахідка / пункт: значок стану в колі, заголовок, пояснення, посилання -->
     <DataTemplate x:Key="ItemTemplate">
       <DockPanel>
-        <Border DockPanel.Dock="Left" Width="20" Height="20" CornerRadius="10" Background="{Binding Color}" VerticalAlignment="Top" Margin="0,0,12,0">
-          <TextBlock Text="{Binding Badge}" Foreground="#FFFFFF" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="13" Background="{Binding Color}" VerticalAlignment="Top" Margin="0,0,14,0">
+          <TextBlock Text="{Binding Badge}" Foreground="#FFFFFF" FontSize="13.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
         <StackPanel>
           <TextBlock Text="{Binding Title}" Style="{StaticResource RowTitle}"/>
-          <TextBlock Text="{Binding Detail}" Style="{StaticResource Optional}" Foreground="#6E6E73" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"/>
+          <TextBlock Text="{Binding Detail}" Style="{StaticResource Optional}" Foreground="#6E6E73" FontSize="14" TextWrapping="Wrap" Margin="0,4,0,0"/>
           <ItemsControl ItemsSource="{Binding Links}">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
@@ -521,44 +521,44 @@
   </Window.Resources>
 
   <Grid>
-    <Grid.ColumnDefinitions><ColumnDefinition Width="236"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="272"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
     <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
     <!-- Бічна панель: тло, назва й ПК угорі, стан і права внизу (пункти — у TabControl поверх) -->
     <Border Grid.RowSpan="2" Background="#E9E9EE" BorderBrush="#DCDCE1" BorderThickness="0,0,1,0"/>
-    <DockPanel Margin="20,22,14,0" VerticalAlignment="Top">
-      <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="9" Background="#007AFF" VerticalAlignment="Top" Margin="0,2,10,0">
-        <TextBlock Text="&#xE9D9;" FontFamily="{StaticResource Icons}" FontSize="17" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <DockPanel Margin="24,26,16,0" VerticalAlignment="Top">
+      <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="11" Background="#007AFF" VerticalAlignment="Top" Margin="0,2,12,0">
+        <TextBlock Text="&#xE9D9;" FontFamily="{StaticResource Icons}" FontSize="21" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
       </Border>
       <StackPanel>
-        <TextBlock x:Name="TitleText" Text="Debloater9" FontFamily="{StaticResource Display}" FontSize="16" FontWeight="SemiBold"/>
-        <TextBlock x:Name="SystemLine" Foreground="#6E6E73" FontSize="11.5" TextWrapping="Wrap" MaxHeight="62" TextTrimming="CharacterEllipsis"/>
+        <TextBlock x:Name="TitleText" Text="Debora" FontFamily="{StaticResource Display}" FontSize="19" FontWeight="SemiBold"/>
+        <TextBlock x:Name="SystemLine" Foreground="#6E6E73" FontSize="13" TextWrapping="Wrap" MaxHeight="70" TextTrimming="CharacterEllipsis"/>
       </StackPanel>
     </DockPanel>
-    <StackPanel Grid.RowSpan="2" VerticalAlignment="Bottom" Margin="20,0,16,16">
-      <TextBlock x:Name="StatusText" Foreground="#6E6E73" FontSize="12" TextWrapping="Wrap" Text="Готово"/>
+    <StackPanel Grid.RowSpan="2" VerticalAlignment="Bottom" Margin="24,0,18,18">
+      <TextBlock x:Name="StatusText" Foreground="#6E6E73" FontSize="14" TextWrapping="Wrap" Text="Готово"/>
       <ProgressBar x:Name="Progress" Margin="0,6,0,0" Height="5" Visibility="Collapsed"/>
-      <TextBlock x:Name="AdminBadge" FontSize="12" FontWeight="Medium" TextWrapping="Wrap" Margin="0,10,0,0"/>
+      <TextBlock x:Name="AdminBadge" FontSize="14" FontWeight="Medium" TextWrapping="Wrap" Margin="0,10,0,0"/>
     </StackPanel>
 
     <TabControl x:Name="Tabs" Grid.ColumnSpan="2" Background="Transparent" BorderThickness="0">
 
       <!-- ================= Огляд ================= -->
       <TabItem Header="Огляд" Tag="&#xE9D9;" Background="#007AFF">
-        <Grid Margin="16,0,16,0">
+        <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-          <Border Style="{StaticResource Card}" Padding="22,20">
+          <Border Style="{StaticResource Card}" Padding="28,24">
             <DockPanel>
-              <Grid DockPanel.Dock="Left" Width="118" Height="118" Margin="0,0,26,0">
-                <Ellipse Stroke="#E5E5EA" StrokeThickness="11" Margin="0"/>
-                <Path x:Name="ScoreRing" Stroke="#007AFF" StrokeThickness="11" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+              <Grid DockPanel.Dock="Left" Width="156" Height="156" Margin="0,0,34,0">
+                <Ellipse Stroke="#E5E5EA" StrokeThickness="14" Margin="0"/>
+                <Path x:Name="ScoreRing" Stroke="#007AFF" StrokeThickness="14" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <TextBlock x:Name="ScoreText" Text="—" FontFamily="{StaticResource Display}" FontSize="36" FontWeight="Bold" HorizontalAlignment="Center"/>
-                  <TextBlock Text="зі 100" Foreground="#6E6E73" FontSize="11" HorizontalAlignment="Center" Margin="0,-4,0,0"/>
+                  <TextBlock x:Name="ScoreText" Text="—" FontFamily="{StaticResource Display}" FontSize="50" FontWeight="Bold" HorizontalAlignment="Center"/>
+                  <TextBlock Text="зі 100" Foreground="#6E6E73" FontSize="13" HorizontalAlignment="Center" Margin="0,-4,0,0"/>
                 </StackPanel>
               </Grid>
               <StackPanel VerticalAlignment="Center">
-                <TextBlock x:Name="VerdictText" Text="Ще не скановано" FontFamily="{StaticResource Display}" FontSize="22" FontWeight="SemiBold"/>
+                <TextBlock x:Name="VerdictText" Text="Ще не скановано" FontFamily="{StaticResource Display}" FontSize="28" FontWeight="SemiBold"/>
                 <TextBlock x:Name="CountsText" Style="{StaticResource Intro}" Margin="0,4,0,14"
                            Text="Перевірка займає від 10 секунд до 3 хвилин. «Сканувати й виправити все» одразу виконає безпечні кроки: точку відновлення, виправлення, очищення, оновлення й драйвери."/>
                 <WrapPanel>
@@ -570,7 +570,7 @@
               </StackPanel>
             </DockPanel>
           </Border>
-          <Border Grid.Row="1" Margin="0,10,0,0" Padding="18,12">
+          <Border Grid.Row="1" Margin="0,12,0,0" Padding="24,16">
             <Border.Style>
               <Style TargetType="Border" BasedOn="{StaticResource Card}">
                 <Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=CategoryList}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
@@ -580,12 +580,12 @@
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <StackPanel Margin="0,5,22,5">
+                  <StackPanel Margin="0,7,28,7">
                     <DockPanel>
                       <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" FontWeight="SemiBold" Foreground="{Binding Color}"/>
                       <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
-                    <ProgressBar Value="{Binding Number}" Maximum="100" Height="5" Margin="0,5,0,0" Foreground="{Binding Color}"/>
+                    <ProgressBar Value="{Binding Number}" Maximum="100" Height="7" Margin="0,7,0,0" Foreground="{Binding Color}"/>
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -596,14 +596,14 @@
             <Grid>
               <ListBox x:Name="FindingsList" ItemTemplate="{StaticResource ItemTemplate}"
                        ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"/>
-              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" MaxWidth="360">
+              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" MaxWidth="440">
                 <StackPanel.Style>
                   <Style TargetType="StackPanel">
                     <Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=FindingsList}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                   </Style>
                 </StackPanel.Style>
-                <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="30" Foreground="#C7C7CC" HorizontalAlignment="Center"/>
-                <TextBlock Text="Тут з'являться знахідки" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,4"/>
+                <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="38" Foreground="#C7C7CC" HorizontalAlignment="Center"/>
+                <TextBlock Text="Тут з'являться знахідки" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,4"/>
                 <TextBlock Text="Натисніть «Лише сканувати», щоб побачити стан ПК без змін, або «Сканувати й виправити все»." Foreground="#6E6E73" TextWrapping="Wrap" TextAlignment="Center"/>
               </StackPanel>
             </Grid>
@@ -613,7 +613,7 @@
 
       <!-- ================= Чекліст ================= -->
       <TabItem Header="Чекліст" Tag="&#xE9D5;" Background="#34C759">
-        <Grid Margin="16,0,16,0">
+        <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <WrapPanel>
             <Button x:Name="BtnRunAuto" Style="{StaticResource Primary}" Content="Виконати автоматичні кроки" Margin="0,0,8,6"/>
@@ -630,11 +630,11 @@
                     <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Selected, Mode=OneWay}" IsHitTestVisible="False" Focusable="False" Margin="0,1,12,0" VerticalAlignment="Top"/>
                     <StackPanel>
                       <DockPanel>
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Foreground="{Binding Color}" FontSize="12" FontWeight="SemiBold" Margin="12,0,0,0"/>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Foreground="{Binding Color}" FontSize="14" FontWeight="SemiBold" Margin="14,0,0,0"/>
                         <TextBlock Text="{Binding Title}" Style="{StaticResource RowTitle}"/>
                       </DockPanel>
-                      <TextBlock Text="{Binding Detail}" Style="{StaticResource Optional}" Foreground="#6E6E73" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"/>
-                      <TextBlock Text="{Binding Note}" Style="{StaticResource Optional}" Foreground="#B25000" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                      <TextBlock Text="{Binding Detail}" Style="{StaticResource Optional}" Foreground="#6E6E73" FontSize="14" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                      <TextBlock Text="{Binding Note}" Style="{StaticResource Optional}" Foreground="#B25000" FontSize="14" TextWrapping="Wrap" Margin="0,2,0,0"/>
                       <ItemsControl ItemsSource="{Binding Links}">
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -652,10 +652,10 @@
 
       <!-- ================= Налаштування (твіки) ================= -->
       <TabItem Header="Налаштування" Tag="&#xE713;" Background="#8E8E93">
-        <Grid Margin="16,0,16,0">
+        <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <WrapPanel>
-            <ComboBox x:Name="PresetBox" Width="240" Margin="0,0,8,6"/>
+            <ComboBox x:Name="PresetBox" Width="270" Margin="0,0,8,6"/>
             <Button x:Name="BtnSelectPreset" Content="Вибрати профіль" Margin="0,0,8,6"/>
             <Button x:Name="BtnSelectNone" Content="Зняти все" Margin="0,0,8,6"/>
             <Button x:Name="BtnPreview" Content="Що зміниться" Margin="0,0,8,6"/>
@@ -692,7 +692,7 @@
       <!-- ================= Драйвери ================= -->
       <TabItem Header="Драйвери" Tag="&#xE772;" Background="#FF9500">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel Margin="16,0,16,16">
+          <StackPanel Margin="20,0,20,20">
             <WrapPanel>
               <Button x:Name="BtnDriverScan" Style="{StaticResource Primary}" Content="Перевірити драйвери" Margin="0,0,8,6"/>
               <Button x:Name="BtnOemPage" Content="Сторінка драйверів виробника" IsEnabled="False" Margin="0,0,8,6"/>
@@ -704,7 +704,7 @@
             <Border Style="{StaticResource Card}">
               <StackPanel>
                 <TextBlock Style="{StaticResource Intro}" Margin="0,0,0,10"
-                           Text="Debloater9 шукає драйвери для пристроїв без драйвера і новіші версії для решти в офіційному каталозі Microsoft (там драйвери від Intel, AMD, NVIDIA, Realtek та інших) і серед рекомендацій Windows Update. Завантаження перевіряються за контрольною сумою, попередні драйвери зберігаються для відкату."/>
+                           Text="Debora шукає драйвери для пристроїв без драйвера і новіші версії для решти в офіційному каталозі Microsoft (там драйвери від Intel, AMD, NVIDIA, Realtek та інших) і серед рекомендацій Windows Update. Завантаження перевіряються за контрольною сумою, попередні драйвери зберігаються для відкату."/>
                 <WrapPanel>
                   <Button x:Name="BtnDriverOnline" Style="{StaticResource Primary}" Content="Знайти нові драйвери" Margin="0,0,8,6"/>
                   <Button x:Name="BtnDriverOnlineInstall" Content="Завантажити й встановити вибрані" IsEnabled="False" Margin="0,0,8,6"/>
@@ -786,13 +786,13 @@
 
       <!-- ================= Програми ================= -->
       <TabItem Header="Програми" Tag="&#xE71D;" Background="#5856D6">
-        <Grid Margin="16,0,16,0">
+        <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <StackPanel>
             <Grid>
               <TextBox x:Name="AppSearch" Style="{StaticResource Search}" VerticalAlignment="Stretch"/>
-              <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="13" Foreground="#6E6E73" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-              <TextBlock x:Name="AppSearchHint" Text="Пошук: назва програми або для чого вона (наприклад «pdf», «відео», «vpn»)" Foreground="#8E8E93" FontSize="14" Margin="33,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="16" Foreground="#6E6E73" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBlock x:Name="AppSearchHint" Text="Пошук: назва програми або для чого вона (наприклад «pdf», «відео», «vpn»)" Foreground="#8E8E93" FontSize="16" Margin="39,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
             </Grid>
             <TextBlock Style="{StaticResource Section}" Margin="4,14,0,7" Text="Готові набори"/>
             <WrapPanel x:Name="AppBundles"/>
@@ -801,11 +801,11 @@
             <Button x:Name="BtnWingetStore" Style="{StaticResource LinkButton}" Content="Встановити winget («Інсталятор застосунків») з Microsoft Store" Visibility="Collapsed" HorizontalAlignment="Left" Margin="4,6,0,0"/>
           </StackPanel>
           <Grid Grid.Row="1" Margin="0,14,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="214"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Style="{StaticResource Panel}" Margin="0,0,14,10">
               <ListBox x:Name="AppCategoryList" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemContainerStyle>
-                  <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"><Setter Property="Padding" Value="10,6"/></Style>
+                  <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"><Setter Property="Padding" Value="12,8"/></Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                   <DataTemplate>
@@ -819,16 +819,29 @@
             </Border>
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
               <ItemsControl x:Name="AppCards">
-                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}" VerticalAlignment="Top"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Border Width="250" Margin="0,0,10,10" CornerRadius="10" Background="White" ToolTip="{Binding Id}">
-                      <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" Padding="10,0,0,0" Margin="14,12" VerticalContentAlignment="Top">
-                        <StackPanel>
-                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
-                          <TextBlock Text="{Binding Note}" Foreground="#6E6E73" TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0" Height="32" TextTrimming="CharacterEllipsis"/>
-                          <TextBlock Text="{Binding Status}" Foreground="{Binding Color}" FontSize="12" Margin="0,5,0,0" FontWeight="Medium"/>
-                        </StackPanel>
+                    <Border Margin="0,0,12,12" CornerRadius="12" Background="White" ToolTip="{Binding Id}">
+                      <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" Padding="12,0,0,0" Margin="16,14" VerticalContentAlignment="Top">
+                        <DockPanel>
+                          <Grid DockPanel.Dock="Left" Width="44" Height="44" Margin="0,0,12,0" VerticalAlignment="Top">
+                            <Border CornerRadius="11" Background="#E5E5EA">
+                              <TextBlock Text="{Binding Initial}" FontSize="20" FontWeight="SemiBold" Foreground="#6E6E73" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border CornerRadius="11" Background="White">
+                              <Border.Style>
+                                <Style TargetType="Border"><Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style>
+                              </Border.Style>
+                              <Image Source="{Binding Icon}" Width="40" Height="40" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Border>
+                          </Grid>
+                          <StackPanel>
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="16.5" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Text="{Binding Note}" Foreground="#6E6E73" TextWrapping="Wrap" FontSize="14" Margin="0,3,0,0" Height="38" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Text="{Binding Status}" Foreground="{Binding Color}" FontSize="14" Margin="0,6,0,0" FontWeight="Medium"/>
+                          </StackPanel>
+                        </DockPanel>
                       </CheckBox>
                     </Border>
                   </DataTemplate>
@@ -850,12 +863,12 @@
 
       <!-- ================= Видалення програм ================= -->
       <TabItem Header="Видалення" Tag="&#xE74D;" Background="#FF3B30">
-        <Grid Margin="16,0,16,0">
+        <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <Grid>
             <TextBox x:Name="UninstSearch" Style="{StaticResource Search}" VerticalAlignment="Stretch"/>
-            <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="13" Foreground="#6E6E73" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-            <TextBlock x:Name="UninstSearchHint" Text="Пошук серед встановлених програм" Foreground="#8E8E93" FontSize="14" Margin="33,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+            <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="16" Foreground="#6E6E73" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+            <TextBlock x:Name="UninstSearchHint" Text="Пошук серед встановлених програм" Foreground="#8E8E93" FontSize="16" Margin="39,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
           </Grid>
           <DockPanel Grid.Row="1" Margin="4,12,0,12">
             <CheckBox x:Name="ChkUninstBloat" DockPanel.Dock="Right" Content="Лише рекомендовані до видалення" VerticalAlignment="Center" Margin="12,0,0,0"/>
@@ -894,7 +907,7 @@
 
       <!-- ================= Автозавантаження ================= -->
       <TabItem Header="Автозавантаження" Tag="&#xE945;" Background="#FF9F0A">
-        <Grid Margin="16,0,16,0">
+        <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <WrapPanel>
             <Button x:Name="BtnStartupApply" Style="{StaticResource Primary}" Content="Застосувати зміни" Margin="0,0,8,6"/>
@@ -928,7 +941,7 @@
       <!-- ================= Обслуговування ================= -->
       <TabItem Header="Обслуговування" Tag="&#xE90F;" Background="#30B0C7">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel Margin="16,0,16,20" MaxWidth="980" HorizontalAlignment="Stretch">
+          <StackPanel Margin="20,0,20,24" MaxWidth="1240" HorizontalAlignment="Stretch">
 
             <TextBlock Style="{StaticResource Section}" Margin="16,0,0,7" Text="Стан комп'ютера"/>
             <Border Style="{StaticResource Group}">
@@ -943,11 +956,11 @@
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <DockPanel Margin="0,10,0,0">
-                          <Ellipse DockPanel.Dock="Left" Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Top" Margin="2,5,12,0"/>
+                          <Ellipse DockPanel.Dock="Left" Width="11" Height="11" Fill="{Binding Color}" VerticalAlignment="Top" Margin="2,6,14,0"/>
                           <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="{Binding Color}" FontWeight="SemiBold" Margin="12,0,0,0"/>
                           <StackPanel>
                             <TextBlock Text="{Binding Title}" FontWeight="Medium" TextWrapping="Wrap"/>
-                            <TextBlock Text="{Binding Note}" Style="{StaticResource Optional}" Foreground="{Binding Color}" FontSize="12" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Note}" Style="{StaticResource Optional}" Foreground="{Binding Color}" FontSize="14" TextWrapping="Wrap"/>
                             <TextBlock Text="{Binding Detail}" Style="{StaticResource RowNote}"/>
                           </StackPanel>
                         </DockPanel>
@@ -1016,7 +1029,7 @@
               <StackPanel>
                 <DockPanel Style="{StaticResource Row}">
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ComboBox x:Name="PauseDays" Width="110" Margin="0,0,8,0" SelectedIndex="0">
+                    <ComboBox x:Name="PauseDays" Width="130" Margin="0,0,8,0" SelectedIndex="0">
                       <ComboBoxItem Content="7 днів"/><ComboBoxItem Content="14 днів"/><ComboBoxItem Content="21 день"/><ComboBoxItem Content="35 днів"/>
                     </ComboBox>
                     <Button x:Name="BtnPause" Content="Призупинити"/>
@@ -1038,7 +1051,7 @@
             <Border Style="{StaticResource Card}">
               <StackPanel>
                 <TextBlock Style="{StaticResource RowNote}" Margin="0,0,0,10"
-                           Text="Раз на тиждень Debloater9 сам створить точку відновлення й виконає вибране, потім просканує ПК і покаже сповіщення з підсумком. Працює, коли ви увійшли в Windows; пропущений запуск виконається при наступному вході."/>
+                           Text="Раз на тиждень Debora сам створить точку відновлення й виконає вибране, потім просканує ПК і покаже сповіщення з підсумком. Працює, коли ви увійшли в Windows; пропущений запуск виконається при наступному вході."/>
                 <CheckBox x:Name="ChkMtCleanup" Content="Очищення диска (тимчасові файли, кеш оновлень, залишки інсталяторів)" Margin="0,3"/>
                 <CheckBox x:Name="ChkMtDefender" Content="Антивірусні бази Захисника" Margin="0,3"/>
                 <CheckBox x:Name="ChkMtApps" Content="Оновлення програм (winget)" Margin="0,3"/>
@@ -1046,8 +1059,8 @@
                 <CheckBox x:Name="ChkMtWindows" Content="Оновлення Windows (зазвичай Windows ставить їх сама)" Margin="0,3"/>
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                   <TextBlock Text="Коли" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                  <ComboBox x:Name="MtDay" Width="150" Margin="0,0,8,0"/>
-                  <TextBox x:Name="MtTime" Width="66" Text="12:00" VerticalContentAlignment="Center"/>
+                  <ComboBox x:Name="MtDay" Width="170" Margin="0,0,8,0"/>
+                  <TextBox x:Name="MtTime" Width="78" Text="12:00" VerticalContentAlignment="Center"/>
                 </StackPanel>
                 <WrapPanel Margin="0,14,0,0">
                   <Button x:Name="BtnScheduleOn" Style="{StaticResource Primary}" Content="Увімкнути розклад"/>
@@ -1064,9 +1077,9 @@
       <!-- ================= Перевстановлення ================= -->
       <TabItem Header="Перевстановлення" Tag="&#xE88E;" Background="#AF52DE">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel Margin="16,0,16,20" MaxWidth="980" HorizontalAlignment="Stretch">
+          <StackPanel Margin="20,0,20,24" MaxWidth="1240" HorizontalAlignment="Stretch">
             <TextBlock Style="{StaticResource Intro}" Margin="4,0,0,4"
-                       Text="Чиста Windows без зайвих запитань і з усіма драйверами. Створіть звичайну флешку з Windows (Media Creation Tool від Microsoft або Rufus), вставте її й натисніть «Підготувати флешку». Під час встановлення вручну лишиться тільки вибір диска; після першого входу Debloater9 сам застосує налаштування й доставить драйвери з інтернету."/>
+                       Text="Чиста Windows без зайвих запитань і з усіма драйверами. Створіть звичайну флешку з Windows (Media Creation Tool від Microsoft або Rufus), вставте її й натисніть «Підготувати флешку». Під час встановлення вручну лишиться тільки вибір диска; після першого входу Debora сам застосує налаштування й доставить драйвери з інтернету."/>
             <TextBlock Style="{StaticResource Section}" Text="Інсталяційна флешка"/>
             <Border Style="{StaticResource Group}">
               <StackPanel>
@@ -1077,17 +1090,17 @@
                 <TextBlock x:Name="UsbInfo" Style="{StaticResource RowNote}" Margin="16,-4,16,10"/>
                 <Border Style="{StaticResource Sep}"/>
                 <DockPanel Style="{StaticResource Row}">
-                  <TextBox x:Name="UserNameBox" DockPanel.Dock="Right" Width="320" Text="User"/>
+                  <TextBox x:Name="UserNameBox" DockPanel.Dock="Right" Width="380" Text="User"/>
                   <TextBlock Text="Ім'я облікового запису" VerticalAlignment="Center"/>
                 </DockPanel>
                 <Border Style="{StaticResource Sep}"/>
                 <DockPanel Style="{StaticResource Row}">
-                  <PasswordBox x:Name="AccountPasswordBox" DockPanel.Dock="Right" Width="320"/>
+                  <PasswordBox x:Name="AccountPasswordBox" DockPanel.Dock="Right" Width="380"/>
                   <TextBlock Text="Пароль (можна лишити порожнім)" VerticalAlignment="Center"/>
                 </DockPanel>
                 <Border Style="{StaticResource Sep}"/>
                 <DockPanel Style="{StaticResource Row}">
-                  <ComboBox x:Name="EditionBox" DockPanel.Dock="Right" Width="320" SelectedIndex="0">
+                  <ComboBox x:Name="EditionBox" DockPanel.Dock="Right" Width="380" SelectedIndex="0">
                     <ComboBoxItem Content="Вибрати під час встановлення"/>
                     <ComboBoxItem Content="Home (Домашня)"/>
                     <ComboBoxItem Content="Pro"/>
@@ -1098,7 +1111,7 @@
                 <StackPanel Margin="16,12,14,14">
                   <CheckBox x:Name="ChkUsbDrivers" IsChecked="True" Content="Додати драйвери цього ПК — Windows поставить їх під час встановлення"/>
                   <CheckBox x:Name="ChkUsbBypass" IsChecked="True" Margin="0,8,0,0" Content="Дозволити Windows 11 на старому ПК (без TPM 2.0, Secure Boot, з непідтримуваним процесором)"/>
-                  <CheckBox x:Name="ChkUsbPost" IsChecked="True" Margin="0,8,0,0" Content="Після першого входу: рекомендовані налаштування Debloater9 і драйвери з інтернету"/>
+                  <CheckBox x:Name="ChkUsbPost" IsChecked="True" Margin="0,8,0,0" Content="Після першого входу: рекомендовані налаштування Debora і драйвери з інтернету"/>
                   <WrapPanel Margin="0,14,0,0">
                     <Button x:Name="BtnPrepareUsb" Style="{StaticResource Primary}" Content="Підготувати флешку"/>
                   </WrapPanel>
@@ -1119,7 +1132,7 @@
 
       <!-- ================= Журнал ================= -->
       <TabItem Header="Журнал змін" Tag="&#xE81C;" Background="#A2845E">
-        <Grid Margin="16,0,16,0">
+        <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <WrapPanel>
             <Button x:Name="BtnUndo" Style="{StaticResource Primary}" Content="Відкотити вибрану сесію" Margin="0,0,8,6"/>
@@ -1144,9 +1157,9 @@
     </TabControl>
 
     <!-- Журнал виконання під вмістом -->
-    <Expander x:Name="LogExpander" Grid.Row="1" Grid.Column="1" Header="Журнал виконання" Margin="32,0,32,6">
+    <Expander x:Name="LogExpander" Grid.Row="1" Grid.Column="1" Header="Журнал виконання" Margin="40,0,40,8">
       <Border Style="{StaticResource Panel}" Margin="0,0,0,6">
-        <TextBox x:Name="LogBox" Height="150" VerticalAlignment="Stretch" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="12" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"/>
+        <TextBox x:Name="LogBox" Height="170" VerticalAlignment="Stretch" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="13" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"/>
       </Border>
     </Expander>
   </Grid>

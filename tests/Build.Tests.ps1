@@ -2,13 +2,13 @@
     $script:root = Split-Path $PSScriptRoot -Parent
     $script:out  = Join-Path $TestDrive 'dist'
     & (Join-Path $root 'build\Compile.ps1') -OutDir $out -Version '0.0.0-test' *> $null
-    $script:file = Join-Path $out 'Debloater9.ps1'
+    $script:file = Join-Path $out 'Debora.ps1'
 }
 
 Describe 'Збірка' {
     It 'створює один файл і SHA256SUMS' {
         Test-Path $file | Should -BeTrue
-        Get-Content (Join-Path $out 'SHA256SUMS') | Should -Match '^[0-9a-f]{64}  Debloater9\.ps1$'
+        Get-Content (Join-Path $out 'SHA256SUMS') | Should -Match '^[0-9a-f]{64}  Debora\.ps1$'
     }
     It 'файл у UTF-8 з BOM' {
         $bytes = [IO.File]::ReadAllBytes($file)[0..2]

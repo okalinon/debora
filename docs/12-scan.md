@@ -192,14 +192,14 @@
 ## CLI
 
 ```powershell
-.\Debloater9.ps1 -Scan                          # швидке сканування, підсумок у консолі
-.\Debloater9.ps1 -Scan -Deep                    # з winget, Windows Update, SFC
-.\Debloater9.ps1 -Scan -Report C:\report.html   # зберегти HTML-звіт
-.\Debloater9.ps1 -Checklist                     # чекліст з автоматичними галочками (перевіряє фактичний стан)
-.\Debloater9.ps1 -Checklist -Run All -Yes       # виконати всі автоматичні кроки (без перезавантаження)
-.\Debloater9.ps1 -Checklist -Run 3,5 -Yes       # лише вибрані кроки
-.\Debloater9.ps1 -Checklist -Run All -AllowReboot -Yes   # разом із перезавантаженням наприкінці
-.\Debloater9.ps1 -Checklist -Done 1             # позначити ручний крок виконаним
+.\Debora.ps1 -Scan                          # швидке сканування, підсумок у консолі
+.\Debora.ps1 -Scan -Deep                    # з winget, Windows Update, SFC
+.\Debora.ps1 -Scan -Report C:\report.html   # зберегти HTML-звіт
+.\Debora.ps1 -Checklist                     # чекліст з автоматичними галочками (перевіряє фактичний стан)
+.\Debora.ps1 -Checklist -Run All -Yes       # виконати всі автоматичні кроки (без перезавантаження)
+.\Debora.ps1 -Checklist -Run 3,5 -Yes       # лише вибрані кроки
+.\Debora.ps1 -Checklist -Run All -AllowReboot -Yes   # разом із перезавантаженням наприкінці
+.\Debora.ps1 -Checklist -Done 1             # позначити ручний крок виконаним
 ```
 
 > Реалізовано в 0.2.0. Замість окремого `-Scan -Fix` виправлення виконуються через `-Checklist -Run` — з урахуванням порядку і залежностей кроків.

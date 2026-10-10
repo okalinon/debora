@@ -1,9 +1,11 @@
-﻿# Автоматичне обслуговування за розкладом: завдання Планувальника запускає Debloater9 -Maintain
+﻿# Автоматичне обслуговування за розкладом: завдання Планувальника запускає Debora -Maintain
 # раз на тиждень (точка відновлення → очищення → бази Захисника → програми → драйвери → [оновлення Windows]
 # → швидке сканування → сповіщення з підсумком). Копія програми лежить у %ProgramData%\Debloater9\app,
 # доступ на запис — лише SYSTEM і адміністраторам (завдання працює з правами адміністратора).
 
-$script:D9TaskName = 'Debloater9 Maintenance'
+$script:D9TaskName = 'Debora Maintenance'
+# Так завдання називалось до перейменування програми (до 0.19.0): прибираємо під час увімкнення/вимкнення
+$script:D9LegacyTaskName = 'Debloater9 Maintenance'
 $script:D9MaintenanceSteps = [ordered]@{
     cleanup       = 'Очищення диска (тимчасові файли, кеш оновлень, залишки інсталяторів)'
     defender      = 'Антивірусні бази Захисника'
@@ -125,7 +127,7 @@ function Format-D9MaintenanceSummary {
     $parts = @($Summary.results | ForEach-Object { if ($_.ok) { $_.text } else { "$($_.step): помилка" } })
     $text = $parts -join '; '
     if ($null -ne $Summary.score) { $text += ". Оцінка: $($Summary.score)/100" }
-    if ($Summary.critical) { $text += ", критичних проблем: $($Summary.critical) — відкрийте Debloater9" }
+    if ($Summary.critical) { $text += ", критичних проблем: $($Summary.critical) — відкрийте Debora" }
     if ($Summary.reboot) { $text += '. Перезавантажте ПК' }
     return $text
 }
@@ -137,7 +139,7 @@ function Install-D9AppCopy {
     param([Parameter(Mandatory)][string]$SourceScript)
     $dir = Join-Path (Get-D9DataRoot) 'app'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    $dst = Join-Path $dir 'Debloater9.ps1'
+    $dst = Join-Path $dir 'Debora.ps1'
     Copy-Item -LiteralPath $SourceScript -Destination $dst -Force
     # Спершу копія, потім замок: SYSTEM і адміністратори — повний доступ, користувачі — лише читання (успадковується файлом)
     $out = & icacls.exe $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' 2>&1
@@ -161,22 +163,27 @@ function Register-D9MaintenanceTask {
     $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
     $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 3) -MultipleInstances IgnoreNew
-    $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Debloater9: щотижневе обслуговування (очищення, оновлення програм, драйверів і баз Захисника). Вимкнути — у Debloater9 → Обслуговування.'
+    $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Debora: щотижневе обслуговування (очищення, оновлення програм, драйверів і баз Захисника). Вимкнути — у Debora → Обслуговування.'
     [void](Register-ScheduledTask -TaskName $script:D9TaskName -InputObject $task -Force)
+    if (Get-ScheduledTask -TaskName $script:D9LegacyTaskName -ErrorAction SilentlyContinue) { Unregister-ScheduledTask -TaskName $script:D9LegacyTaskName -Confirm:$false }
     Write-D9Log "Розклад: щотижня, $($Config.Day) о $($Config.Time). Кроки: $($Config.Steps -join ', ')" Ok
 }
 
 function Unregister-D9MaintenanceTask {
-    if (Get-ScheduledTask -TaskName $script:D9TaskName -ErrorAction SilentlyContinue) {
-        Unregister-ScheduledTask -TaskName $script:D9TaskName -Confirm:$false
-        Write-D9Log 'Автоматичне обслуговування вимкнено.' Ok
+    foreach ($name in $script:D9TaskName, $script:D9LegacyTaskName) {
+        if (Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $name -Confirm:$false
+            Write-D9Log 'Автоматичне обслуговування вимкнено.' Ok
+        }
     }
 }
 
 function Get-D9MaintenanceTask {
-    $t = Get-ScheduledTask -TaskName $script:D9TaskName -ErrorAction SilentlyContinue
+    $name = $script:D9TaskName
+    $t = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
+    if (-not $t) { $name = $script:D9LegacyTaskName; $t = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue }
     if (-not $t) { return $null }
-    $info = Get-ScheduledTaskInfo -TaskName $script:D9TaskName -ErrorAction SilentlyContinue
+    $info = Get-ScheduledTaskInfo -TaskName $name -ErrorAction SilentlyContinue
     [pscustomobject]@{
         State   = [string]$t.State
         LastRun = $(if ($info.LastRunTime -and $info.LastRunTime.Year -gt 2000) { $info.LastRunTime } else { $null })

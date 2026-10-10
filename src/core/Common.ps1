@@ -29,7 +29,7 @@ function Initialize-D9LogFile {
         $dir = Split-Path $Path
         if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force -ErrorAction Stop | Out-Null }
         $who = if (Test-D9IsAdmin) { 'адміністратор' } else { 'без прав адміністратора' }
-        Add-Content -Path $Path -Value ("`r`n{0:yyyy-MM-dd HH:mm:ss} ===== Debloater9 {1}, режим {2}, {3} =====" -f (Get-Date), $script:D9Version, $Mode, $who) -Encoding UTF8 -ErrorAction Stop
+        Add-Content -Path $Path -Value ("`r`n{0:yyyy-MM-dd HH:mm:ss} ===== Debora {1}, режим {2}, {3} =====" -f (Get-Date), $script:D9Version, $Mode, $who) -Encoding UTF8 -ErrorAction Stop
         $script:D9LogPath = $Path
     } catch { $script:D9LogPath = $null }
 }

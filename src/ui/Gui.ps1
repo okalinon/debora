@@ -115,6 +115,7 @@ function Show-D9Gui {
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
                    'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore', 'AppGrid',
+                   'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'BtnStartupApply', 'BtnStartupRefresh', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState') {
         $ui[$n] = $win.FindName($n)
@@ -124,7 +125,7 @@ function Show-D9Gui {
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
     $actionButtons = @('BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
                        'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
-                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool')
+                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers')
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -800,6 +801,52 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
     })
 
+    # ---------- Перевстановлення Windows ----------
+    $fillUsb = {
+        $state.UsbMedia = @(Get-D9InstallMedia)
+        $ui.UsbBox.Items.Clear()
+        foreach ($m in $state.UsbMedia) {
+            [void]$ui.UsbBox.Items.Add("$($m.Drive) $(if ($m.Label) { "«$($m.Label)» " })— файли встановлення Windows$(if ($m.Language) { " ($($m.Language))" }), вільно $(Format-D9Size $m.FreeBytes)")
+        }
+        if ($state.UsbMedia) {
+            $ui.UsbBox.SelectedIndex = 0
+            $ui.UsbInfo.Text = 'Буде додано autounattend.xml, папку Debloater9 і (за бажанням) драйвери цього ПК. Решта вмісту флешки не змінюється.'
+        } else {
+            $ui.UsbInfo.Text = 'Флешку з Windows не знайдено. Створіть її через Media Creation Tool (microsoft.com/software-download) або Rufus, вставте й натисніть «Оновити список».'
+        }
+    }
+    $ui.BtnUsbRefresh.Add_Click({ & $fillUsb })
+    $ui.BtnPrepareUsb.Add_Click({
+        if (-not $state.UsbMedia -or $ui.UsbBox.SelectedIndex -lt 0) { [void][Windows.MessageBox]::Show($win, 'Вставте флешку з файлами встановлення Windows і натисніть «Оновити список».', 'Debloater9'); return }
+        $drivers = [bool]$ui.ChkUsbDrivers.IsChecked
+        if ($drivers -and -not (& $needAdmin)) { return }
+        $media = $state.UsbMedia[$ui.UsbBox.SelectedIndex]
+        $opts = @{ UserName = $ui.UserNameBox.Text.Trim(); Password = $ui.AccountPasswordBox.Password; Edition = @('', 'Home', 'Pro')[$ui.EditionBox.SelectedIndex]
+                   BypassRequirements = [bool]$ui.ChkUsbBypass.IsChecked; BypassNetwork = $true
+                   PostInstall = $(if ($ui.ChkUsbPost.IsChecked) { 'Recommended' } else { '' }); DriverUpdate = [bool]$ui.ChkUsbPost.IsChecked }
+        try { [void](New-D9AutounattendXml -Options $opts) } catch { [void][Windows.MessageBox]::Show($win, $_.Exception.Message, 'Debloater9', 'OK', 'Warning'); return }
+        $warn = if ($opts.Password) { "`n`nПароль зберігається у файлі на флешці відкритим текстом — не залишайте її без нагляду." } else { '' }
+        if ([Windows.MessageBox]::Show($win, "Підготувати флешку $($media.Drive)?`nОбліковий запис: $($opts.UserName)$(if ($drivers) { "`nДрайвери цього ПК буде скопійовано (кілька хвилин)." })$warn", 'Debloater9', 'YesNo', 'Question') -ne 'Yes') { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Підготовка флешки' { param($a) Initialize-D9InstallUsb -Drive $a.Drive -Options $a.Opts -ProgramFolder $a.Prog -IncludeDrivers:$a.Drivers } @{ Drive = $media.Drive; Opts = $opts; Prog = (Split-Path $DriverDir); Drivers = $drivers } {
+            param($r)
+            [void][Windows.MessageBox]::Show($win, "Флешку $($r.Drive) підготовлено:`n• $($r.Done -join "`n• ")`n`nЗавантажтеся з неї (меню завантаження — зазвичай F12, F9, Esc або F2) і виберіть диск для Windows. Решта — автоматично.", 'Debloater9')
+            & $fillUsb
+        }
+    })
+    $ui.BtnExportDrivers.Add_Click({
+        if (-not (& $needAdmin)) { return }
+        $dlg = New-Object Windows.Forms.FolderBrowserDialog
+        $dlg.Description = 'Куди зберегти драйвери (краще — флешка або інший диск)'
+        if ($dlg.ShowDialog() -ne 'OK') { return }
+        $folder = Join-Path $dlg.SelectedPath ("Драйвери {0} {1:yyyy-MM-dd}" -f $env:COMPUTERNAME, (Get-Date))
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob 'Збереження драйверів' { param($a) Export-D9Drivers -Folder $a.Folder } @{ Folder = $folder } {
+            param($r)
+            [void][Windows.MessageBox]::Show($win, "Збережено драйверів: $($r.Count) ($(Format-D9Size $r.Bytes))`n$($r.Folder)", 'Debloater9')
+        }
+    })
+
     # ---------- старт ----------
     $win.Add_Loaded({
         $timer.Start()
@@ -824,6 +871,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($e.OriginalSource -ne $ui.Tabs) { return }
         if ($ui.Tabs.SelectedItem.Header -eq 'Автозавантаження' -and -not $state.StartupRows -and -not $state.Job) { & $loadStartup }
         if ($ui.Tabs.SelectedItem.Header -eq 'Програми' -and -not $state.AppsLoaded -and -not $state.Job) { & $loadApps }
+        if ($ui.Tabs.SelectedItem.Header -eq 'Перевстановлення' -and $null -eq $state.UsbMedia) { & $fillUsb }
     })
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job) {

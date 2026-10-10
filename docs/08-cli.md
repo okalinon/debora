@@ -25,6 +25,8 @@
 | `-Undo <id>` | Відкотити сесію |
 | `-LogPath` | Журнал роботи в інший файл (типово — `%ProgramData%\Debloater9\logs\РРРР-ММ.log`) |
 | `-DriverUpdate [-WhatIf] [-IncludeOptional] [-Yes]` | Знайти в інтернеті (Microsoft Update Catalog + Windows Update) драйвери для пристроїв без драйвера й новіші версії, завантажити з перевіркою SHA-256 і встановити з відкатом; на Dell / Lenovo / HP — ще й утиліта виробника |
+| `-ExportDrivers <папка>` | Зберегти всі сторонні драйвери цього ПК (`pnputil /export-driver *`) |
+| `-PrepareUsb <диск> [-UserName] [-AccountPassword] [-Edition Home\|Pro] [-Preset] [-KeepRequirements] [-NoDrivers]` | Доповнити флешку з Windows: `autounattend.xml` (без запитань, локальний акаунт, обхід вимог Windows 11), драйвери цього ПК у `$WinpeDriver$`, Debloater9 для налаштування після першого входу |
 | `-Apps` | Каталог програм (`config/apps.json`) і що вже встановлено |
 | `-InstallApp <ID>[,<ID>…] [-Yes]` | Встановити програми через winget (ID з каталогу, назва або будь-який точний ID winget) |
 | `-UpgradeApps [-Yes]` | Оновити всі програми (`winget upgrade --all`) |

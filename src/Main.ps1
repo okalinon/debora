@@ -38,6 +38,10 @@
 .EXAMPLE
     .\Debloater9.ps1 -DriverUpdate -Yes           # знайти, завантажити й встановити (з відкатом)
 .EXAMPLE
+    .\Debloater9.ps1 -ExportDrivers D:\Драйвери-ПК       # зберегти всі драйвери цього ПК
+.EXAMPLE
+    .\Debloater9.ps1 -PrepareUsb E: -UserName Оля       # флешка з Windows → встановлення без запитань + драйвери
+.EXAMPLE
     .\Debloater9.ps1 -Apps                        # каталог програм і що вже встановлено
 .EXAMPLE
     .\Debloater9.ps1 -InstallApp Google.Chrome,7zip.7zip -Yes
@@ -71,6 +75,32 @@ param(
     # Разом із необов'язковими: заміна робочих драйверів Windows на системних пристроях
     [Parameter(ParameterSetName = 'DriverUpdate')]
     [switch]$IncludeOptional,
+
+    [Parameter(ParameterSetName = 'ExportDrivers', Mandatory)]
+    [string]$ExportDrivers,
+
+    # Флешка з файлами встановлення Windows (Media Creation Tool / Rufus)
+    [Parameter(ParameterSetName = 'PrepareUsb', Mandatory)]
+    [string]$PrepareUsb,
+
+    [Parameter(ParameterSetName = 'PrepareUsb')]
+    [string]$UserName = 'User',
+
+    # Пароль локального облікового запису (зберігається у файлі на флешці відкритим текстом); порожній — без пароля
+    [Parameter(ParameterSetName = 'PrepareUsb')]
+    [string]$AccountPassword = '',
+
+    [Parameter(ParameterSetName = 'PrepareUsb')]
+    [ValidateSet('', 'Home', 'Pro')]
+    [string]$Edition = '',
+
+    # Не обходити вимоги Windows 11 (TPM, Secure Boot, процесор, пам'ять)
+    [Parameter(ParameterSetName = 'PrepareUsb')]
+    [switch]$KeepRequirements,
+
+    # Не копіювати драйвери цього ПК на флешку
+    [Parameter(ParameterSetName = 'PrepareUsb')]
+    [switch]$NoDrivers,
 
     [Parameter(ParameterSetName = 'Apps', Mandatory)]
     [switch]$Apps,
@@ -112,6 +142,7 @@ param(
     [switch]$AllowReboot,
 
     [Parameter(ParameterSetName = 'Apply')]
+    [Parameter(ParameterSetName = 'PrepareUsb')]
     [ValidateSet('Recommended', 'Minimal', 'Standard', 'WeakPC', 'Gaming', 'Maximum')]
     [string]$Preset,
 
@@ -169,7 +200,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.8.2-dev'
+$script:D9Version  = '0.9.0-dev'
 $script:D9Language = $Language
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
@@ -416,6 +447,27 @@ switch ($PSCmdlet.ParameterSetName) {
         exit $(if ($errors) { $ExitCodes.Partial } else { $ExitCodes.Reboot })
     }
 
+    'ExportDrivers' {
+        if (-not (Test-D9IsAdmin)) { Write-D9Log 'Потрібні права адміністратора (запускайте через run.bat).' Error; exit $ExitCodes.NotAdmin }
+        try { $r = Export-D9Drivers -Folder $ExportDrivers; Write-D9Log "Щоб поставити їх на іншу (таку саму) систему: -DriverInstall `"$ExportDrivers`"" Detail; exit $ExitCodes.Ok }
+        catch { Write-D9Log $_.Exception.Message Error; exit $ExitCodes.Partial }
+    }
+
+    'PrepareUsb' {
+        if (-not $NoDrivers -and -not (Test-D9IsAdmin)) { Write-D9Log 'Для збереження драйверів потрібні права адміністратора (або додайте -NoDrivers).' Error; exit $ExitCodes.NotAdmin }
+        $opts = @{ UserName = $UserName; Password = $AccountPassword; Edition = $Edition; BypassRequirements = -not $KeepRequirements
+                   PostInstall = $(if ($Preset) { $Preset } else { 'Recommended' }); DriverUpdate = $true }
+        Write-Host ""
+        Write-Host "Флешка $PrepareUsb буде доповнена: autounattend.xml$(if (-not $NoDrivers) { ', драйвери цього ПК' }), Debloater9." -ForegroundColor Cyan
+        Write-Host "Під час встановлення вручну лишиться тільки вибір диска. Усе на флешці, крім autounattend.xml, не змінюється." -ForegroundColor DarkGray
+        try {
+            $r = Initialize-D9InstallUsb -Drive $PrepareUsb -Options $opts -ProgramFolder (Split-Path $PSCommandPath) -IncludeDrivers:(-not $NoDrivers)
+            Write-D9Log "Готово ($($r.Language)): $($r.Done -join '; ')." Ok
+            Write-D9Log 'Завантажтеся з флешки й виберіть диск — решта автоматично. Після першого входу Debloater9 застосує налаштування й доставить драйвери (потрібен інтернет).' Detail
+            exit $ExitCodes.Ok
+        } catch { Write-D9Log $_.Exception.Message Error; exit $ExitCodes.Partial }
+    }
+
     'Apps' {
         if (-not (Get-D9WingetPath)) { Write-D9Log 'winget не знайдено. Встановіть «Інсталятор застосунків» з Microsoft Store: ms-windows-store://pdp/?productid=9NBLGGH4NNS1' Error; exit $ExitCodes.Partial }
         Write-D9Log 'Перевіряю встановлені програми (winget export)...'
@@ -613,6 +665,7 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host "  -Diagnostics                    зібрати zip для розбору проблеми"
         Write-Host "  -Apps / -InstallApp / -UpgradeApps   програми через winget"
         Write-Host "  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити"
+        Write-Host "  -PrepareUsb E: -UserName Ім'я   флешка для перевстановлення Windows без запитань і з драйверами"
         Write-Host "  -ListTweaks                     каталог твіків і їхній стан"
         Write-Host "  -Preset Recommended -WhatIf     що зміниться за рекомендованим профілем"
         Write-Host "  -Preset Recommended -Yes        застосувати"

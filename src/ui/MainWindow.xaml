@@ -463,6 +463,52 @@
         </ScrollViewer>
       </TabItem>
 
+      <!-- ================= Перевстановлення ================= -->
+      <TabItem Header="Перевстановлення">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="20">
+            <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="Чиста Windows без зайвих запитань і з усіма драйверами. Створіть звичайну флешку з Windows (Media Creation Tool від Microsoft або Rufus), вставте її й натисніть «Підготувати флешку». Під час встановлення вручну лишиться тільки вибір диска; після першого входу Debloater9 сам застосує налаштування й доставить драйвери з інтернету."/>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="Інсталяційна флешка" FontWeight="SemiBold" FontSize="14"/>
+                <DockPanel Margin="0,8,0,0">
+                  <Button x:Name="BtnUsbRefresh" DockPanel.Dock="Right" Content="Оновити список" Margin="8,0,0,0"/>
+                  <ComboBox x:Name="UsbBox" VerticalContentAlignment="Center"/>
+                </DockPanel>
+                <TextBlock x:Name="UsbInfo" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <Grid Margin="0,12,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="200"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                  <TextBlock Text="Ім'я облікового запису" VerticalAlignment="Center"/>
+                  <TextBox x:Name="UserNameBox" Grid.Column="1" Text="User" Padding="4,3" Margin="0,2"/>
+                  <TextBlock Grid.Row="1" Text="Пароль (можна порожній)" VerticalAlignment="Center"/>
+                  <PasswordBox x:Name="AccountPasswordBox" Grid.Row="1" Grid.Column="1" Padding="4,3" Margin="0,2"/>
+                  <TextBlock Grid.Row="2" Text="Редакція Windows" VerticalAlignment="Center"/>
+                  <ComboBox x:Name="EditionBox" Grid.Row="2" Grid.Column="1" Margin="0,2" SelectedIndex="0">
+                    <ComboBoxItem Content="Вибрати під час встановлення"/>
+                    <ComboBoxItem Content="Home (Домашня)"/>
+                    <ComboBoxItem Content="Pro"/>
+                  </ComboBox>
+                </Grid>
+                <CheckBox x:Name="ChkUsbDrivers" IsChecked="True" Margin="0,10,0,0" Content="Додати драйвери цього ПК — Windows поставить їх під час встановлення"/>
+                <CheckBox x:Name="ChkUsbBypass" IsChecked="True" Margin="0,4,0,0" Content="Дозволити Windows 11 на старому ПК (без TPM 2.0, Secure Boot, з непідтримуваним процесором)"/>
+                <CheckBox x:Name="ChkUsbPost" IsChecked="True" Margin="0,4,0,0" Content="Після першого входу: рекомендовані налаштування Debloater9 і драйвери з інтернету"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                  <Button x:Name="BtnPrepareUsb" Style="{StaticResource Primary}" Content="Підготувати флешку"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <DockPanel>
+                <Button x:Name="BtnExportDrivers" DockPanel.Dock="Right" Content="Зберегти в папку…" VerticalAlignment="Center"/>
+                <StackPanel><TextBlock Text="Резервна копія драйверів" FontWeight="SemiBold" FontSize="14"/>
+                  <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Text="Усі сторонні драйвери цього ПК в одну папку. Після перевстановлення поставте їх на вкладці «Драйвери» → «Або встановити драйвери з папки»."/></StackPanel>
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
       <!-- ================= Журнал ================= -->
       <TabItem Header="Журнал змін">
         <Grid Margin="20">

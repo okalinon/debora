@@ -31,7 +31,9 @@ public class D9Row : INotifyPropertyChanged {
     public string Status { get { return status; } set { status = value; On("Status"); } }
     public string Note { get { return note; } set { note = value; On("Note"); } }
     public string Kind { get { return kind; } set { kind = value; On("Kind"); } }
-    public string Color { get { return color; } set { color = value; On("Color"); } }
+    // Темна тема: статусні кольори замінюються світлішими відтінками (заповнює Show-D9Gui)
+    public static System.Collections.Generic.Dictionary<string, string> ColorMap = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
+    public string Color { get { return color; } set { string m; color = (value != null && ColorMap.TryGetValue(value, out m)) ? m : value; On("Color"); } }
     public object Links { get; set; }
     public object Tag { get; set; }
 }
@@ -94,6 +96,59 @@ function Show-D9TextDialog {
     return [bool]$w.ShowDialog()
 }
 
+# ---------- Тема ----------
+# Світлі кольори розмітки й статусів → темні відповідники
+$script:D9DarkColors = [ordered]@{
+    '#F4F5F7' = '#16181D'; '#FAFBFC' = '#1A1D23'; '#1D2330' = '#E6E9EF'; '#5D6675' = '#9AA3B2'; '#E1E4EA' = '#2C313A'
+    '#C9CFD8' = '#3A404B'; '#E9EDF3' = '#262B33'; '#E8EBF0' = '#2A2F38'; '#DCE7FD' = '#1E3A6E'; '#1D4ED8' = '#BFD3FF'
+    '#2563EB' = '#4F7FE8'; '#C62828' = '#F07070'; '#2E7D32' = '#6CCB73'; '#B26A00' = '#F0B04A'; '#1565C0' = '#6EA2FF'
+}
+$script:D9DarkCard = '#1F232A'
+$script:D9Theme = 'auto'   # auto | light | dark
+
+# Темна тема: явно або за налаштуванням Windows «Режим застосунків: темний»
+function Test-D9DarkTheme {
+    param([string]$Theme = $script:D9Theme)
+    if ($Theme -eq 'dark') { return $true }
+    if ($Theme -eq 'light') { return $false }
+    (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -ErrorAction SilentlyContinue).AppsUseLightTheme -eq 0
+}
+
+# Колір для поточної теми (для прямих присвоєнь Foreground у коді)
+function Get-D9UiColor {
+    param([string]$Color)
+    if ($script:D9IsDark -and $script:D9DarkColors.Contains($Color.ToUpper())) { return $script:D9DarkColors[$Color.ToUpper()] }
+    return $Color
+}
+
+function Convert-D9XamlTheme {
+    param([Parameter(Mandatory)][string]$Xaml)
+    foreach ($k in $script:D9DarkColors.Keys) { $Xaml = [regex]::Replace($Xaml, [regex]::Escape($k), $script:D9DarkColors[$k], 'IgnoreCase') }
+    $card = $script:D9DarkCard
+    $Xaml = $Xaml.Replace('Property="Background" Value="White"', "Property=`"Background`" Value=`"$card`"").Replace('Background="White"', "Background=`"$card`"")
+    # Системні пензлі (випадні списки, виділення, вимкнені елементи) і стандартні елементи без власних стилів
+    $inject = @"
+    <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="$card"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#E6E9EF"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#262B33"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#E6E9EF"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#2F5BB7"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.GrayTextBrushKey}" Color="#7A8291"/>
+    <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#262B33"/><Setter Property="Foreground" Value="#E6E9EF"/><Setter Property="BorderBrush" Value="#2C313A"/><Setter Property="BorderThickness" Value="0,0,1,1"/><Setter Property="Padding" Value="6,5"/></Style>
+    <Style TargetType="DataGridRow"><Setter Property="Background" Value="$card"/><Setter Property="Foreground" Value="#E6E9EF"/></Style>
+    <Style TargetType="TextBox"><Setter Property="Background" Value="$card"/><Setter Property="Foreground" Value="#E6E9EF"/><Setter Property="BorderBrush" Value="#3A404B"/><Setter Property="CaretBrush" Value="#E6E9EF"/></Style>
+    <Style TargetType="PasswordBox"><Setter Property="Background" Value="$card"/><Setter Property="Foreground" Value="#E6E9EF"/><Setter Property="BorderBrush" Value="#3A404B"/><Setter Property="CaretBrush" Value="#E6E9EF"/></Style>
+    <Style TargetType="ListBox"><Setter Property="Background" Value="$card"/><Setter Property="Foreground" Value="#E6E9EF"/></Style>
+    <Style TargetType="ComboBox"><Setter Property="Foreground" Value="#1D2330"/></Style>
+    <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="#E6E9EF"/></Style>
+    <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#E6E9EF"/></Style>
+    <Style TargetType="Expander"><Setter Property="Foreground" Value="#E6E9EF"/></Style>
+
+"@
+    return $Xaml.Replace('<Window.Resources>', "<Window.Resources>`r`n$inject")
+}
+
 function Show-D9Gui {
     param(
         [Parameter(Mandatory)]$Catalog,
@@ -105,7 +160,14 @@ function Show-D9Gui {
         [scriptblock]$TestAction
     )
     Initialize-D9GuiTypes
-    $win = [Windows.Markup.XamlReader]::Parse((Get-D9UiText 'MainWindow.xaml'))
+    $script:D9IsDark = Test-D9DarkTheme
+    $xamlText = Get-D9UiText 'MainWindow.xaml'
+    [D9Row]::ColorMap.Clear()
+    if ($script:D9IsDark) {
+        $xamlText = Convert-D9XamlTheme $xamlText
+        foreach ($k in $script:D9DarkColors.Keys) { [D9Row]::ColorMap[$k] = $script:D9DarkColors[$k] }
+    }
+    $win = [Windows.Markup.XamlReader]::Parse($xamlText)
     $ui = @{}
     foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
                    'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList',
@@ -133,8 +195,8 @@ function Show-D9Gui {
     $disk = @{ hdd = 'HDD'; ssd = 'SSD'; nvme = 'NVMe SSD'; unknown = 'диск не визначено' }[[string]$s.SystemDisk]
     $ui.TitleText.Text = "Debloater9 $script:D9Version"
     $ui.SystemLine.Text = "$($s.Manufacturer) $($s.Model) · $($s.OsName) $($s.DisplayVersion) · $($s.Cpu) · $($s.RamGB) ГБ · $disk · профіль: $($Recommendation.Preset)"
-    if ($isAdmin) { $ui.AdminBadge.Text = 'Адміністратор'; $ui.AdminBadge.Foreground = '#2E7D32' }
-    else { $ui.AdminBadge.Text = 'Без прав адміністратора — лише перегляд'; $ui.AdminBadge.Foreground = '#B26A00' }
+    if ($isAdmin) { $ui.AdminBadge.Text = 'Адміністратор'; $ui.AdminBadge.Foreground = (Get-D9UiColor '#2E7D32') }
+    else { $ui.AdminBadge.Text = 'Без прав адміністратора — лише перегляд'; $ui.AdminBadge.Foreground = (Get-D9UiColor '#B26A00') }
     $ui.DriverFolder.Text = $DriverDir
 
     # ---------- фонове виконання ----------
@@ -231,7 +293,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     # ---------- заповнення вкладок ----------
     $fillOverview = {
         param($scan, $categories)
-        $color = @{ good = '#2E7D32'; attention = '#B26A00'; serious = '#C62828' }[$scan.score.verdict]
+        $color = Get-D9UiColor (@{ good = '#2E7D32'; attention = '#B26A00'; serious = '#C62828' }[$scan.score.verdict])
         $ui.ScoreText.Text = "$($scan.score.overall)"; $ui.ScoreText.Foreground = $color
         $ui.VerdictText.Text = @{ good = 'Добрий стан'; attention = 'Потребує уваги'; serious = 'Є серйозні проблеми' }[$scan.score.verdict]
         $ui.VerdictText.Foreground = $color

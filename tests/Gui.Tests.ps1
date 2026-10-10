@@ -112,6 +112,21 @@ Describe 'Вікно' {
         $r.Drivers | Should -Match 'Windows'
     }
 
+    It 'темна тема: розмітка будується, кольори фону й статусів темні/світлі' {
+        $script:D9Theme = 'dark'
+        try {
+            $r = Invoke-InGui {
+                $row = New-D9Row @{ Color = '#C62828' }
+                @{ Bg = $win.Background.ToString(); Fg = $win.Foreground.ToString(); Row = $row.Color; Tabs = $ui.Tabs.Items.Count }
+            }
+        } finally { $script:D9Theme = 'light' }
+        $r.Bg | Should -Be '#FF16181D'
+        $r.Fg | Should -Be '#FFE6E9EF'
+        $r.Row | Should -Be '#F07070'
+        $r.Tabs | Should -BeGreaterThan 5
+        (Invoke-InGui { (New-D9Row @{ Color = '#C62828' }).Color }) | Should -Be '#C62828' -Because 'у світлій темі кольори не змінюються'
+    }
+
     It 'програмна зміна галочок видна на екрані («Зняти все», «Вибрати профіль»)' {
         # Регресія: рядки в обгортці PSObject — WPF не бачив змін, галочки на екрані лишались
         $r = Invoke-InGui {

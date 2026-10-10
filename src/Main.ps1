@@ -63,6 +63,11 @@ param(
     [Parameter(ParameterSetName = 'Gui')]
     [switch]$SelfTest,
 
+    # Тема вікна: auto — як у Windows (Параметри → Персоналізація → Кольори)
+    [Parameter(ParameterSetName = 'Gui')]
+    [ValidateSet('auto', 'light', 'dark')]
+    [string]$Theme = 'auto',
+
     [Parameter(ParameterSetName = 'Menu', Mandatory)]
     [switch]$Menu,
 
@@ -217,7 +222,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.10.0-dev'
+$script:D9Version  = '0.11.0-dev'
 $script:D9Language = $Language
 Initialize-D9Console
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
@@ -333,6 +338,7 @@ switch ($PSCmdlet.ParameterSetName) {
 
     'Gui' {
         $base = Split-Path $PSCommandPath
+        $script:D9Theme = $Theme
         if ($SelfTest) {
             try {
                 $r = Show-D9Gui -Catalog $catalog -SystemInfo $sys -Recommendation $recommendation -ReportDir (Join-Path $base 'Звіти') -DriverDir (Join-Path $base 'Драйвери') -TestAction { "вікно побудовано: вкладок $($ui.Tabs.Items.Count)" }

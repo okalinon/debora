@@ -716,13 +716,11 @@
       <!-- ================= Налаштування (твіки) ================= -->
       <TabItem Uid="settings" Header="Налаштування" Tag="&#xE713;" Background="#8E8E93">
         <Grid Margin="20,0,20,0">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <WrapPanel>
             <ComboBox x:Name="PresetBox" Width="270" Margin="0,0,8,6"/>
             <Button x:Name="BtnSelectPreset" Content="Вибрати профіль" Margin="0,0,8,6"/>
             <Button x:Name="BtnSelectNone" Content="Зняти все" Margin="0,0,8,6"/>
-            <Button x:Name="BtnPreview" Content="Що зміниться" Margin="0,0,8,6"/>
-            <Button x:Name="BtnApply" Style="{StaticResource Primary}" Content="Застосувати вибране" Margin="0,0,8,6"/>
           </WrapPanel>
           <TextBlock x:Name="TweaksSummary" Grid.Row="1" Style="{StaticResource Intro}" Margin="4,8,0,12" Text="Стан налаштувань завантажується…"/>
           <Border Grid.Row="2" Style="{StaticResource Panel}" Margin="0,0,0,12">
@@ -766,6 +764,12 @@
               </DataGrid.Columns>
             </DataGrid>
           </Border>
+          <!-- Нижня смуга дій — як у «Програмах» і «Видаленні» -->
+          <DockPanel Grid.Row="3" Margin="0,0,0,10">
+            <Button x:Name="BtnApply" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Застосувати вибране" Margin="0" MinWidth="220"/>
+            <Button x:Name="BtnPreview" DockPanel.Dock="Right" Content="Що зміниться"/>
+            <TextBlock x:Name="TweaksSelText" VerticalAlignment="Center" Foreground="#6E6E73" Margin="4,0,12,0" TextTrimming="CharacterEllipsis"/>
+          </DockPanel>
         </Grid>
       </TabItem>
 
@@ -773,9 +777,8 @@
       <TabItem Uid="debloat" Header="Деблоат" Tag="&#xEA99;" Background="#FF2D55">
         <!-- Одна таблиця з двома розділами (групування за Badge): одна прокрутка на всю вкладку -->
         <Grid Margin="20,0,20,0">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <WrapPanel>
-            <Button x:Name="BtnDebloatRun" ToolTipService.ShowOnDisabled="True" ToolTip="Позначте пункти в списку" Style="{StaticResource Primary}" Content="Застосувати вибране" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatRecommended" Content="Вибрати рекомендоване" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatNone" Content="Зняти все" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatRefresh" Content="Оновити" Margin="0,0,8,6"/>
@@ -822,6 +825,10 @@
               </DataGrid.Columns>
             </DataGrid>
           </Border>
+          <DockPanel Grid.Row="3" Margin="0,0,0,10">
+            <Button x:Name="BtnDebloatRun" ToolTipService.ShowOnDisabled="True" ToolTip="Позначте пункти в списку" Style="{StaticResource Primary}" Content="Застосувати вибране" IsEnabled="False" DockPanel.Dock="Right" Margin="0" MinWidth="220"/>
+            <TextBlock x:Name="DebloatSelText" VerticalAlignment="Center" Foreground="#6E6E73" Margin="4,0,12,0" TextTrimming="CharacterEllipsis"/>
+          </DockPanel>
         </Grid>
       </TabItem>
 

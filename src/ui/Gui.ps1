@@ -454,7 +454,7 @@ function Show-D9Gui {
     $ui = @{}
     foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'BtnElevate', 'BtnSearch', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
                    'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'BtnMoreFindings', 'BtnScoreHelp', 'StaleBanner', 'StaleText', 'BtnStaleRescan', 'FindingsTitle', 'ScoreExplain',
-                   'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
+                   'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid', 'TweaksSelText', 'DebloatSelText',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DebloatSummary', 'DebloatGrid', 'DebloatSearch', 'DebloatSearchHint', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
@@ -1025,6 +1025,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
         $state.TweakRows = @($rows)
         Set-D9Items $ui.TweakGrid $state.TweakRows
+        if ($updateSelCounts) { & $updateSelCounts }
         $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.TweakGrid.ItemsSource)
         if ($view -and $view.CanGroup) { $view.GroupDescriptions.Clear(); $view.GroupDescriptions.Add((New-Object Windows.Data.PropertyGroupDescription 'Group')) }
         $applied = @($states | Where-Object { $_.State -eq 'applied' -and @($own.id) -contains $_.Id }).Count
@@ -1070,6 +1071,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         })
         Set-D9Items $ui.DebloatGrid $rows
         & $filterDebloat
+        if ($updateSelCounts) { & $updateSelCounts }
         $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.DebloatGrid.ItemsSource)
         if ($view -and $view.CanGroup) { $view.GroupDescriptions.Clear(); $view.GroupDescriptions.Add((New-Object Windows.Data.PropertyGroupDescription 'Badge')) }
         $rec = @($apps | Where-Object Recommended).Count
@@ -1942,6 +1944,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.UninstSearch.Add_TextChanged({ $ui.UninstSearchHint.Visibility = if ($ui.UninstSearch.Text) { 'Collapsed' } else { 'Visible' }; & $showUninst })
     $ui.ChkUninstBloat.Add_Click({ & $showUninst })
     $ui.UninstGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateUninstSel })
+    # Лічильник «Вибрано N» у нижній смузі «Налаштувань» і «Деблоату»
+    $updateSelCounts = {
+        $n = @($state.TweakRows | Where-Object Selected).Count
+        $ui.TweaksSelText.Text = if ($n) { T-D9 'Вибрано: {0}' $n } else { T-D9 'Нічого не вибрано' }
+        $d = @(@($ui.DebloatGrid.ItemsSource) | Where-Object { $_ -and $_.Selected }).Count
+        $ui.DebloatSelText.Text = if ($d) { T-D9 'Вибрано: {0}' $d } else { T-D9 'Нічого не вибрано' }
+    }
+    $ui.TweakGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateSelCounts })
+    $ui.DebloatGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateSelCounts })
+    foreach ($b in 'BtnSelectPreset', 'BtnSelectNone', 'BtnDebloatRecommended', 'BtnDebloatNone') { $ui[$b].Add_Click({ & $updateSelCounts }) }
     $ui.BtnUninstRefresh.Add_Click($loadUninst)
     $ui.BtnUninstall.Add_Click({
         $sel = @($state.UninstRows | Where-Object Selected)

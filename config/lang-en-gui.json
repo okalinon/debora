@@ -464,6 +464,8 @@
     "Застосовувати їх?": "Apply them?",
     "Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).": "Debora sends nothing anywhere: everything runs on this PC, and from the internet it only downloads drivers and apps from official sources (Microsoft, winget, manufacturers' sites).",
     "Готово: {0}": "Done: {0}",
-    "Не вдалося: {0}": "Failed: {0}"
+    "Не вдалося: {0}": "Failed: {0}",
+    "Пошук": "Search",
+    "вкладка": "tab"
   }
 }

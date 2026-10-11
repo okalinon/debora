@@ -234,6 +234,8 @@
     "Позначте пункти в списку": "Tick items in the list",
     "Перезапустити від адміністратора": "Restart as administrator",
     "Відкрити Debora з правами адміністратора, щоб можна було вносити зміни": "Reopen Debora with administrator rights so it can make changes",
-    "Пошук…": "Search…"
+    "Пошук…": "Search…",
+    "Пошук (Ctrl+K)": "Search (Ctrl+K)",
+    "Знайти налаштування, пункт деблоату, програму чи дію": "Find a setting, debloat item, app or action"
   }
 }

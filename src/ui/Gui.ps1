@@ -228,6 +228,44 @@ function New-D9CheckListWindow {
     $w
 }
 
+# Загальний пошук (Ctrl+K): поле й список збігів; Enter / подвійний клік — вибір. $Items — { Text; Sub; Tab; Query }.
+# Вибране — $w.Tag.Selected. Обробники — без локальних змінних (лише Tag вікна).
+function New-D9SearchWindow {
+    param($Owner, [object[]]$Items)
+    $w = New-Object Windows.Window
+    $w.Title = T-D9 'Пошук'; $w.Width = 700; $w.Height = 560
+    if ($Owner -and $Owner.IsLoaded) { $w.Owner = $Owner }
+    $w.WindowStartupLocation = 'CenterOwner'; $w.FontFamily = 'Segoe UI Variable Text, Segoe UI'; $w.FontSize = 14
+    if ($Owner) { $w.Resources = $Owner.Resources; $w.Background = $Owner.Background; $w.Foreground = $Owner.Foreground }
+    $dock = New-Object Windows.Controls.DockPanel; $dock.Margin = '16'
+    $box = New-Object Windows.Controls.TextBox; $box.Margin = '0,0,0,10'; $box.FontSize = 16; $box.Padding = '8,6'
+    [Windows.Controls.DockPanel]::SetDock($box, 'Top'); [void]$dock.Children.Add($box)
+    $list = New-Object Windows.Controls.ListBox; $list.BorderThickness = 0; $list.Background = 'Transparent'
+    $list.DisplayMemberPath = 'Label'
+    [void]$dock.Children.Add($list)
+    $w.Content = $dock
+    $w.Tag = @{ All = @($Items); List = $list; Box = $box; Selected = $null }
+    $box.Add_TextChanged({
+        param($s)
+        $st = [Windows.Window]::GetWindow($s).Tag
+        $q = $s.Text.Trim()
+        $hits = if ($q.Length -lt 2) { @() } else { @($st.All | Where-Object { "$($_.Text) $($_.Sub)" -like "*$q*" } | Select-Object -First 60) }
+        $st.List.ItemsSource = @($hits | ForEach-Object { [pscustomobject]@{ Label = "$($_.Text)   ·   $($_.Sub)"; Item = $_ } })
+        if ($hits) { $st.List.SelectedIndex = 0 }
+    })
+    $pick = { param($s) $win2 = [Windows.Window]::GetWindow($s); $st = $win2.Tag; if ($st.List.SelectedItem) { $st.Selected = $st.List.SelectedItem.Item; $win2.DialogResult = $true } }
+    $box.Add_KeyDown({ param($s, $e)
+        $st = [Windows.Window]::GetWindow($s).Tag
+        if ($e.Key -eq 'Down' -and $st.List.Items.Count) { $st.List.SelectedIndex = [math]::Min($st.List.Items.Count - 1, $st.List.SelectedIndex + 1); $e.Handled = $true }
+        elseif ($e.Key -eq 'Up' -and $st.List.SelectedIndex -gt 0) { $st.List.SelectedIndex--; $e.Handled = $true }
+        elseif ($e.Key -eq 'Enter') { $w2 = [Windows.Window]::GetWindow($s); if ($st.List.SelectedItem) { $st.Selected = $st.List.SelectedItem.Item; $w2.DialogResult = $true } }
+        elseif ($e.Key -eq 'Escape') { [Windows.Window]::GetWindow($s).Close() }
+    })
+    $list.Add_MouseDoubleClick($pick)
+    $w.Add_ContentRendered({ param($s) $s.Tag.Box.Focus() | Out-Null })
+    $w
+}
+
 # Вибір програм із каталогу (майстер «З нуля»): пошук і галочки замість ручного введення ID winget.
 # Повертає вибрані ID або $null (скасовано). Обробники — без локальних змінних (лише Tag вікна).
 function New-D9AppPickerWindow {
@@ -414,7 +452,7 @@ function Show-D9Gui {
     $wa = [Windows.SystemParameters]::WorkArea
     if ($wa.Height -lt $win.Height -or $wa.Width -lt $win.Width) { $win.Width = [math]::Min($win.Width, $wa.Width); $win.Height = [math]::Min($win.Height, $wa.Height); $win.WindowState = 'Maximized' }
     $ui = @{}
-    foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'BtnElevate', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
+    foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'BtnElevate', 'BtnSearch', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
                    'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'BtnMoreFindings', 'BtnScoreHelp', 'StaleBanner', 'StaleText', 'BtnStaleRescan', 'FindingsTitle', 'ScoreExplain',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
@@ -1451,6 +1489,35 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $text = ($changes | ForEach-Object { "$(if ($_.Enable) { T-D9 'Увімкнути' } else { T-D9 'Вимкнути' }): $($_.Item.Name)" }) -join "`r`n"
         if (-not (Show-D9TextDialog $win (T-D9 'Автозавантаження') (T-D9 'Змін: {0}. Подіють після наступного входу в Windows.' $changes.Count) $text)) { return }
         & $applyCatalog (New-D9StartupCatalog -Changes $changes) (T-D9 'Зміна автозавантаження') (T-D9 'автозавантаження') { & $loadStartup } -NoRestorePoint
+    })
+
+    # ---------- загальний пошук (Ctrl+K) ----------
+    $openSearch = {
+        $tabs = @{}; foreach ($tb in $ui.Tabs.Items) { $tabs[$tb.Uid] = $tb }
+        $items = New-Object System.Collections.Generic.List[object]
+        foreach ($tb in $ui.Tabs.Items) { $items.Add([pscustomobject]@{ Text = [string]$tb.Header; Sub = (T-D9 'вкладка'); Tab = $tb.Uid; Query = $null }) }
+        foreach ($tw in @(Get-D9SettingsTweaks $Catalog)) { $items.Add([pscustomobject]@{ Text = (Get-D9Text $tw.name); Sub = [string]$tabs['settings'].Header; Tab = 'settings'; Query = $null }) }
+        $dc = Get-D9DebloatConfig
+        foreach ($x in @($dc.items)) { $items.Add([pscustomobject]@{ Text = (Get-D9Text $x.name); Sub = [string]$tabs['debloat'].Header; Tab = 'debloat'; Query = (Get-D9Text $x.name) }) }
+        foreach ($x in @($dc.features)) { $tw = Get-D9Tweak $Catalog $x.id; if ($tw) { $items.Add([pscustomobject]@{ Text = (Get-D9Text $tw.name); Sub = [string]$tabs['debloat'].Header; Tab = 'debloat'; Query = (Get-D9Text $tw.name) }) } }
+        foreach ($x in @($dc.apps)) { $items.Add([pscustomobject]@{ Text = (Get-D9Text $x.name); Sub = [string]$tabs['debloat'].Header; Tab = 'debloat'; Query = (Get-D9Text $x.name) }) }
+        foreach ($x in @((Import-D9AppCatalog).apps)) { $items.Add([pscustomobject]@{ Text = [string]$x.name; Sub = [string]$tabs['apps'].Header; Tab = 'apps'; Query = [string]$x.name }) }
+        foreach ($k in $script:D9MaintenanceActions.Keys) { $items.Add([pscustomobject]@{ Text = (Get-D9MaintenanceTitle $k); Sub = [string]$tabs['maintenance'].Header; Tab = 'maintenance'; Query = $null }) }
+        $w = New-D9SearchWindow $win @($items)
+        if (-not $w.ShowDialog()) { return }
+        $sel = $w.Tag.Selected
+        if (-not $sel) { return }
+        $ui.Tabs.SelectedItem = $tabs[$sel.Tab]
+        if ($sel.Query) {
+            switch ($sel.Tab) {
+                'debloat' { $ui.DebloatSearch.Text = $sel.Query }
+                'apps'    { $ui.AppSearch.Text = $sel.Query }
+            }
+        }
+    }
+    $ui.BtnSearch.Add_Click({ & $openSearch })
+    $win.Add_PreviewKeyDown({ param($s, $e)
+        if ($e.Key -eq 'K' -and ([Windows.Input.Keyboard]::Modifiers -band [Windows.Input.ModifierKeys]::Control)) { $e.Handled = $true; & $openSearch }
     })
 
     # ---------- мова інтерфейсу ----------

@@ -354,6 +354,20 @@ Describe 'Вікно' {
         $r.N | Should -Be 1
     }
 
+    It 'загальний пошук: збіги за назвою, вибір повертає вкладку й запит' {
+        $r = Invoke-InGui {
+            $w = New-D9SearchWindow $win @([pscustomobject]@{ Text = 'Вимкнути телеметрію'; Sub = 'Деблоат'; Tab = 'debloat'; Query = 'телеметр' }, [pscustomobject]@{ Text = 'Google Chrome'; Sub = 'Програми'; Tab = 'apps'; Query = 'Chrome' })
+            $w.Tag.Box.Text = 'телем'
+            $n = @($w.Tag.List.ItemsSource).Count
+            $first = $w.Tag.List.SelectedItem.Item.Tab
+            $w.Tag.Box.Text = 'x'
+            @{ N = $n; First = $first; Short = @($w.Tag.List.ItemsSource).Count }
+        }
+        $r.N | Should -Be 1
+        $r.First | Should -Be 'debloat'
+        $r.Short | Should -Be 0
+    }
+
     It 'ланцюжок завдань через таймер: контекст доходить до $Done і до наступного завдання' {
         # Регресія: «Застосувати вибране» запускало друге завдання з $Done, де локальна $ids була порожня
         $r = Invoke-InGui {

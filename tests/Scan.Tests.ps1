@@ -643,3 +643,18 @@ Describe 'Позначки «виправлено»: після виправле
         Test-D9EventBasedCheck 'sec.tpm' $scanConfig.Checks | Should -BeFalse
     }
 }
+
+Describe 'Спрацювання Захисника на файли самої Debora' {
+    It 'не рахуються як загрози (excludeMessage), інші — рахуються' {
+        $rule = $scanConfig.Checks.checks | Where-Object id -eq 'sec.defender-detections'
+        $ctx = [pscustomobject]@{ Now = Get-Date; FixMarks = @{} }
+        Mock Get-D9Events { @(
+            [pscustomobject]@{ Message = 'Path: amsi:_C:\Users\x\AppData\Local\Temp\Pester_a\dist\Debloater9.ps1' }
+            [pscustomobject]@{ Message = 'Path: amsi:_D:\Debora\Live\Debora.ps1' }
+            [pscustomobject]@{ Message = 'Path: amsi:_C:\Users\x\AppData\Local\Temp\claude\D--Debora\s\amsi' }
+        ) }
+        Test-D9EventRule $rule $ctx | Should -BeNullOrEmpty
+        Mock Get-D9Events { @([pscustomobject]@{ Message = 'Path: file:_C:\Users\x\Downloads\crack.exe' }) }
+        (Test-D9EventRule $rule $ctx).title | Should -Match '1'
+    }
+}

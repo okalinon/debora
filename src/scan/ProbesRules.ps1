@@ -99,6 +99,8 @@ function Test-D9EventRule {
     if ($p.ids)       { $filter.Id = @($p.ids | ForEach-Object { [int]$_ }) }
     if ($p.levels)    { $filter.Level = @($p.levels | ForEach-Object { [int]$_ }) }
     $events = Get-D9Events $filter
+    # excludeMessage — регулярний вираз: такі події не рахуються (наприклад, спрацювання Захисника на файли самої Debora)
+    if ($null -ne $events -and $p.excludeMessage) { $events = @($events | Where-Object { "$($_.Message)" -notmatch $p.excludeMessage }) }
     if ($null -eq $events) { return New-D9Skip $Check (T-D9 'Журнал {0} недоступний (потрібні права адміністратора?)' $p.log) }
     $count = @($events).Count
     if ($count -lt [int]$p.min) { return }

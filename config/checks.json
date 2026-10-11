@@ -144,7 +144,7 @@
         "title": { "uk": "SSH-сервер запускається автоматично", "en": "SSH server starts automatically" }, "details": { "uk": "Якщо ви не підключаєтесь до цього ПК по SSH — переведіть службу на «Вручну».", "en": "If you don't connect to this PC over SSH, set the service to “Manual”." },
         "fix": {"type": "actions", "actions": [{"type": "service", "name": "sshd", "startup": "Manual"}]} } },
     { "id": "sec.defender-detections", "category": "security", "probe": "Test-D9EventRule", "name": { "uk": "Знайдені загрози", "en": "Detected threats" },
-      "params": { "log": "Microsoft-Windows-Windows Defender/Operational", "ids": [1116], "days": 30, "min": 1, "severity": "warning",
+      "params": { "log": "Microsoft-Windows-Windows Defender/Operational", "ids": [1116], "days": 30, "min": 1, "severity": "warning", "excludeMessage": "(?i)(Debloater9|Debora)[^\\\\]*\\.ps1|\\\\(Debora|Debloater9)\\\\|D--(Debora|Debloater9)",
         "title": { "uk": "Захисник знаходив загрози: {count} разів за {days} днів", "en": "Defender found threats {count} times in {days} days" }, "details": { "uk": "Перегляньте журнал захисту (Безпека Windows → Журнал захисту) і запустіть повне сканування.", "en": "Review Protection history (Windows Security → Protection history) and run a full scan." },
         "links": [ { "label": { "uk": "Безпека Windows", "en": "Windows Security" }, "url": "windowsdefender:" } ],
         "fix": {"type": "maintenance", "action": "defenderScan"} } },

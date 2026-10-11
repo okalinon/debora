@@ -1,6 +1,10 @@
 {
   "note": "English strings for src/ui/Gui.ps1 (T-D9 templates). Key = exact Ukrainian template; {0}, {1}… are placeholders.",
   "strings": {
+    "Стиль: {0}": "Style: {0}",
+    "Класичний": "Classic",
+    "Фокус": "Focus",
+    "Швейцарський": "Swiss",
     "Налаштування Windows": "Windows settings",
     "Вбудовані застосунки": "Built-in apps",
     "Функції та реклама Windows": "Windows features and ads",

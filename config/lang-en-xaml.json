@@ -1,6 +1,8 @@
 {
   "note": "English for the window markup (src/ui/MainWindow.xaml). Keys are the Ukrainian attribute values exactly as in the XAML.",
   "strings": {
+    "Стиль": "Style",
+    "Класичний → Фокус → Швейцарський": "Classic → Focus → Swiss",
     "Що прибрати": "What to remove",
     "Вбудовані застосунки": "Built-in apps",
     "Вибрати рекомендоване": "Select recommended",

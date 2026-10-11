@@ -11,6 +11,32 @@ BeforeAll {
 }
 AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 
+Describe 'Стилі вікна' {
+    AfterAll { $script:D9Style = 'classic'; $script:D9Theme = 'auto' }
+    It 'стиль <style> (<theme>): вікно будується, усі елементи на місці, оцінка показується' -TestCases @(
+        @{ style = 'focus'; theme = 'light' }, @{ style = 'swiss'; theme = 'light' }, @{ style = 'focus'; theme = 'dark' }, @{ style = 'swiss'; theme = 'dark' }
+    ) {
+        $script:D9Style = $style; $script:D9Theme = $theme
+        $r = Invoke-InGui {
+            $check = [pscustomobject]@{ id = 'perf.memory'; category = 'performance' }
+            $f = @((New-D9Finding $check warning 'Пам''ять' 'деталі' @{ type = 'manual' }))
+            $cats = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
+            & $fillOverview ([pscustomobject]@{ score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('performance')); findings = $f; checks = @(1); durationSec = 1; time = (Get-Date).ToString('s') }) $cats
+            @{ Tabs = $ui.Tabs.Items.Count; Score = $ui.ScoreText.Text; StyleBtn = [string]$ui.BtnStyle.Content; Ring = [string]$ui.ScoreRing.Visibility }
+        }
+        $r.Tabs | Should -Be 11
+        $r.Score | Should -Be '90'
+        $r.Ring | Should -Be 'Collapsed'
+        $r.StyleBtn | Should -Match $(if ($style -eq 'focus') { 'Фокус' } else { 'Швейцарський' })
+    }
+    It 'Resolve-D9Style: явний вибір, інакше класичний; наступний — по колу' {
+        Resolve-D9Style 'swiss' | Should -Be 'swiss'
+        Resolve-D9Style 'nonsense' | Should -BeIn @('classic', 'focus', 'swiss')
+        Get-D9NextStyle 'classic' | Should -Be 'focus'
+        Get-D9NextStyle 'swiss' | Should -Be 'classic'
+    }
+}
+
 Describe 'Вікно' {
     It 'розмітка завантажується, усі елементи знайдено, шапка заповнена' {
         $r = Invoke-InGui { @{ Title = $ui.TitleText.Text; Line = $ui.SystemLine.Text; Presets = $ui.PresetBox.Items.Count; Preset = $ui.PresetBox.SelectedItem } }

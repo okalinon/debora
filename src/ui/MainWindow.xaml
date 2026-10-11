@@ -96,12 +96,12 @@
     <Style x:Key="Optional" TargetType="TextBlock">
       <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
     </Style>
-    <Style x:Key="Section" TargetType="TextBlock">
+    <!--S:SECTION--><Style x:Key="Section" TargetType="TextBlock">
       <Setter Property="FontSize" Value="15"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="#6E6E73"/>
       <Setter Property="Margin" Value="20,26,0,9"/>
-    </Style>
+    </Style><!--/S:SECTION-->
     <Style x:Key="RowTitle" TargetType="TextBlock">
       <Setter Property="FontSize" Value="16.5"/>
       <Setter Property="FontWeight" Value="Medium"/>
@@ -121,7 +121,7 @@
     </Style>
 
     <!-- ===== Згруповані блоки (inset grouped) ===== -->
-    <Style x:Key="Card" TargetType="Border">
+    <!--S:BLOCKS--><Style x:Key="Card" TargetType="Border">
       <Setter Property="Background" Value="White"/>
       <Setter Property="CornerRadius" Value="12"/>
       <Setter Property="Padding" Value="22,18"/>
@@ -135,7 +135,7 @@
       <Setter Property="CornerRadius" Value="12"/>
       <Setter Property="Padding" Value="8"/>
     </Style>
-    <Style x:Key="Sep" TargetType="Border">
+    <!--/S:BLOCKS--><Style x:Key="Sep" TargetType="Border">
       <Setter Property="Height" Value="1"/>
       <Setter Property="Background" Value="#E3E3E8"/>
       <Setter Property="Margin" Value="22,0,0,0"/>
@@ -146,7 +146,7 @@
     </Style>
 
     <!-- ===== Бічна панель: пункти з кольоровими плитками (Background — колір плитки, Tag — значок) ===== -->
-    <Style TargetType="TabItem">
+    <!--S:TABITEM--><Style TargetType="TabItem">
       <Setter Property="Foreground" Value="#1D1D1F"/>
       <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
       <Setter Property="Template">
@@ -171,9 +171,9 @@
           </ControlTemplate>
         </Setter.Value>
       </Setter>
-    </Style>
+    </Style><!--/S:TABITEM-->
     <!-- Вкладки: ліворуч список (поверх панелі з назвою й станом), праворуч великий заголовок і вміст -->
-    <Style TargetType="TabControl">
+    <!--S:TABCONTROL--><Style TargetType="TabControl">
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="TabControl">
@@ -189,7 +189,7 @@
           </ControlTemplate>
         </Setter.Value>
       </Setter>
-    </Style>
+    </Style><!--/S:TABCONTROL-->
 
     <!-- ===== Поля ===== -->
     <Style TargetType="TextBox">
@@ -521,10 +521,10 @@
   </Window.Resources>
 
   <Grid>
-    <Grid.ColumnDefinitions><ColumnDefinition Width="272"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <!--S:GRIDCOLS--><Grid.ColumnDefinitions><ColumnDefinition Width="272"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><!--/S:GRIDCOLS-->
     <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
-    <!-- Бічна панель: тло, назва й ПК угорі, стан і права внизу (пункти — у TabControl поверх) -->
+    <!--S:SIDEBAR--><!-- Бічна панель: тло, назва й ПК угорі, стан і права внизу (пункти — у TabControl поверх) -->
     <Border Grid.RowSpan="2" Background="#E9E9EE" BorderBrush="#DCDCE1" BorderThickness="0,0,1,0"/>
     <DockPanel Margin="24,26,16,0" VerticalAlignment="Top">
       <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="11" Background="#007AFF" VerticalAlignment="Top" Margin="0,2,12,0">
@@ -540,7 +540,8 @@
       <ProgressBar x:Name="Progress" Margin="0,6,0,0" Height="5" Visibility="Collapsed"/>
       <TextBlock x:Name="AdminBadge" FontSize="14" FontWeight="Medium" TextWrapping="Wrap" Margin="0,10,0,0"/>
       <Button x:Name="BtnLanguage" Style="{StaticResource LinkButton}" Content="English" HorizontalAlignment="Left" Margin="0,8,0,0" ToolTip="Українська / English"/>
-    </StackPanel>
+      <Button x:Name="BtnStyle" Style="{StaticResource LinkButton}" Content="Стиль" HorizontalAlignment="Left" Margin="0,4,0,0" ToolTip="Класичний → Фокус → Швейцарський"/>
+    </StackPanel><!--/S:SIDEBAR-->
 
     <TabControl x:Name="Tabs" Grid.ColumnSpan="2" Background="Transparent" BorderThickness="0">
 
@@ -550,14 +551,14 @@
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <Border Style="{StaticResource Card}" Padding="28,24">
             <DockPanel>
-              <Grid DockPanel.Dock="Left" Width="156" Height="156" Margin="0,0,34,0">
+              <!--S:SCORE--><Grid DockPanel.Dock="Left" Width="156" Height="156" Margin="0,0,34,0">
                 <Ellipse Stroke="#E5E5EA" StrokeThickness="14" Margin="0"/>
                 <Path x:Name="ScoreRing" Stroke="#007AFF" StrokeThickness="14" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                   <TextBlock x:Name="ScoreText" Text="—" FontFamily="{StaticResource Display}" FontSize="50" FontWeight="Bold" HorizontalAlignment="Center"/>
                   <TextBlock Text="зі 100" Foreground="#6E6E73" FontSize="13" HorizontalAlignment="Center" Margin="0,-4,0,0"/>
                 </StackPanel>
-              </Grid>
+              </Grid><!--/S:SCORE-->
               <StackPanel VerticalAlignment="Center">
                 <TextBlock x:Name="VerdictText" Text="Ще не скановано" FontFamily="{StaticResource Display}" FontSize="28" FontWeight="SemiBold"/>
                 <TextBlock x:Name="CountsText" Style="{StaticResource Intro}" Margin="0,4,0,14"

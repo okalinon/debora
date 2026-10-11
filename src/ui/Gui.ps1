@@ -197,7 +197,7 @@ function Show-D9Gui {
     )
     Initialize-D9GuiTypes
     $script:D9IsDark = Test-D9DarkTheme
-    $xamlText = Convert-D9XamlLanguage (Get-D9UiText 'MainWindow.xaml')
+    $xamlText = Convert-D9XamlLanguage (Convert-D9XamlStyle (Get-D9UiText 'MainWindow.xaml'))
     [D9Row]::ColorMap.Clear()
     if ($script:D9IsDark) {
         $xamlText = Convert-D9XamlTheme $xamlText
@@ -218,7 +218,7 @@ function Show-D9Gui {
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
-                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage') {
+                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnStyle', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
@@ -921,6 +921,18 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         Set-D9Language -Language $(if ($script:D9Language -eq 'uk') { 'en' } else { 'uk' }) -Save
         if ($script:D9ScriptPath) {
             Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($script:D9ScriptPath)`" -Gui"
+            $win.Close()
+        }
+    })
+
+    # ---------- стиль вікна: класичний → фокус → швейцарський (вікно перевідкривається, як і при зміні мови) ----------
+    $ui.BtnStyle.Content = T-D9 'Стиль: {0}' (Get-D9StyleName)
+    $ui.BtnStyle.Add_Click({
+        if ($state.Job) { return }
+        $next = Get-D9NextStyle
+        Save-D9Style $next
+        if ($script:D9ScriptPath) {
+            Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($script:D9ScriptPath)`" -Gui -Style $next"
             $win.Close()
         }
     })

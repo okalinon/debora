@@ -2,14 +2,37 @@
 
 # ======================= Чистота: що займає місце =======================
 
+# Перелік конкретних файлів і папок для знахідки (видно на «Огляді» після кліку та у звіті): шлях, розмір, дата
+function New-D9SpaceItem {
+    param([string]$Path, [long]$Bytes, [datetime]$Date, [switch]$Folder)
+    [pscustomobject]@{ path = $Path; bytes = $Bytes; date = $Date.ToString('s'); kind = $(if ($Folder) { 'folder' } else { 'file' }) }
+}
+
+function Get-D9FolderItem {
+    param([string]$Path, [int]$TimeLimitMs = 4000)
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return }
+    $b = Get-D9FolderSize $Path $TimeLimitMs
+    if ($b -le 0) { return }
+    New-D9SpaceItem $Path $b (Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue).LastWriteTime -Folder
+}
+
+function Get-D9FileItem {
+    param($File)
+    foreach ($f in @($File)) {
+        if ($f -is [string]) { $f = Get-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
+        if ($f -and -not $f.PSIsContainer) { New-D9SpaceItem $f.FullName $f.Length $f.LastWriteTime }
+    }
+}
+
 function New-D9SpaceFinding {
-    param($Check, [long]$Bytes, [string]$Title, [string]$Details, $Fix, [object[]]$Links)
+    param($Check, [long]$Bytes, [string]$Title, [string]$Details, $Fix, [object[]]$Links, [object[]]$Items)
     $t = $Check.thresholds
     $warn = if ($t.warningGB) { $t.warningGB } else { 2 }
     $sugg = if ($t.suggestionGB) { $t.suggestionGB } else { 0.3 }
     if ($Bytes -lt $sugg * 1GB) { return }
     $severity = if ($Bytes -ge $warn * 1GB) { 'warning' } else { 'suggestion' }
-    New-D9Finding $Check $severity (Format-D9Template $Title @{ size = (Format-D9Size $Bytes) }) $Details $Fix $Links -Data ([pscustomobject]@{ bytes = $Bytes })
+    $items = @($Items | Where-Object { $_ } | Sort-Object bytes -Descending | Select-Object -First 60)
+    New-D9Finding $Check $severity (Format-D9Template $Title @{ size = (Format-D9Size $Bytes) }) $Details $Fix $Links -Data ([pscustomobject]@{ bytes = $Bytes; items = $items })
 }
 
 function Get-D9FilesSize {
@@ -38,23 +61,25 @@ function Test-D9CleanRecycleBin {
 
 function Test-D9CleanWindowsOld {
     param($Check, $Ctx)
-    $b = (Get-D9FolderSize "$env:SystemDrive\Windows.old" 4000) + (Get-D9FolderSize "$env:SystemDrive\`$WINDOWS.~BT" 2000) + (Get-D9FolderSize "$env:SystemDrive\`$Windows.~WS" 2000)
-    New-D9SpaceFinding $Check $b (T-D9 'Попередня версія Windows займає {size}') (T-D9 'Windows.old потрібна лише для відкату на попередню версію (10 днів після оновлення). Видалення: Параметри → Система → Сховище → Тимчасові файли → «Попередня інсталяція Windows».') @{ type = 'manual' } @((New-D9Link (T-D9 'Тимчасові файли') 'ms-settings:storagepolicies'))
+    $items = @((Get-D9FolderItem "$env:SystemDrive\Windows.old" 4000), (Get-D9FolderItem "$env:SystemDrive\`$WINDOWS.~BT" 2000), (Get-D9FolderItem "$env:SystemDrive\`$Windows.~WS" 2000))
+    $b = [long](($items | ForEach-Object bytes | Measure-Object -Sum).Sum)
+    New-D9SpaceFinding $Check $b -Items $items (T-D9 'Попередня версія Windows займає {size}') (T-D9 'Windows.old потрібна лише для відкату на попередню версію (10 днів після оновлення). Видалення: Параметри → Система → Сховище → Тимчасові файли → «Попередня інсталяція Windows».') @{ type = 'manual' } @((New-D9Link (T-D9 'Тимчасові файли') 'ms-settings:storagepolicies'))
 }
 
 function Test-D9CleanDumps {
     param($Check, $Ctx)
     $win = $env:SystemRoot
-    $b = (Get-D9FilesSize @("$win\MEMORY.DMP")) + (Get-D9FolderSize "$win\Minidump") + (Get-D9FolderSize "$win\LiveKernelReports") +
-         (Get-D9FolderSize "$env:LOCALAPPDATA\CrashDumps") + (Get-D9FolderSize "$env:ProgramData\Microsoft\Windows\WER\ReportArchive") + (Get-D9FolderSize "$env:ProgramData\Microsoft\Windows\WER\ReportQueue")
-    New-D9SpaceFinding $Check $b (T-D9 'Дампи збоїв і звіти про помилки: {size}') (T-D9 'Файли для діагностики старих збоїв. Якщо їх ніхто не аналізує — можна видалити.') @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
+    $items = @((Get-D9FileItem "$win\MEMORY.DMP"), (Get-D9FolderItem "$win\Minidump"), (Get-D9FolderItem "$win\LiveKernelReports"),
+               (Get-D9FolderItem "$env:LOCALAPPDATA\CrashDumps"), (Get-D9FolderItem "$env:ProgramData\Microsoft\Windows\WER\ReportArchive"), (Get-D9FolderItem "$env:ProgramData\Microsoft\Windows\WER\ReportQueue"))
+    $b = [long](($items | ForEach-Object bytes | Measure-Object -Sum).Sum)
+    New-D9SpaceFinding $Check $b -Items $items (T-D9 'Дампи збоїв і звіти про помилки: {size}') (T-D9 'Файли для діагностики старих збоїв. Якщо їх ніхто не аналізує — можна видалити.') @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
 }
 
 function Test-D9CleanInstallerLeftovers {
     param($Check, $Ctx)
-    $b = (Get-D9FolderSize "$env:SystemDrive\NVIDIA") + (Get-D9FolderSize "$env:SystemDrive\AMD") +
-         [long]((Get-D9DeboraLeftovers | ForEach-Object { Get-D9FolderSize $_ } | Measure-Object -Sum).Sum)
-    New-D9SpaceFinding $Check $b (T-D9 'Залишки інсталяторів драйверів: {size}') (T-D9 'Розпаковані інсталятори відеодрайверів (C:\NVIDIA, C:\AMD), уже встановлені пакети драйверів, завантажені Debora, і старі кеші Windows Update після скидання. Більше не потрібні.') @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
+    $items = @((Get-D9FolderItem "$env:SystemDrive\NVIDIA"), (Get-D9FolderItem "$env:SystemDrive\AMD")) + @(Get-D9DeboraLeftovers | ForEach-Object { Get-D9FolderItem $_ })
+    $b = [long](($items | ForEach-Object bytes | Measure-Object -Sum).Sum)
+    New-D9SpaceFinding $Check $b -Items $items (T-D9 'Залишки інсталяторів драйверів: {size}') (T-D9 'Розпаковані інсталятори відеодрайверів (C:\NVIDIA, C:\AMD), уже встановлені пакети драйверів, завантажені Debora, і старі кеші Windows Update після скидання. Більше не потрібні.') @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
 }
 
 function Test-D9CleanBrowserCache {
@@ -71,7 +96,7 @@ function Test-D9CleanOldDownloads {
     $cutoff = $Ctx.Now.AddDays(-$Check.thresholds.days)
     $files = @(Get-ChildItem $downloads -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.exe', '.msi', '.iso', '.zip', '.rar', '.7z', '.img' -and $_.LastWriteTime -lt $cutoff })
     $b = [long]($files | Measure-Object Length -Sum).Sum
-    New-D9SpaceFinding $Check $b (T-D9 'Старі інсталятори й архіви в «Завантаженнях»: {{size}} ({0} файлів)' $files.Count) (T-D9 'Файли .exe, .msi, .iso, .zip старші за {0} днів. Перегляньте й видаліть непотрібні: {1}' $Check.thresholds.days $downloads) @{ type = 'manual' }
+    New-D9SpaceFinding $Check $b (T-D9 'Старі інсталятори й архіви в «Завантаженнях»: {{size}} ({0} файлів)' $files.Count) (T-D9 'Файли .exe, .msi, .iso, .zip старші за {0} днів. Перегляньте й видаліть непотрібні: {1}' $Check.thresholds.days $downloads) @{ type = 'manual' } @((New-D9Link (T-D9 'Відкрити «Завантаження»') $downloads)) -Items @(Get-D9FileItem $files)
 }
 
 function Test-D9CleanThumbnails {

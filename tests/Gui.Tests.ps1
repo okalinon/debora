@@ -101,7 +101,8 @@ Describe 'Вікно' {
     It 'вкладка «Огляд» показує оцінку, категорії й знахідки' {
         $r = Invoke-InGui {
             $check = [pscustomobject]@{ id = 'perf.memory'; category = 'performance' }
-            $f = @((New-D9Finding $check warning 'Багато пам''яті' 'деталі' @{ type = 'manual' } @((New-D9Link 'Сайт' 'https://example.com'))))
+            $items = @([pscustomobject]@{ path = 'C:\x\a.exe'; bytes = 5MB; date = '2026-01-01T00:00:00'; kind = 'file' }, [pscustomobject]@{ path = 'C:\x\y'; bytes = 2MB; date = '2026-01-01T00:00:00'; kind = 'folder' })
+            $f = @((New-D9Finding $check warning 'Багато пам''яті' 'деталі' @{ type = 'manual' } @((New-D9Link 'Сайт' 'https://example.com')) -Data ([pscustomobject]@{ bytes = 7MB; items = $items })))
             $cats = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
             $scan = [pscustomobject]@{ score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('performance', 'security')); findings = $f; checks = @(1, 2); durationSec = 5; time = (Get-Date).ToString('s') }
             & $fillOverview $scan $cats
@@ -111,6 +112,11 @@ Describe 'Вікно' {
         $r.Cats | Should -Be 2
         $r.Findings.Count | Should -Be 1
         $r.Findings[0].Links[0].Url | Should -Be 'https://example.com'
+        $r.Findings[0].Items.Count | Should -Be 2
+        $r.Findings[0].Items[0].Title | Should -Be 'a.exe'
+        $r.Findings[0].Items[0].Tag | Should -Be 'select:C:\x\a.exe'
+        $r.Findings[0].Items[1].Title | Should -Be 'C:\x\y'
+        $r.Findings[0].Hint | Should -Match '^2 '
     }
 
     It 'вкладка «Чекліст» показує кроки й позначки виконання' {

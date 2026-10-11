@@ -1,6 +1,7 @@
-{
+﻿{
   "note": "English strings for the scanner, checklist and HTML report (src/scan/*.ps1). Keys are the exact Ukrainian T-D9 templates.",
   "strings": {
+    "Відкрити «Завантаження»": "Open “Downloads”",
     "критичних: {0} × {1}": "critical: {0} × {1}",
     "попереджень: {0} × {1}": "warnings: {0} × {1}",
     "порад: {0} × {1}": "tips: {0} × {1}",

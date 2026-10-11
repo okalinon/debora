@@ -37,6 +37,8 @@ public class D9Row : INotifyPropertyChanged {
     public object Icon { get; set; }
     public string Initial { get; set; }
     public object Tag { get; set; }
+    public object Items { get; set; }   // вкладений перелік (файли й папки знахідки)
+    public string Hint { get; set; }
 }
 '@
 }
@@ -76,6 +78,19 @@ function ConvertTo-D9UiLinks {
     param([object[]]$Links)
     $list = New-Object 'System.Collections.Generic.List[D9Link]'
     foreach ($l in @($Links | Where-Object { $_ -and $_.url })) { $list.Add((New-Object D9Link -Property @{ Label = $l.label; Url = $l.url })) }
+    return , $list
+}
+
+# Перелік файлів і папок знахідки (data.items з проб) → рядки для розгортання на «Огляді»
+function ConvertTo-D9UiItems {
+    param([object[]]$Items)
+    $list = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($i in @($Items | Where-Object { $_ -and $_.path })) {
+        $date = ''; try { $date = ([datetime]$i.date).ToString('dd.MM.yyyy') } catch { }
+        $title = if ("$($i.kind)" -eq 'folder') { "$($i.path)" } else { Split-Path "$($i.path)" -Leaf }
+        $list.Add((New-D9Row @{ Title = $title; Detail = "$($i.path)"; Status = (Format-D9Size ([long]$i.bytes)); Note = $date; Kind = "$($i.kind)"; Tag = "select:$($i.path)" }).psobject.BaseObject)
+    }
+    if (-not $list.Count) { return $null }
     return , $list
 }
 
@@ -327,6 +342,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($sender, $e)
         $b = $e.OriginalSource
         if ($b -is [Windows.Controls.Button] -and $b.Tag -is [string] -and $b.Tag) {
+            if ($b.Tag -like 'select:*') {
+                # «Відкрити в Провіднику»: папку — відкрити, файл — виділити (а не запустити)
+                $p = $b.Tag.Substring(7)
+                try {
+                    if (Test-Path -LiteralPath $p -PathType Container) { Start-Process explorer.exe "`"$p`"" } else { Start-Process explorer.exe "/select,`"$p`"" }
+                } catch { & $log (T-D9 'Не вдалося відкрити {0}: {1}' $p $_.Exception.Message) }
+                return
+            }
             try { Start-Process $b.Tag } catch { & $log (T-D9 'Не вдалося відкрити {0}: {1}' $b.Tag $_.Exception.Message) }
         }
     })
@@ -361,7 +384,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         Set-D9Items $ui.FindingsList @(foreach ($f in $list) {
             $st = $script:D9SevUi[[string]$f.severity]
             $pen = Get-D9FindingPenalty $f
+            $items = ConvertTo-D9UiItems $(if ($f.data) { $f.data.items } else { $null })
             New-D9Row @{ Badge = $st.Badge; Color = $st.Color; Title = $f.title; Detail = $f.details; Links = (ConvertTo-D9UiLinks $f.links)
+                         Items = $items; Hint = $(if ($items) { T-D9 '{0} файлів і папок — натисніть, щоб побачити перелік' $items.Count } else { '' })
                          Kind = $(if ($pen) { "−$pen" } else { '' }); Note = $(if ($categoryId) { T-D9 ($script:D9SevUi[[string]$f.severity].Name) } else { "$($state.CategoryNames[[string]$f.category]) · $(T-D9 ($script:D9SevUi[[string]$f.severity].Name))" }) }
         })
         $ui.ScoreExplain.Visibility = 'Visible'

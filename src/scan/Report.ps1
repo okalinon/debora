@@ -42,7 +42,7 @@ main{max-width:920px;margin:0 auto;padding:24px 16px 48px}h1{font-size:22px;marg
 .cat{font-size:14px}.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:3px}.bar i{display:block;height:100%}
 .sys{display:grid;grid-template-columns:max-content 1fr;gap:2px 16px;font-size:14px}
 .f{border-left:4px solid var(--line)}.f.crit{border-left-color:var(--crit)}.f.warn{border-left-color:var(--warn)}.f.sugg{border-left-color:var(--sugg)}
-.f .t{font-weight:600;color:var(--text)}.f .d{color:var(--muted);font-size:14px;margin-top:4px}
+.f .t{font-weight:600;color:var(--text)}.f .d{color:var(--muted);font-size:14px;margin-top:4px}.items{margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--muted)}
 .links{margin-top:6px;font-size:14px;display:flex;flex-wrap:wrap;gap:6px 16px}a{color:var(--sugg)}code{font-size:13px}.hint{color:var(--muted)}
 ol.cl{list-style:none;padding:0;margin:0}ol.cl li{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}ol.cl li:first-child{border-top:0}
 .box{flex:0 0 22px;height:22px;border:2px solid var(--muted);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px}
@@ -88,6 +88,7 @@ ol.cl{list-style:none;padding:0;margin:0}ol.cl li{display:flex;gap:12px;padding:
         $m = $sev[$fi.severity]
         & $w "<div class=""card f $($m.cls)""><div class=""t""><span class=""$($m.cls)"">$($m.icon)</span> $(ConvertTo-D9Html $fi.title)</div>"
         if ($fi.details) { & $w "<div class=""d"">$(ConvertTo-D9Html $fi.details)</div>" }
+        if ($fi.data -and @($fi.data.items).Count) { & $w "<ul class=""items"">$((@($fi.data.items) | ForEach-Object { "<li><code>$(ConvertTo-D9Html "$($_.path)")</code> — $(Format-D9Size ([long]$_.bytes))</li>" }) -join '')</ul>" }
         if (@($fi.links).Count) { & $w "<div class=""links"">$((@($fi.links) | ForEach-Object { ConvertTo-D9LinkHtml $_ }) -join '')</div>" }
         & $w '</div>'
     }

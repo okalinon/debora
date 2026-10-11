@@ -1,6 +1,7 @@
-{
+﻿{
   "note": "English strings for src/ui/Gui.ps1 (T-D9 templates). Key = exact Ukrainian template; {0}, {1}… are placeholders.",
   "strings": {
+    "{0} файлів і папок — натисніть, щоб побачити перелік": "{0} files and folders — click to see the list",
     "Щоб зміни меню, панелі завдань і Провідника з\u0027явились, Провідник треба перезапустити (вікна папок закриються, файли не зачіпаються). Перезапустити зараз?": "File Explorer must restart for menu, taskbar and Explorer changes to appear (folder windows close; files are not affected). Restart now?",
     "потрібні права адміністратора": "administrator rights required",
     "Стиль: {0}": "Style: {0}",

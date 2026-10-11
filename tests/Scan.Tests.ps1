@@ -55,6 +55,37 @@ Describe 'Конфігурація сканера' {
     }
 }
 
+Describe 'Перелік файлів у знахідках про місце' {
+    BeforeAll {
+        $script:dir = Join-Path $TestDrive 'space'
+        New-Item -ItemType Directory -Path (Join-Path $dir 'sub') -Force | Out-Null
+        [IO.File]::WriteAllBytes((Join-Path $dir 'big.iso'), (New-Object byte[] 3000))
+        [IO.File]::WriteAllBytes((Join-Path $dir 'small.zip'), (New-Object byte[] 100))
+        [IO.File]::WriteAllBytes((Join-Path $dir 'sub\inner.bin'), (New-Object byte[] 500))
+    }
+    It 'файл і папка стають елементами з розміром, датою й типом' {
+        $f = Get-D9FileItem (Get-Item (Join-Path $dir 'big.iso'))
+        $f.bytes | Should -Be 3000; $f.kind | Should -Be 'file'; ([datetime]$f.date).Year | Should -BeGreaterThan 2000
+        $d = Get-D9FolderItem (Join-Path $dir 'sub')
+        $d.bytes | Should -Be 500; $d.kind | Should -Be 'folder'; $d.path | Should -Be (Join-Path $dir 'sub')
+        Get-D9FolderItem (Join-Path $dir 'немає') | Should -BeNullOrEmpty
+    }
+    It 'знахідка сортує елементи за розміром і зберігає їх у data.items' {
+        $check = [pscustomobject]@{ id = 'clean.x'; category = 'cleanliness'; thresholds = @{ warningGB = 1; suggestionGB = 0.000001 } }
+        $items = @(Get-D9FileItem (Get-ChildItem $dir -File)) + @(Get-D9FolderItem (Join-Path $dir 'sub'))
+        $fi = New-D9SpaceFinding $check 3600 'Місце: {size}' 'd' @{ type = 'manual' } -Items $items
+        $fi.severity | Should -Be 'suggestion'
+        @($fi.data.items).Count | Should -Be 3
+        $fi.data.items[0].path | Should -BeLike '*big.iso'
+        $fi.data.items[2].path | Should -BeLike '*small.zip'
+    }
+    It 'без елементів — порожній перелік, а не помилка' {
+        $check = [pscustomobject]@{ id = 'clean.x'; category = 'cleanliness'; thresholds = @{ warningGB = 1; suggestionGB = 0.000001 } }
+        $fi = New-D9SpaceFinding $check 3600 'Місце: {size}' 'd' @{ type = 'manual' }
+        @($fi.data.items).Count | Should -Be 0
+    }
+}
+
 Describe 'Оцінка' {
     It 'без знахідок — 100 і добрий стан' {
         $s = Get-D9ScanScore -Categories $categories -Findings @() -CheckedCategories @($categories.id)

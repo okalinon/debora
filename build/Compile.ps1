@@ -16,6 +16,8 @@ $ErrorActionPreference = 'Stop'
 $root   = Split-Path $PSScriptRoot -Parent
 $src    = Join-Path $root 'src'
 $config = Join-Path $root 'config'
+# Звичайна збірка (без -OutDir) ще й оновлює Live\ — «живу» версію, яку користувач запускає для перевірки
+$updateLive = -not $OutDir
 if (-not $OutDir) { $OutDir = Join-Path $root 'dist' }
 $utf8Bom = New-Object Text.UTF8Encoding $true
 
@@ -155,3 +157,11 @@ $size = [math]::Round((Get-Item $outFile).Length / 1KB, 1)
 Write-Host ""
 Write-Host "Готово: $outFile ($size КБ)" -ForegroundColor Green
 Write-Host "SHA256: $hash"
+
+# Жива версія: лише файли пакета; папки «Звіти», «Драйвери» та інше, що створила програма, не чіпаємо
+if ($updateLive) {
+    $live = Join-Path $root 'Live'
+    if (-not (Test-Path $live)) { New-Item -ItemType Directory -Path $live | Out-Null }
+    Get-ChildItem $OutDir -File | Copy-Item -Destination $live -Force
+    Write-Host "Live: $live (запуск — run.bat)" -ForegroundColor Green
+}

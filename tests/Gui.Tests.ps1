@@ -12,7 +12,7 @@ BeforeAll {
 AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 
 Describe 'Стилі вікна' {
-    AfterAll { $script:D9Style = 'classic'; $script:D9Theme = 'auto' }
+    AfterAll { $script:D9Style = 'focus'; $script:D9Theme = 'auto' }
     It 'стиль <style> (<theme>): вікно будується, усі елементи на місці, оцінка показується' -TestCases @(
         @{ style = 'focus'; theme = 'light' }, @{ style = 'swiss'; theme = 'light' }, @{ style = 'focus'; theme = 'dark' }, @{ style = 'swiss'; theme = 'dark' }
     ) {
@@ -29,7 +29,7 @@ Describe 'Стилі вікна' {
         $r.Ring | Should -Be 'Collapsed'
         $r.StyleBtn | Should -Match $(if ($style -eq 'focus') { 'Фокус' } else { 'Швейцарський' })
     }
-    It 'стиль <style>: клік по «Стиль» і «English» влучає в кнопку, а не в журнал виконання' -TestCases @(@{ style = 'classic' }, @{ style = 'focus' }, @{ style = 'swiss' }) {
+    It 'стиль <style>: клік по «Стиль» і «English» влучає в кнопку, а не в журнал виконання' -TestCases @(@{ style = 'focus' }, @{ style = 'swiss' }) {
         $script:D9Style = $style; $script:D9Theme = 'light'
         $r = Invoke-InGui {
             $root = $win.Content; $win.Content = $null; $host2 = New-Object Windows.Controls.Border; foreach ($k in $win.Resources.Keys) { $host2.Resources[$k] = $win.Resources[$k] }; $host2.Child = $root; $host2.Measure((New-Object Windows.Size 1340, 900)); $host2.Arrange((New-Object Windows.Rect 0, 0, 1340, 900)); $host2.UpdateLayout()
@@ -43,11 +43,12 @@ Describe 'Стилі вікна' {
         }
         @($r) | Should -Be @($true, $true)
     }
-    It 'Resolve-D9Style: явний вибір, інакше класичний; наступний — по колу' {
+    It 'Resolve-D9Style: явний вибір, інакше фокус; Фокус ↔ Швейцарський' {
         Resolve-D9Style 'swiss' | Should -Be 'swiss'
-        Resolve-D9Style 'nonsense' | Should -BeIn @('classic', 'focus', 'swiss')
-        Get-D9NextStyle 'classic' | Should -Be 'focus'
-        Get-D9NextStyle 'swiss' | Should -Be 'classic'
+        Resolve-D9Style 'nonsense' | Should -BeIn @('focus', 'swiss')
+        Resolve-D9Style 'classic' | Should -BeIn @('focus', 'swiss')
+        Get-D9NextStyle 'focus' | Should -Be 'swiss'
+        Get-D9NextStyle 'swiss' | Should -Be 'focus'
     }
 }
 

@@ -1,22 +1,21 @@
-﻿# Стилі вікна: classic (бічна панель з кольоровими плитками, Apple HIG), focus (вузька рейка зі значками,
-# велика цифра оцінки, один «чорнильний» акцент), swiss (вкладки рядком угорі, лінії замість карток,
-# без заокруглень, великий жирний шрифт). Стиль змінює лише розмітку: у MainWindow.xaml позначено блоки
-# <!--S:НАЗВА-->…<!--/S:НАЗВА-->, які тут підміняються, плюс кілька замін токенів. Усі елементи з x:Name
-# мають бути в кожному варіанті (код шукає їх через FindName).
-# Порядок у Show-D9Gui: стиль → мова (тексти вставлених блоків теж перекладаються) → темна тема.
+﻿# Стилі вікна: focus — основний (вузька рейка зі значками, велика цифра оцінки, «чорнильна» головна кнопка;
+# його розмітка — сама MainWindow.xaml), swiss — додатковий (вкладки рядком угорі, лінії замість карток,
+# без заокруглень, великий жирний шрифт). Swiss підміняє позначені в MainWindow.xaml блоки
+# <!--S:НАЗВА-->…<!--/S:НАЗВА--> і робить кілька замін токенів. Усі елементи з x:Name мають бути в кожному
+# варіанті (код шукає їх через FindName). Порядок у Show-D9Gui: стиль → мова → темна тема.
 # «Чорнило» — #1D1D1F (у темній темі стає світлим), текст на ньому — #F2F2F7 (у темній стає темним).
+# (До 0.27.0 був ще classic — бічна панель з кольоровими плитками; збережений вибір classic тепер дає focus.)
+$script:D9Style = 'focus'
+$script:D9Styles = @('focus', 'swiss')
+$script:D9StyleNames = @{ focus = 'Фокус'; swiss = 'Швейцарський' }
 
-$script:D9Style = 'classic'
-$script:D9Styles = @('classic', 'focus', 'swiss')
-$script:D9StyleNames = @{ classic = 'Класичний'; focus = 'Фокус'; swiss = 'Швейцарський' }
-
-# Збережений вибір (HKCU:\Software\Debora\Style), інакше класичний
+# Збережений вибір (HKCU:\Software\Debora\Style), інакше фокус
 function Resolve-D9Style {
     param([string]$Style)
     if ($Style -and $Style -ne 'auto' -and $script:D9Styles -contains $Style) { return $Style }
     $saved = (Get-ItemProperty 'HKCU:\Software\Debora' -Name Style -ErrorAction SilentlyContinue).Style
     if ($saved -and $script:D9Styles -contains $saved) { return [string]$saved }
-    'classic'
+    'focus'
 }
 
 function Save-D9Style {
@@ -41,7 +40,7 @@ $script:D9StatusStrip = @'
       <TextBlock x:Name="StatusText" Foreground="#6E6E73" FontSize="13.5" Text="Готово" MaxWidth="360" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
       <TextBlock x:Name="AdminBadge" FontSize="13.5" FontWeight="Medium" Margin="16,0,0,0" MaxWidth="300" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
       <Button x:Name="BtnLanguage" Style="{StaticResource LinkButton}" Content="English" Margin="16,0,0,0" VerticalAlignment="Center" ToolTip="Українська / English"/>
-      <Button x:Name="BtnStyle" Style="{StaticResource LinkButton}" Content="Стиль" Margin="14,0,0,0" VerticalAlignment="Center" ToolTip="Класичний → Фокус → Швейцарський"/>
+      <Button x:Name="BtnStyle" Style="{StaticResource LinkButton}" Content="Стиль" Margin="14,0,0,0" VerticalAlignment="Center" ToolTip="Фокус ↔ Швейцарський"/>
       <TextBlock x:Name="TitleText" Visibility="Collapsed"/>
       <TextBlock x:Name="SystemLine" Visibility="Collapsed"/>
     </StackPanel>
@@ -60,55 +59,6 @@ function Get-D9ScoreBlock {
 }
 
 $script:D9StyleParts = @{
-    focus = @{
-        GRIDCOLS = '<Grid.ColumnDefinitions><ColumnDefinition Width="72"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>'
-        SIDEBAR  = @'
-    <Border Grid.RowSpan="2" Background="#E9E9EE" BorderBrush="#DCDCE1" BorderThickness="0,0,1,0"/>
-    <Border Width="42" Height="42" CornerRadius="11" Background="#1D1D1F" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,22,0,0">
-      <TextBlock Text="&#xE9D9;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="#F2F2F7" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-    </Border>
-'@ + $script:D9StatusStrip
-        TABITEM  = @'
-<Style TargetType="TabItem">
-      <Setter Property="Foreground" Value="#1D1D1F"/>
-      <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
-      <Setter Property="ToolTip" Value="{Binding Header, RelativeSource={RelativeSource Self}}"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="TabItem">
-            <Border x:Name="Bd" Width="44" Height="44" Margin="14,3" CornerRadius="11" Background="Transparent" Cursor="Hand">
-              <TextBlock x:Name="Ic" Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="18" Foreground="#6E6E73" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Border>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#DCDCE1"/><Setter TargetName="Ic" Property="Foreground" Value="#1D1D1F"/></Trigger>
-              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#1D1D1F"/><Setter TargetName="Ic" Property="Foreground" Value="#F2F2F7"/></Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-'@
-        TABCONTROL = @'
-<Style TargetType="TabControl">
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="TabControl">
-            <Grid>
-              <Grid.ColumnDefinitions><ColumnDefinition Width="72"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-              <StackPanel IsItemsHost="True" Margin="0,84,0,0" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Cycle"/>
-              <DockPanel Grid.Column="1">
-                <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedItem.Header, RelativeSource={RelativeSource TemplatedParent}}"
-                           FontFamily="{StaticResource Display}" FontSize="32" FontWeight="Bold" Margin="48,30,40,14"/>
-                <ContentPresenter ContentSource="SelectedContent" Margin="28,0,28,0"/>
-              </DockPanel>
-            </Grid>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-'@
-        SCORE = (Get-D9ScoreBlock 96 'Bold')
-    }
     swiss = @{
         GRIDCOLS = '<Grid.ColumnDefinitions><ColumnDefinition Width="0"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>'
         SIDEBAR  = $script:D9StatusStrip
@@ -191,13 +141,11 @@ $script:D9StyleParts = @{
 
 function Convert-D9XamlStyle {
     param([Parameter(Mandatory)][string]$Xaml, [string]$Style = $script:D9Style)
-    if ($Style -eq 'classic' -or -not $script:D9StyleParts.ContainsKey($Style)) { return $Xaml }
+    if (-not $script:D9StyleParts.ContainsKey($Style)) { return $Xaml }   # focus — базова розмітка
     $parts = $script:D9StyleParts[$Style]
     foreach ($name in $parts.Keys) {
         $Xaml = [regex]::Replace($Xaml, "(?s)<!--S:$name-->.*?<!--/S:$name-->", { param($m) $parts[$name] }.GetNewClosure())
     }
-    # Головна кнопка — «чорнильна» (у темній темі інвертується разом з палітрою)
-    $Xaml = [regex]::Replace($Xaml, '(?s)(<Style x:Key="Primary".*?<Setter Property="Background" Value=")#007AFF("/>\s*<Setter Property="Foreground" Value=")#FFFFFF', '${1}#1D1D1F${2}#F2F2F7')
     if ($Style -eq 'swiss') {
         $Xaml = [regex]::Replace($Xaml, 'CornerRadius="[^"]*"', 'CornerRadius="0"')
         $Xaml = [regex]::Replace($Xaml, '(Property="CornerRadius" Value=")[^"]*"', '${1}0"')

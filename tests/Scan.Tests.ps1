@@ -100,6 +100,25 @@ Describe 'Підтримка версії Windows' {
     }
 }
 
+Describe 'Пояснення оцінки категорії' {
+    It 'розклад штрафів, відомості без штрафу, нуль як межа' {
+        $fs = @(
+            [pscustomobject]@{ category = 'stability'; severity = 'warning' }, [pscustomobject]@{ category = 'stability'; severity = 'warning' },
+            [pscustomobject]@{ category = 'stability'; severity = 'suggestion' }, [pscustomobject]@{ category = 'stability'; severity = 'info' },
+            [pscustomobject]@{ category = 'disk'; severity = 'critical' }
+        )
+        Get-D9FindingPenalty $fs[0] | Should -Be 10
+        Get-D9FindingPenalty $fs[3] | Should -Be 0
+        $t = Format-D9CategoryScoreExplain $fs 'stability'
+        $t | Should -Match '^100 − 23 = 77: попереджень: 2 × 10, порад: 1 × 3\.'
+        $t | Should -Match 'лише відомості'
+        Format-D9CategoryScoreExplain $fs 'privacy' | Should -Match '100 балів'
+        $many = @(1..4 | ForEach-Object { [pscustomobject]@{ category = 'disk'; severity = 'critical' } })
+        Format-D9CategoryScoreExplain $many 'disk' | Should -Match '100 − 120 = 0.*нижчою за 0'
+        (Get-D9ScanScore -Categories @([pscustomobject]@{ id = 'stability'; weight = 1 }) -Findings $fs -CheckedCategories 'stability').categories.stability | Should -Be 77
+    }
+}
+
 Describe 'Чекліст' {
     BeforeAll {
         $script:findings = @(

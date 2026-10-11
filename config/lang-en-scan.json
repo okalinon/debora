@@ -1,6 +1,13 @@
 {
   "note": "English strings for the scanner, checklist and HTML report (src/scan/*.ps1). Keys are the exact Ukrainian T-D9 templates.",
   "strings": {
+    "критичних: {0} × {1}": "critical: {0} × {1}",
+    "попереджень: {0} × {1}": "warnings: {0} × {1}",
+    "порад: {0} × {1}": "tips: {0} × {1}",
+    "Проблем, що знижують оцінку, не знайдено — 100 балів.": "No problems that lower the score — 100 points.",
+    "100 − {0} = {1}: {2}.": "100 − {0} = {1}: {2}.",
+    "Оцінка не буває нижчою за 0.": "The score never goes below 0.",
+    "Знахідки без числа праворуч — лише відомості, на оцінку не впливають.": "Findings without a number on the right are information only and do not affect the score.",
     "Батарея старіє швидко: ноутбук {0}% часу на зарядці": "The battery is ageing fast: the laptop is plugged in {0}% of the time",
     "Історії використання батареї ще немає": "No battery usage history yet",
     "Постійний заряд 100% — головна причина зносу батареї. Обмежте заряд до 80%:": "Constant 100% charge is the main cause of battery wear. Limit charging to 80%:",

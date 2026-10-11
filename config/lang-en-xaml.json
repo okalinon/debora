@@ -1,6 +1,8 @@
 {
   "note": "English for the window markup (src/ui/MainWindow.xaml). Keys are the Ukrainian attribute values exactly as in the XAML.",
   "strings": {
+    "Натисніть на категорію, щоб побачити, що вплинуло на її оцінку": "Click a category to see what affected its score",
+    "Показати всі знахідки": "Show all findings",
     "Усі пристрої й драйвери": "All devices and drivers",
     "Зберегти список (CSV)": "Save list (CSV)",
     "Обладнання": "Hardware",

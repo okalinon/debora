@@ -207,7 +207,7 @@ function Show-D9Gui {
     $win = [Windows.Markup.XamlReader]::Parse($xamlText)
     $ui = @{}
     foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
-                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList',
+                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'FindingsTitle', 'ScoreExplain',
                    'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnReboot', 'ChecklistSummary', 'ChecklistList',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
@@ -345,14 +345,43 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $cats = foreach ($c in $categories) {
             $v = $scan.score.categories.($c.id)
             if ($null -eq $v) { continue }
-            New-D9Row @{ Title = (Get-D9Text $c.name); Number = [int]$v; Status = "$v"; Color = $(if ($v -ge 85) { '#248A3D' } elseif ($v -ge 60) { '#FF9500' } else { '#D70015' }) }
+            New-D9Row @{ Id = $c.id; Title = (Get-D9Text $c.name); Number = [int]$v; Status = "$v"; Color = $(if ($v -ge 85) { '#248A3D' } elseif ($v -ge 60) { '#FF9500' } else { '#D70015' }) }
         }
+        $state.Scan = $scan
+        $state.CategoryNames = @{}; foreach ($c in $categories) { $state.CategoryNames[$c.id] = Get-D9Text $c.name }
         Set-D9Items $ui.CategoryList @($cats)
-        Set-D9Items $ui.FindingsList @(foreach ($f in $scan.findings) {
-            $st = $script:D9SevUi[[string]$f.severity]
-            New-D9Row @{ Badge = $st.Badge; Color = $st.Color; Title = $f.title; Detail = $f.details; Links = (ConvertTo-D9UiLinks $f.links) }
-        })
+        & $showFindings $null
     }
+    # Знахідки: усі або однієї категорії (клік по категорії) — з поясненням, з чого склалась оцінка
+    $showFindings = {
+        param([string]$categoryId)
+        $scan = $state.Scan
+        if (-not $scan) { return }
+        $list = @($scan.findings | Where-Object { -not $categoryId -or $_.category -eq $categoryId })
+        Set-D9Items $ui.FindingsList @(foreach ($f in $list) {
+            $st = $script:D9SevUi[[string]$f.severity]
+            $pen = Get-D9FindingPenalty $f
+            New-D9Row @{ Badge = $st.Badge; Color = $st.Color; Title = $f.title; Detail = $f.details; Links = (ConvertTo-D9UiLinks $f.links)
+                         Kind = $(if ($pen) { "−$pen" } else { '' }); Note = $(if ($categoryId) { T-D9 ($script:D9SevUi[[string]$f.severity].Name) } else { "$($state.CategoryNames[[string]$f.category]) · $(T-D9 ($script:D9SevUi[[string]$f.severity].Name))" }) }
+        })
+        $ui.ScoreExplain.Visibility = 'Visible'
+        if ($categoryId) {
+            $ui.FindingsTitle.Text = (T-D9 '{0}: {1} зі 100' $state.CategoryNames[$categoryId] $scan.score.categories.$categoryId)
+            $ui.ScoreExplain.Text = Format-D9CategoryScoreExplain $scan.findings $categoryId
+            $ui.BtnAllFindings.Visibility = 'Visible'
+        } else {
+            $ui.FindingsTitle.Text = (T-D9 'Що знайдено')
+            $ui.ScoreExplain.Text = (T-D9 'Як рахується оцінка: кожна категорія починає зі 100 балів; критична проблема знімає 30, попередження — 10, порада — 3 (число праворуч від знахідки). Загальна оцінка — середнє категорій з урахуванням їхньої ваги; будь-яка критична проблема обмежує її 59 балами. Натисніть на категорію вгорі, щоб побачити лише її знахідки.')
+            $ui.BtnAllFindings.Visibility = 'Collapsed'
+            if ($ui.CategoryList.SelectedItem) { $state.CategoryReset = $true; $ui.CategoryList.SelectedItem = $null; $state.CategoryReset = $false }
+        }
+    }
+    $ui.CategoryList.Add_SelectionChanged({
+        if ($state.CategoryReset) { return }
+        $row = $ui.CategoryList.SelectedItem
+        & $showFindings $(if ($row) { [string]$row.Id } else { $null })
+    })
+    $ui.BtnAllFindings.Add_Click({ & $showFindings $null })
     $fillChecklist = {
         param($list)
         $state.Checklist = $list

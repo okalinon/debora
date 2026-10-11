@@ -577,11 +577,19 @@
                 <Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=CategoryList}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
               </Style>
             </Border.Style>
-            <ItemsControl x:Name="CategoryList">
-              <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
+            <!-- Категорії — фільтр знахідок: клік показує, що саме знизило оцінку категорії -->
+            <ListBox x:Name="CategoryList" Background="Transparent" BorderThickness="0" Margin="-10,0,-10,0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                     ToolTip="Натисніть на категорію, щоб побачити, що вплинуло на її оцінку">
+              <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+              <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                  <Setter Property="Padding" Value="10,4"/><Setter Property="Margin" Value="0,1,8,1"/><Setter Property="Cursor" Value="Hand"/>
+                </Style>
+              </ListBox.ItemContainerStyle>
+              <ListBox.ItemTemplate>
                 <DataTemplate>
-                  <StackPanel Margin="0,7,28,7">
+                  <StackPanel Margin="0,3,0,3">
                     <DockPanel>
                       <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" FontWeight="SemiBold" Foreground="{Binding Color}"/>
                       <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
@@ -589,14 +597,42 @@
                     <ProgressBar Value="{Binding Number}" Maximum="100" Height="7" Margin="0,7,0,0" Foreground="{Binding Color}"/>
                   </StackPanel>
                 </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+              </ListBox.ItemTemplate>
+            </ListBox>
           </Border>
-          <TextBlock Grid.Row="2" Style="{StaticResource Section}" Text="Що знайдено"/>
+          <StackPanel Grid.Row="2">
+            <DockPanel>
+              <Button x:Name="BtnAllFindings" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Показати всі знахідки" VerticalAlignment="Bottom" Margin="0,0,4,7" Visibility="Collapsed"/>
+              <TextBlock x:Name="FindingsTitle" Style="{StaticResource Section}" Text="Що знайдено"/>
+            </DockPanel>
+            <TextBlock x:Name="ScoreExplain" Style="{StaticResource RowNote}" Margin="16,0,16,8" Visibility="Collapsed"/>
+          </StackPanel>
           <Border Grid.Row="3" Style="{StaticResource Panel}" Margin="0,0,0,12">
             <Grid>
-              <ListBox x:Name="FindingsList" ItemTemplate="{StaticResource ItemTemplate}"
-                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"/>
+              <ListBox x:Name="FindingsList" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel>
+                      <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="13" Background="{Binding Color}" VerticalAlignment="Top" Margin="0,0,14,0">
+                        <TextBlock Text="{Binding Badge}" Foreground="#FFFFFF" FontSize="13.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <!-- Скільки балів знахідка зняла з оцінки категорії -->
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" VerticalAlignment="Top" Margin="12,2,4,0"/>
+                      <StackPanel>
+                        <TextBlock Text="{Binding Title}" Style="{StaticResource RowTitle}"/>
+                        <TextBlock Text="{Binding Note}" Foreground="#6E6E73" FontSize="13" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Optional}" Foreground="#6E6E73" FontSize="14" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <ItemsControl ItemsSource="{Binding Links}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate><Button Style="{StaticResource LinkButton}" Content="{Binding Label}" Tag="{Binding Url}" ToolTip="{Binding Url}"/></DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </DockPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
               <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" MaxWidth="440">
                 <StackPanel.Style>
                   <Style TargetType="StackPanel">

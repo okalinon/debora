@@ -46,6 +46,30 @@ function Get-D9ScanScore {
     [pscustomobject]@{ overall = $overall; verdict = $verdict; categories = $scores }
 }
 
+# Скільки балів знахідка знімає з оцінки своєї категорії
+function Get-D9FindingPenalty {
+    param($Finding)
+    $p = $script:D9SeverityPenalty[[string]$Finding.severity]
+    if ($p) { [int]$p } else { 0 }
+}
+
+# Пояснення оцінки категорії: «100 − 50 = 50: критичних 1 × 30, попереджень 2 × 10.»
+function Format-D9CategoryScoreExplain {
+    param([object[]]$Findings, [Parameter(Mandatory)][string]$CategoryId)
+    $f = @($Findings | Where-Object category -eq $CategoryId)
+    $parts = @()
+    foreach ($s in @(@('critical', 'критичних: {0} × {1}'), @('warning', 'попереджень: {0} × {1}'), @('suggestion', 'порад: {0} × {1}'))) {
+        $n = @($f | Where-Object severity -eq $s[0]).Count
+        if ($n) { $parts += T-D9 $s[1] $n $script:D9SeverityPenalty[$s[0]] }
+    }
+    $penalty = [int](($f | ForEach-Object { Get-D9FindingPenalty $_ } | Measure-Object -Sum).Sum)
+    $text = if (-not $penalty) { T-D9 'Проблем, що знижують оцінку, не знайдено — 100 балів.' }
+            else { T-D9 '100 − {0} = {1}: {2}.' $penalty ([math]::Max(0, 100 - $penalty)) ($parts -join ', ') }
+    if ($penalty -gt 100) { $text += ' ' + (T-D9 'Оцінка не буває нижчою за 0.') }
+    if (@($f | Where-Object severity -eq 'info').Count) { $text += ' ' + (T-D9 'Знахідки без числа праворуч — лише відомості, на оцінку не впливають.') }
+    $text
+}
+
 # Виконання однієї проби: @{ ok; out; error; ms }
 $script:D9ProbeRunner = {
     param($check, $ctx)

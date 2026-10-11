@@ -1,6 +1,9 @@
 {
   "note": "English strings for src/ui/Gui.ps1 (T-D9 templates). Key = exact Ukrainian template; {0}, {1}… are placeholders.",
   "strings": {
+    "{0}: {1} зі 100": "{0}: {1} of 100",
+    "Що знайдено": "What was found",
+    "Як рахується оцінка: кожна категорія починає зі 100 балів; критична проблема знімає 30, попередження — 10, порада — 3 (число праворуч від знахідки). Загальна оцінка — середнє категорій з урахуванням їхньої ваги; будь-яка критична проблема обмежує її 59 балами. Натисніть на категорію вгорі, щоб побачити лише її знахідки.": "How the score works: each category starts at 100; a critical problem takes 30 points, a warning 10, a tip 3 (the number to the right of a finding). The overall score is the weighted average of the categories; any critical problem caps it at 59. Click a category above to see only its findings.",
     "Виробник: {0}": "Manufacturer: {0}",
     "Не вдалося зберегти: {0}": "Couldn\u0027t save: {0}",
     "НЕ підписаний": "NOT signed",

@@ -1,6 +1,9 @@
 {
   "note": "English strings for src/ui/Gui.ps1 (T-D9 templates). Key = exact Ukrainian template; {0}, {1}… are placeholders.",
   "strings": {
+    "Налаштування Windows": "Windows settings",
+    "Вбудовані застосунки": "Built-in apps",
+    "Функції та реклама Windows": "Windows features and ads",
     "Буде видалено застосунків: {0}, застосовано налаштувань: {1}. Спершу створюється точка відновлення; усе можна повернути на вкладці «Журнал змін» (видалені застосунки — також з Microsoft Store).": "Apps to remove: {0}, settings to apply: {1}. A restore point is created first; everything can be undone on the Change history tab (removed apps can also be reinstalled from Microsoft Store).",
     "видалити": "remove",
     "Видалити: {0}": "Remove: {0}",

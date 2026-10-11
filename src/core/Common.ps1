@@ -127,11 +127,35 @@ function Test-D9StateEqual {
 }
 
 # Растрові шрифти консолі не мають кирилиці (замість літер — «?»): перемикаємо на Consolas
+# Add-Type -TypeDefinition викликає компілятор C# при кожному запуску (~0,3–0,5 с на клас). Компілюємо один раз
+# у DLL у %LOCALAPPDATA%\Debora\types (у назві — хеш коду, тож зміна коду дає нову DLL) і далі лише завантажуємо.
+# Якщо кеш недоступний — звичайна компіляція в пам'яті.
+function Add-D9CachedType {
+    param([Parameter(Mandatory)][string]$TypeName, [Parameter(Mandatory)][string]$Source, [string[]]$References)
+    if ($TypeName -as [type]) { return }
+    try {
+        $sha = [Security.Cryptography.SHA256]::Create()
+        $hash = ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes("$Source|$($References -join ',')|$($PSVersionTable.CLRVersion)"))) -replace '-', '').Substring(0, 16)
+        $dir = Join-Path $env:LOCALAPPDATA 'Debora\types'
+        $dll = Join-Path $dir "$TypeName-$hash.dll"
+        if (-not (Test-Path -LiteralPath $dll)) {
+            if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            $p = @{ TypeDefinition = $Source; OutputAssembly = $dll; ErrorAction = 'Stop' }
+            if ($References) { $p.ReferencedAssemblies = $References }
+            Add-Type @p
+        }
+        Add-Type -LiteralPath $dll -ErrorAction Stop
+        if ($TypeName -as [type]) { return }
+    } catch { }
+    $p = @{ TypeDefinition = $Source }
+    if ($References) { $p.ReferencedAssemblies = $References }
+    Add-Type @p
+}
+
 function Initialize-D9Console {
     if ($Host.Name -ne 'ConsoleHost') { return }
     try {
-        if (-not ('D9ConsoleFont' -as [type])) {
-            Add-Type -TypeDefinition @'
+        Add-D9CachedType 'D9ConsoleFont' @'
 using System;
 using System.Runtime.InteropServices;
 public static class D9ConsoleFont {
@@ -154,7 +178,6 @@ public static class D9ConsoleFont {
     }
 }
 '@
-        }
         [void][D9ConsoleFont]::EnsureTrueType('Consolas', 18)
     } catch { }
 }

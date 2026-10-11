@@ -22,6 +22,7 @@ Describe 'Вікно' {
 
     It 'вкладка «Програми»: категорії, пошук, набори, лічильник, оновлення' {
         $r = Invoke-InGui {
+            & $buildApps   # картки будуються при першому відкритті вкладки
             $popular = @($ui.AppCards.ItemsSource).Count
             $state.AppFilter = 'all'; & $showApps
             $all = @($ui.AppCards.ItemsSource).Count

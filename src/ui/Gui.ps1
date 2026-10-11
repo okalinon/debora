@@ -11,8 +11,7 @@ function Get-D9UiText {
 
 function Initialize-D9GuiTypes {
     Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
-    if ('D9Row' -as [type]) { return }
-    Add-Type -TypeDefinition @'
+    Add-D9CachedType 'D9Row' @'
 using System.ComponentModel;
 public class D9Link { public string Label { get; set; } public string Url { get; set; } }
 // Універсальний рядок для списків і таблиць інтерфейсу
@@ -1017,11 +1016,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     foreach ($c in $appCatalog.categories) { $appCats[[string]$c.id] = Get-D9Text $c.name }
     $state.AppUpgrades = @{}
     $state.AppFilter = 'popular'
-    $appIcons = Get-D9AppIconData
-    $state.AppRows = @($appCatalog.apps | ForEach-Object {
-        New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#6E6E73'; Tag = $_
-                     Icon = (ConvertTo-D9Image $appIcons[$_.id]); Initial = ([string]$_.name).Substring(0, 1).ToUpper() }
-    })
+    # Картки з іконками (567 програм) будуються при першому відкритті вкладки ($buildApps нижче),
+    # а не під час запуску: це ~0,6 с, а вкладку відкривають не щоразу
+    $state.AppRows = @()
     # Картки програм заповнюють усю ширину: кількість колонок — за шириною області
     $ui.AppCards.Tag = 2
     $ui.AppCards.Parent.Add_SizeChanged({ param($sender, $e) $ui.AppCards.Tag = [math]::Max(1, [math]::Floor(($e.NewSize.Width - 14) / 290)) })
@@ -1070,9 +1067,18 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $c = $state.AppCategoryRows | Where-Object Id -eq 'selected' | Select-Object -First 1
         if ($c) { $c.Status = $(if ($sel) { "$($sel.Count)" } else { '' }) }
     }
-    & $fillAppCategories
-    & $showApps
-    & $updateAppSelection
+    $buildApps = {
+        if ($state.AppsBuilt) { return }
+        $state.AppsBuilt = $true
+        $appIcons = Get-D9AppIconData
+        $state.AppRows = @($appCatalog.apps | ForEach-Object {
+            New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#6E6E73'; Tag = $_
+                         Icon = (ConvertTo-D9Image $appIcons[$_.id]); Initial = ([string]$_.name).Substring(0, 1).ToUpper() }
+        })
+        & $fillAppCategories
+        & $showApps
+        & $updateAppSelection
+    }
     $ui.AppCategoryList.Add_SelectionChanged({
         if ($state.AppCategoryUpdating -or -not $ui.AppCategoryList.SelectedItem) { return }
         $state.AppFilter = $ui.AppCategoryList.SelectedItem.Id
@@ -1382,6 +1388,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($sender, $e)
         if ($e.OriginalSource -ne $ui.Tabs) { return }
         if ($ui.Tabs.SelectedItem.Uid -eq 'startup' -and -not $state.StartupRows -and -not $state.Job) { & $loadStartup }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'apps') { & $buildApps }
         if ($ui.Tabs.SelectedItem.Uid -eq 'apps' -and -not $state.AppsLoaded -and -not $state.Job) { & $loadApps }
         if ($ui.Tabs.SelectedItem.Uid -eq 'uninstall' -and $null -eq $state.UninstRows -and -not $state.Job) { & $loadUninst }
         if ($ui.Tabs.SelectedItem.Uid -eq 'reinstall' -and $null -eq $state.UsbMedia) { & $fillUsb }

@@ -248,10 +248,10 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.24.1-dev'
+$script:D9Version  = '0.24.2-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
-Initialize-D9Console
+if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
 
 $ExitCodes = @{ Ok = 0; Partial = 1; BadArgs = 2; NotAdmin = 3; Cancelled = 4; Reboot = 10 }
@@ -351,7 +351,8 @@ function Save-D9HtmlReport {
 
 # ---------------------------------------------------------------------
 $catalog = Import-D9Catalog
-$catalogErrors = Test-D9Catalog $catalog
+# Зібраний файл уже перевірено під час збірки (Compile.ps1, крок 1) — повторна перевірка лише сповільнює запуск
+$catalogErrors = if ($script:D9Embedded) { @() } else { Test-D9Catalog $catalog }
 if ($catalogErrors.Count) {
     Write-D9Log (T-D9 'Помилки в каталозі твіків:') Error
     $catalogErrors | ForEach-Object { Write-D9Log "  $_" Error }

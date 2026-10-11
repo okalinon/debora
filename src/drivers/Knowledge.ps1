@@ -4,11 +4,35 @@ $script:D9KnowledgeDir = $null
 $script:D9IdTables = $null
 $script:D9DriverSources = $null
 
-# Текст бази: у зібраному файлі — стиснений gzip+base64 у $script:D9Embedded['<name>.gz'], у розробці — файл у knowledge/
+# Великі бази (pci.ids, usb.ids, іконки програм) у зібраному файлі лежать у коментарі в самому кінці:
+#   <#D9-DATA / @@<name>.gz / рядки base64 / … / D9-DATA#>
+# Як рядкові константи в коді вони додавали ~3 с до кожного запуску (PowerShell і Захисник обробляють їх
+# під час виконання), а коментар лише розбирається. Читаємо з власного файлу при першому зверненні.
+$script:D9TrailingData = $null
+
+function Get-D9TrailingBlob {
+    param([Parameter(Mandatory)][string]$Name)
+    if ($null -eq $script:D9TrailingData) {
+        $script:D9TrailingData = @{}
+        $path = $script:D9ScriptPath
+        if ($path -and (Test-Path -LiteralPath $path)) {
+            $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+            $start = $text.LastIndexOf('<#D9-DATA')
+            if ($start -ge 0) {
+                foreach ($m in [regex]::Matches($text.Substring($start), '(?s)@@([^\r\n]+)\r?\n(.*?)(?=\r?\n@@|\r?\nD9-DATA#>)')) { $script:D9TrailingData[$m.Groups[1].Value] = $m.Groups[2].Value }
+            }
+        }
+    }
+    $script:D9TrailingData[$Name]
+}
+
+# Текст бази: у зібраному файлі — стиснений gzip+base64 (у кінцевому коментарі, раніше — у $script:D9Embedded['<name>.gz']),
+# у розробці — файл у knowledge/
 function Get-D9KnowledgeText {
     param([Parameter(Mandatory)][string]$Name)
-    if ($script:D9Embedded -and $script:D9Embedded.ContainsKey("$Name.gz")) {
-        $bytes = [Convert]::FromBase64String(($script:D9Embedded["$Name.gz"] -replace '\s', ''))
+    $packed = if ($script:D9Embedded -and $script:D9Embedded.ContainsKey("$Name.gz")) { $script:D9Embedded["$Name.gz"] } elseif ($script:D9Embedded) { Get-D9TrailingBlob "$Name.gz" }
+    if ($packed) {
+        $bytes = [Convert]::FromBase64String(($packed -replace '\s', ''))
         $in = New-Object IO.MemoryStream (, $bytes)
         $gz = New-Object IO.Compression.GZipStream $in, ([IO.Compression.CompressionMode]::Decompress)
         $reader = New-Object IO.StreamReader $gz, ([Text.Encoding]::UTF8)

@@ -100,6 +100,13 @@ foreach ($name in 'MainWindow.xaml') {
     [void]$sb.AppendLine($xaml.TrimEnd())
     [void]$sb.AppendLine("'@")
 }
+[void]$sb.AppendLine('}')
+[void]$sb.AppendLine('#endregion D9-COMPILED')
+
+# Великі бази — у коментарі в кінці файлу (читає Get-D9TrailingBlob): як рядкові константи вони
+# сповільнювали кожен запуск на ~3 с, а коментар PowerShell лише розбирає
+$data = New-Object Text.StringBuilder
+[void]$data.AppendLine('<#D9-DATA')
 # Іконки програм (knowledge/app-icons/*.png, збирає build\Update-AppIcons.ps1): «id<TAB>base64» у gzip
 $iconDir = Join-Path $root 'knowledge\app-icons'
 if (Test-Path $iconDir) {
@@ -112,19 +119,17 @@ if (Test-Path $iconDir) {
     $gz = New-Object IO.Compression.GZipStream $ms, ([IO.Compression.CompressionLevel]::Optimal)
     $gz.Write($bytes, 0, $bytes.Length); $gz.Dispose()
     $b64 = [Convert]::ToBase64String($ms.ToArray())
-    [void]$sb.AppendLine("    'app-icons.tsv.gz' = @'")
-    [void]$sb.AppendLine((([regex]::Matches($b64, '.{1,120}') | ForEach-Object Value) -join "`n"))
-    [void]$sb.AppendLine("'@")
+    [void]$data.AppendLine('@@app-icons.tsv.gz')
+    [void]$data.AppendLine((([regex]::Matches($b64, '.{1,120}') | ForEach-Object Value) -join "`n"))
 }
 foreach ($name in $knowledgeFiles) {
-    [void]$sb.AppendLine("    '$name.gz' = @'")
-    [void]$sb.AppendLine((ConvertTo-D9EmbeddedIds (Join-Path $root "knowledge\$name")))
-    [void]$sb.AppendLine("'@")
+    [void]$data.AppendLine("@@$name.gz")
+    [void]$data.AppendLine((ConvertTo-D9EmbeddedIds (Join-Path $root "knowledge\$name")))
 }
-[void]$sb.AppendLine('}')
-[void]$sb.AppendLine('#endregion D9-COMPILED')
+[void]$data.AppendLine('D9-DATA#>')
 
 $compiled = [regex]::Replace($main, $pattern, { param($m) $sb.ToString().TrimEnd() })
+$compiled = $compiled.TrimEnd() + "`r`n`r`n" + $data.ToString()
 if ($Version) {
     $compiled = $compiled -replace "\`$script:D9Version\s*=\s*'[^']*'", "`$script:D9Version  = '$Version'"
 }

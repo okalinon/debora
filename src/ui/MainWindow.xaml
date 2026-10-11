@@ -1407,6 +1407,7 @@
             <Button x:Name="BtnRefreshSessions" Content="Оновити" Margin="0,0,8,6"/>
             <Button x:Name="BtnSystemRestore" Content="Відновлення системи Windows" Margin="0,0,8,6"/>
             <Button x:Name="BtnDiagnostics" Content="Зібрати діагностику" Margin="0,0,8,6" ToolTip="Один zip з відомостями про систему, драйвери, помилки й журнал змін — щоб розібратися з проблемою"/>
+            <Button x:Name="BtnAbout" Content="Про програму" Margin="0,0,8,6"/>
           </WrapPanel>
           <TextBlock Grid.Row="1" Style="{StaticResource Intro}" Margin="4,8,0,12"
                      Text="Кожне застосування змін — окрема сесія. Відкат повертає саме те, що було до змін; значення, які після цього змінили ви або Windows, не перезаписуються."/>

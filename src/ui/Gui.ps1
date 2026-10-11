@@ -458,7 +458,7 @@ function Show-D9Gui {
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DebloatSummary', 'DebloatGrid', 'DebloatSearch', 'DebloatSearchHint', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
-                   'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
+                   'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'BtnAbout', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
@@ -1696,6 +1696,24 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
 
     # ---------- кнопки: Журнал ----------
     $ui.BtnRefreshSessions.Add_Click({ & $fillSessions })
+    # «Про програму»: версія, де лежать дані, швидкий перехід до папок
+    $ui.BtnAbout.Add_Click({
+        $root = Get-D9DataRoot
+        $hidden = (Get-D9HiddenFindings).Count
+        $steps = @(
+            (T-D9 'Версія: {0}' $script:D9Version)
+            (T-D9 'Дані Debora (журнал змін, знімки для відкату, скани, налаштування): {0}' $root)
+            (T-D9 'Звіти й експортовані файли: {0}' $ReportDir)
+            (T-D9 'Приховані знахідки: {0} — переглянути й повернути можна на «Огляді» → «Приховані».' $hidden)
+            (T-D9 'Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).')
+        )
+        $links = @(
+            [pscustomobject]@{ label = (T-D9 'Папка даних'); url = $root }
+            [pscustomobject]@{ label = (T-D9 'Журнали'); url = (Join-Path $root 'logs') }
+            [pscustomobject]@{ label = (T-D9 'Звіти'); url = $ReportDir }
+        )
+        [void](Show-D9GuideDialog $win 'Debora' (T-D9 'Утиліта перевірки, прибирання й налаштування Windows 10/11.') $steps $links)
+    })
     # Вибір сесії — показати, що саме змінено і що не вдалося
     $ui.SessionGrid.Add_SelectionChanged({
         $row = $ui.SessionGrid.SelectedItem

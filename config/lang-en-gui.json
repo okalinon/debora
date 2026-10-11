@@ -475,6 +475,13 @@
     "Перевірено {0}": "Checked {0}",
     "сповільнює запуск Windows ≈ на {0} с": "slows Windows startup by ≈ {0} s",
     "Виконано кроків: {0} з {1}.": "Steps done: {0} of {1}.",
-    "Усі зміни — у «Журналі змін», там же й відкат.": "All changes are in Change history, where you can also undo them."
+    "Усі зміни — у «Журналі змін», там же й відкат.": "All changes are in Change history, where you can also undo them.",
+    "Дані Debora (журнал змін, знімки для відкату, скани, налаштування): {0}": "Debora data (change history, undo snapshots, scans, settings): {0}",
+    "Звіти й експортовані файли: {0}": "Reports and exported files: {0}",
+    "Приховані знахідки: {0} — переглянути й повернути можна на «Огляді» → «Приховані».": "Hidden findings: {0} — review and restore them on Overview → Hidden.",
+    "Папка даних": "Data folder",
+    "Журнали": "Logs",
+    "Звіти": "Reports",
+    "Утиліта перевірки, прибирання й налаштування Windows 10/11.": "A tool to check, clean up and tune Windows 10/11."
   }
 }

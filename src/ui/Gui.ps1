@@ -361,7 +361,7 @@ function New-D9GuideWindow {
 $script:D9DarkColors = [ordered]@{
     '#F2F2F7' = '#1C1C1E'; '#E9E9EE' = '#232325'; '#DCDCE1' = '#3A3A3C'; '#1D1D1F' = '#F5F5F7'; '#6E6E73' = '#98989D'
     '#E3E3E8' = '#38383A'; '#E5E5EA' = '#3A3A3C'; '#D1D1D6' = '#48484A'; '#C7C7CC' = '#636366'; '#007AFF' = '#0A84FF'
-    '#DCEBFF' = '#1C3A5E'; '#FFF4E5' = '#3A2A12'; '#248A3D' = '#30D158'; '#B25000' = '#FF9F0A'; '#D70015' = '#FF453A'; '#FF9500' = '#FF9F0A'
+    '#DCEBFF' = '#1C3A5E'; '#EAF2FF' = '#1A2B44'; '#FFF4E5' = '#3A2A12'; '#248A3D' = '#30D158'; '#B25000' = '#FF9F0A'; '#D70015' = '#FF453A'; '#FF9500' = '#FF9F0A'
 }
 $script:D9DarkCard = '#2C2C2E'
 $script:D9Theme = 'auto'   # auto | light | dark
@@ -1762,7 +1762,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $state.AppRows = @()
     # Картки програм заповнюють усю ширину: кількість колонок — за шириною області
     $ui.AppCards.Tag = 2
-    $ui.AppCards.Parent.Add_SizeChanged({ param($sender, $e) $ui.AppCards.Tag = [math]::Max(1, [math]::Floor(($e.NewSize.Width - 14) / 290)) })
+    $ui.AppCards.Parent.Add_SizeChanged({ param($sender, $e) $ui.AppCards.Tag = [math]::Max(1, [math]::Floor(($e.NewSize.Width - 14) / 250)) })
     # Стан програми — у Kind (update / installed / none), не залежить від показаного тексту
     $appStatus = { param($row) if ($row.Kind -in 'update', 'installed') { $row.Kind } else { 'none' } }
     # Категорії ліворуч: службові + з каталогу, з кількістю

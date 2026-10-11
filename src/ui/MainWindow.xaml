@@ -1049,7 +1049,7 @@
             <Border Style="{StaticResource Panel}" Margin="0,0,14,10">
               <ListBox x:Name="AppCategoryList" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemContainerStyle>
-                  <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"><Setter Property="Padding" Value="12,8"/></Style>
+                  <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"><Setter Property="Padding" Value="12,5"/></Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                   <DataTemplate>
@@ -1066,28 +1066,41 @@
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}" VerticalAlignment="Top"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Border Margin="0,0,12,12" CornerRadius="12" Background="White" ToolTip="{Binding Id}">
-                      <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" Opacity="1" Padding="12,0,0,0" Margin="16,14" VerticalContentAlignment="Top">
-                        <DockPanel>
-                          <Grid DockPanel.Dock="Left" Width="44" Height="44" Margin="0,0,12,0" VerticalAlignment="Top">
-                            <Border CornerRadius="11" Background="#E5E5EA">
-                              <TextBlock Text="{Binding Initial}" FontSize="20" FontWeight="SemiBold" Foreground="#6E6E73" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <Border CornerRadius="11" Background="White">
-                              <Border.Style>
-                                <Style TargetType="Border"><Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style>
-                              </Border.Style>
-                              <Image Source="{Binding Icon}" Width="40" Height="40" RenderOptions.BitmapScalingMode="HighQuality"/>
-                            </Border>
-                          </Grid>
-                          <StackPanel>
-                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="16.5" TextTrimming="CharacterEllipsis"/>
-                          <TextBlock Text="{Binding Note}" Foreground="#6E6E73" TextWrapping="Wrap" FontSize="14" Margin="0,3,0,0" Height="38" TextTrimming="CharacterEllipsis"/>
-                          <TextBlock Text="{Binding Status}" Foreground="{Binding Color}" FontSize="14" Margin="0,6,0,0" FontWeight="Medium"/>
-                          </StackPanel>
-                        </DockPanel>
-                      </CheckBox>
-                    </Border>
+                    <!-- Компактна картка: клік по всій картці — вибір; вибрану видно за рамкою й позначкою ✓ (без окремого квадратика) -->
+                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" Margin="0,0,10,10" ToolTip="{Binding Id}" Cursor="Hand" FocusVisualStyle="{x:Null}">
+                      <CheckBox.Template>
+                        <ControlTemplate TargetType="CheckBox">
+                          <Border x:Name="Bd" CornerRadius="12" Background="White" BorderBrush="Transparent" BorderThickness="1.5" Padding="12,10">
+                            <DockPanel>
+                              <Grid DockPanel.Dock="Left" Width="40" Height="40" Margin="0,0,12,0" VerticalAlignment="Center">
+                                <Border CornerRadius="10" Background="#E5E5EA">
+                                  <TextBlock Text="{Binding Initial}" FontSize="18" FontWeight="SemiBold" Foreground="#6E6E73" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <Border CornerRadius="10" Background="White">
+                                  <Border.Style>
+                                    <Style TargetType="Border"><Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style>
+                                  </Border.Style>
+                                  <Image Source="{Binding Icon}" Width="36" Height="36" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                </Border>
+                              </Grid>
+                              <Border x:Name="Mark" DockPanel.Dock="Right" Width="20" Height="20" CornerRadius="10" Background="#007AFF" VerticalAlignment="Top" Margin="8,0,0,0" Visibility="Hidden">
+                                <TextBlock Text="&#xE73E;" FontFamily="{StaticResource Icons}" FontSize="11" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                              </Border>
+                              <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Note}" Foreground="#6E6E73" FontSize="13" Margin="0,1,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Note}"/>
+                                <TextBlock Text="{Binding Status}" Foreground="{Binding Color}" FontSize="12.5" Margin="0,3,0,0" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                              </StackPanel>
+                            </DockPanel>
+                          </Border>
+                          <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="#D1D1D6"/></Trigger>
+                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="#007AFF"/><Setter TargetName="Bd" Property="Background" Value="#EAF2FF"/><Setter TargetName="Mark" Property="Visibility" Value="Visible"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow"/></Trigger>
+                          </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                      </CheckBox.Template>
+                    </CheckBox>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>

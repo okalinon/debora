@@ -1117,7 +1117,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $sel = @($state.AppRows | Where-Object Selected)
         $upd = @($sel | Where-Object { (& $appStatus $_) -eq 'update' }).Count
         $ui.AppSelectedText.Text = if ($sel) { (T-D9 'Вибрано: {0}' $sel.Count) + $(if ($upd) { T-D9 ' (з них оновити: {0})' $upd }) + " — $(($sel | Select-Object -First 6 | ForEach-Object Title) -join ', ')$(if ($sel.Count -gt 6) { '…' })" } else { T-D9 'Нічого не вибрано. Клацніть по картці програми, щоб вибрати.' }
-        $ui.BtnAppsInstall.Content = if ($sel) { T-D9 'Встановити вибрані ({0})' $sel.Count } else { T-D9 'Встановити вибрані' }
+        $ui.AppSelectedText.ToolTip = if ($sel) { ($sel | ForEach-Object Title) -join "`n" } else { $null }
+    $ui.BtnAppsInstall.Content = if ($sel) { T-D9 'Встановити вибрані ({0})' $sel.Count } else { T-D9 'Встановити вибрані' }
         $ui.BtnAppsInstall.IsEnabled = [bool]$sel -and $hasWinget -and -not $state.Job
         $c = $state.AppCategoryRows | Where-Object Id -eq 'selected' | Select-Object -First 1
         if ($c) { $c.Status = $(if ($sel) { "$($sel.Count)" } else { '' }) }

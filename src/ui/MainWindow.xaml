@@ -975,14 +975,14 @@
               </ItemsControl>
             </ScrollViewer>
           </Grid>
-          <DockPanel Grid.Row="2" Margin="0,4,0,12">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <DockPanel Grid.Row="2" Margin="0,4,0,12" Height="56">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
               <Button x:Name="BtnAppsClear" Content="Зняти вибір"/>
               <Button x:Name="BtnAppsRefresh" Content="Перевірити встановлені"/>
               <Button x:Name="BtnAppsUpgrade" Content="Оновити всі програми"/>
-              <Button x:Name="BtnAppsInstall" Style="{StaticResource Primary}" Content="Встановити вибрані" IsEnabled="False" Margin="0"/>
+              <Button x:Name="BtnAppsInstall" Style="{StaticResource Primary}" Content="Встановити вибрані" IsEnabled="False" Margin="0" MinWidth="230" VerticalAlignment="Center"/>
             </StackPanel>
-            <TextBlock x:Name="AppSelectedText" VerticalAlignment="Center" Text="Нічого не вибрано" Foreground="#6E6E73" Margin="4,0,12,0" TextWrapping="Wrap"/>
+            <TextBlock x:Name="AppSelectedText" VerticalAlignment="Center" Text="Нічого не вибрано" Foreground="#6E6E73" Margin="4,0,12,0" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="42"/>
           </DockPanel>
         </Grid>
       </TabItem>
@@ -1026,9 +1026,9 @@
           <DockPanel Grid.Row="3" Margin="0,10,0,12">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
               <Button x:Name="BtnUninstRefresh" Content="Оновити список"/>
-              <Button x:Name="BtnUninstall" Style="{StaticResource Primary}" Content="Видалити вибрані" IsEnabled="False" Margin="0"/>
+              <Button x:Name="BtnUninstall" Style="{StaticResource Primary}" Content="Видалити вибрані" IsEnabled="False" Margin="0" MinWidth="200"/>
             </StackPanel>
-            <TextBlock x:Name="UninstSelectedText" VerticalAlignment="Center" Foreground="#6E6E73" Margin="4,0,12,0" Text="Нічого не вибрано"/>
+            <TextBlock x:Name="UninstSelectedText" VerticalAlignment="Center" Foreground="#6E6E73" Margin="4,0,12,0" Text="Нічого не вибрано" TextTrimming="CharacterEllipsis"/>
           </DockPanel>
         </Grid>
       </TabItem>

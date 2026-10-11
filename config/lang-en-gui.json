@@ -414,6 +414,20 @@
     "лишилось ≈ {0}": "≈ {0} left",
     "майже готово": "almost done",
     "минулого разу ≈ {0}": "last time ≈ {0}",
-    "цього разу довше": "taking longer this time"
+    "цього разу довше": "taking longer this time",
+    "Приховати": "Hide",
+    "Прийнято: не показувати й не враховувати в оцінці, доки не станеться новий випадок": "Acknowledged: don't show or count it in the score until it happens again",
+    "Прийнято: не показувати й не враховувати в оцінці (повернути — «Приховані»)": "Acknowledged: don't show or count it in the score (bring it back under “Hidden”)",
+    "Приховані: {0}": "Hidden: {0}",
+    "приховано {0}": "hidden {0}",
+    "повернеться з новим випадком": "returns when it happens again",
+    "Показати знову": "Show again",
+    "Знову показувати й враховувати в оцінці": "Show it and count it in the score again",
+    "Приховані знахідки": "Hidden findings",
+    "Приховане не показується й не знижує оцінку. Знахідки з подій журналу повертаються самі, щойно станеться новий випадок; решта — коли натиснете «Показати знову».": "Hidden findings are not shown and don't lower the score. Findings based on the event log come back by themselves when it happens again; the rest come back when you click “Show again”.",
+    "Приховано: {0}": "Hidden: {0}",
+    "Знову показується: {0}": "Shown again: {0}",
+    "Перевірка: {0}": "Checking: {0}",
+    "Не вдалося зберегти список прихованого: {0}": "Couldn't save the hidden list: {0}"
   }
 }

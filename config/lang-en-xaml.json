@@ -217,6 +217,8 @@
     "Черга": "Queue",
     "Очистити чергу": "Clear queue",
     "Далі в черзі": "Up next",
-    "Вище": "Up"
+    "Вище": "Up",
+    "Приховані": "Hidden",
+    "Знахідки, які ви прийняли й приховали: вони не показуються й не знижують оцінку": "Findings you acknowledged and hid: they are not shown and don't lower the score"
   }
 }

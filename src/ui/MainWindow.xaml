@@ -589,6 +589,7 @@
           </Border>
           <StackPanel Grid.Row="2">
             <DockPanel>
+              <Button x:Name="BtnHiddenFindings" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Приховані" VerticalAlignment="Bottom" Margin="16,0,4,7" Visibility="Collapsed" ToolTip="Знахідки, які ви прийняли й приховали: вони не показуються й не знижують оцінку"/>
               <Button x:Name="BtnAllFindings" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Показати всі знахідки" VerticalAlignment="Bottom" Margin="0,0,4,7" Visibility="Collapsed"/>
               <TextBlock x:Name="FindingsTitle" Style="{StaticResource Section}" Text="Що знайдено"/>
             </DockPanel>
@@ -633,6 +634,15 @@
                             <DataTemplate><Button Style="{StaticResource LinkButton}" Content="{Binding Label}" Tag="{Binding Url}" ToolTip="{Binding Url}"/></DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <!-- «Приховати» (прийнято, не показувати до нового випадку) / «Показати знову» у списку прихованого -->
+                        <Button x:Name="BtnFindingHide" Content="{Binding HideLabel}" Tag="{Binding}" ToolTip="{Binding HideTip}" HorizontalAlignment="Left" Margin="0,5,0,0">
+                          <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource LinkButton}">
+                              <Setter Property="Foreground" Value="#6E6E73"/>
+                              <Style.Triggers><DataTrigger Binding="{Binding HideLabel}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding HideLabel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                            </Style>
+                          </Button.Style>
+                        </Button>
                         <!-- Перелік файлів і папок знахідки: підказка в згорнутому рядку, перелік — після кліку (рядок вибрано) -->
                         <TextBlock Text="{Binding Hint}" Foreground="#007AFF" FontSize="13" Margin="0,4,0,0" Cursor="Hand">
                           <TextBlock.Style>

@@ -52,7 +52,7 @@ ol.cl{list-style:none;padding:0;margin:0}ol.cl li{display:flex;gap:12px;padding:
 </style></head><body><main>
 '@
     & $w "<h1>$(T-D9 'Стан Windows: {0}' (ConvertTo-D9Html "$($s.Manufacturer) $($s.Model)"))</h1>"
-    & $w "<div class=""muted"">$(ConvertTo-D9Html "$($s.OsName) $($s.DisplayVersion) ($($s.Build))") · $(T-D9 'сканування {0} · {1} с' ([datetime]$Scan.time).ToString('dd.MM.yyyy HH:mm') $Scan.durationSec)$(if ($Scan.deep) { ' · ' + (T-D9 'глибоке') })$(if (-not $Scan.admin) { ' · ' + (T-D9 'без прав адміністратора') })</div>"
+    & $w "<div class=""muted"">$(ConvertTo-D9Html "$($s.OsName) $($s.DisplayVersion) ($($s.Build))") · $(T-D9 'сканування {0} · {1} с' ([datetime]$Scan.time).ToString('dd.MM.yyyy HH:mm') $Scan.durationSec)$(if ($Scan.deep) { ' · ' + (T-D9 'глибоке') })$(if (-not $Scan.admin) { ' · ' + (T-D9 'без прав адміністратора') })$(if ($Scan.hiddenCount) { ' · ' + (T-D9 'приховано вами: {0}' $Scan.hiddenCount) })</div>"
 
     & $w "<div class=""card""><div class=""hero""><div class=""score $verdictCls"">$($Scan.score.overall)<small> / 100</small></div><div><div class=""verdict $verdictCls"">$verdictText</div>"
     $counts = foreach ($k in 'critical', 'warning', 'suggestion') { $n = @($Scan.findings | Where-Object severity -eq $k).Count; if ($n) { "<span class=""$($sev[$k].cls)"">$($sev[$k].icon) $n $($sev[$k].name.ToLower())</span>" } }

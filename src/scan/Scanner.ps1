@@ -62,6 +62,66 @@ function Get-D9EventSince {
     $since
 }
 
+function Remove-D9FixMark {
+    param([Parameter(Mandatory)][string[]]$CheckIds)
+    $h = Get-D9FixMarks
+    foreach ($id in $CheckIds) { [void]$h.Remove($id) }
+    try { [IO.File]::WriteAllText((Get-D9FixMarksPath), (ConvertTo-Json ([pscustomobject]$h)), (New-Object Text.UTF8Encoding $false)) } catch { }
+}
+
+# ---------- Приховані знахідки («прийнято, не показувати») ----------
+# hidden.json: ключ знахідки → { checkId, category, severity, title, details, at }. Прихована знахідка не показується
+# й не знижує оцінку. Знахідки з подій журналу повертаються самі з новим випадком (при прихованні ставиться позначка
+# «рахувати лише нові події»), решта — коли людина натисне «Показати знову».
+function Get-D9HiddenPath { Join-Path (Get-D9DataRoot) 'hidden.json' }
+
+function Get-D9HiddenFindings {
+    $h = @{}
+    $p = Get-D9HiddenPath
+    if (Test-Path $p) {
+        try { $j = ConvertFrom-Json ([IO.File]::ReadAllText($p, [Text.Encoding]::UTF8)); foreach ($x in $j.PSObject.Properties) { $h[$x.Name] = $x.Value } } catch { }
+    }
+    $h
+}
+
+function Save-D9HiddenFindings {
+    param([hashtable]$Hidden)
+    $p = Get-D9HiddenPath
+    try {
+        $dir = Split-Path $p; if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        [IO.File]::WriteAllText($p, (ConvertTo-Json ([pscustomobject]$Hidden) -Depth 4), (New-Object Text.UTF8Encoding $false))
+    } catch { Write-D9Log (T-D9 'Не вдалося зберегти список прихованого: {0}' $_.Exception.Message) Warn }
+}
+
+function Set-D9FindingHidden {
+    param([Parameter(Mandatory)]$Finding, [switch]$Unhide, $Config)
+    $h = Get-D9HiddenFindings
+    $isEvent = Test-D9EventBasedCheck $Finding.checkId $Config
+    if ($Unhide) {
+        [void]$h.Remove([string]$Finding.key)
+        if ($isEvent) { Remove-D9FixMark @($Finding.checkId) }
+    } else {
+        $h[[string]$Finding.key] = [pscustomobject]@{ checkId = $Finding.checkId; category = $Finding.category; severity = $Finding.severity
+                                                      title = $Finding.title; details = $Finding.details; at = (Get-Date).ToString('s'); event = $isEvent }
+        if ($isEvent) { Set-D9FixMark @($Finding.checkId) }
+    }
+    Save-D9HiddenFindings $h
+}
+
+# Ділить знахідки на видимі й приховані. Знахідка з подій, що знову з'явилась, — новий випадок: її прибирають
+# зі списку прихованого й показують ($Hidden змінюється; Changed = $true — треба зберегти).
+function Split-D9HiddenFindings {
+    param([object[]]$Findings, [hashtable]$Hidden)
+    $visible = @(); $hiddenNow = @(); $changed = $false
+    foreach ($f in @($Findings | Where-Object { $_ })) {
+        $e = $Hidden[[string]$f.key]
+        if (-not $e) { $visible += $f; continue }
+        if ($e.event) { [void]$Hidden.Remove([string]$f.key); $changed = $true; $visible += $f }
+        else { $hiddenNow += $f }
+    }
+    [pscustomobject]@{ Visible = $visible; Hidden = $hiddenNow; Changed = $changed }
+}
+
 # Чи рахує перевірка події журналу (тоді знахідку можна позначити вирішеною — далі рахуються лише нові події)
 function Test-D9EventBasedCheck {
     param([string]$CheckId, $Config)
@@ -217,6 +277,11 @@ function Invoke-D9Scan {
     $checked = @($results | Where-Object { $_.status -in 'ok', 'found' } | ForEach-Object category | Sort-Object -Unique)
     $order = @{ critical = 0; warning = 1; suggestion = 2; info = 3 }
     $sorted = @($findings | Sort-Object { $order[$_.severity] }, category)
+    # Приховане людиною не показуємо й не рахуємо в оцінці
+    $hiddenList = Get-D9HiddenFindings
+    $split = Split-D9HiddenFindings $sorted $hiddenList
+    if ($split.Changed) { Save-D9HiddenFindings $hiddenList }
+    $sorted = @($split.Visible)
     $score = Get-D9ScanScore -Categories $Context.Config.categories -Findings $sorted -CheckedCategories $checked
 
     [pscustomobject]@{
@@ -229,6 +294,7 @@ function Invoke-D9Scan {
         recommendation = $Context.Recommendation
         score          = $score
         findings       = $sorted
+        hiddenCount    = $hiddenList.Count
         checks         = @($results)
     }
 }
@@ -237,7 +303,7 @@ function Invoke-D9Scan {
 # знахідки цих перевірок замінюються свіжими, оцінка перераховується
 function Update-D9ScanFindings {
     param([Parameter(Mandatory)]$Scan, [Parameter(Mandatory)]$Categories, [Parameter(Mandatory)][string[]]$CheckIds, [object[]]$Fresh)
-    $Scan.findings = @(@($Scan.findings | Where-Object { $CheckIds -notcontains $_.checkId }) + @($Fresh | Where-Object { $_ }))
+    $Scan.findings = @(@($Scan.findings | Where-Object { $CheckIds -notcontains $_.checkId }) + @((Split-D9HiddenFindings @($Fresh) (Get-D9HiddenFindings)).Visible))
     $sc = $Scan.score.categories
     $checked = if ($sc -is [Collections.IDictionary]) { @($sc.Keys) } else { @($sc.PSObject.Properties.Name) }
     $Scan.score = Get-D9ScanScore -Categories $Categories -Findings $Scan.findings -CheckedCategories $checked

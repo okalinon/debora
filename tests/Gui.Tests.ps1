@@ -310,6 +310,30 @@ Describe 'Вікно' {
         $r.Done | Should -BeLessThan 30
     }
 
+    It '«Приховати» прибирає знахідку й оцінку не знижує; «Приховані: N» показує її з «Показати знову»' {
+        $r = Invoke-InGui {
+            $p = Get-D9HiddenPath; if (Test-Path $p) { [IO.File]::WriteAllText($p, '{}') }
+            $cats = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
+            $f = @((New-D9Finding ([pscustomobject]@{ id = 'sec.tpm'; category = 'security' }) warning 'TPM вимкнено' 'd' @{ type = 'manual' }))
+            $state.Categories = $cats
+            & $fillOverview ([pscustomobject]@{ id = 'test-hide'; score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('security')); findings = $f; checks = @(1); durationSec = 1; time = (Get-Date).ToString('s') }) $cats
+            $before = [int]$ui.ScoreText.Text
+            $row = @($ui.FindingsList.ItemsSource)[0]
+            $label = $row.HideLabel
+            & $hideFinding $row
+            $after = [int]$ui.ScoreText.Text; $left = @($ui.FindingsList.ItemsSource).Count; $link = [string]$ui.BtnHiddenFindings.Content
+            & $showHidden
+            $hiddenRow = @($ui.FindingsList.ItemsSource)[0]
+            @{ Before = $before; After = $after; Left = $left; Label = $label; Link = $link; HiddenTitle = $hiddenRow.Title; HiddenLabel = $hiddenRow.HideLabel }
+        }
+        $r.Label | Should -Be 'Приховати'
+        $r.After | Should -BeGreaterThan $r.Before
+        $r.Left | Should -Be 0
+        $r.Link | Should -Match '1'
+        $r.HiddenTitle | Should -Be 'TPM вимкнено'
+        $r.HiddenLabel | Should -Be 'Показати знову'
+    }
+
     It 'ланцюжок завдань через таймер: контекст доходить до $Done і до наступного завдання' {
         # Регресія: «Застосувати вибране» запускало друге завдання з $Done, де локальна $ids була порожня
         $r = Invoke-InGui {

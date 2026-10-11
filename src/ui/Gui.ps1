@@ -40,7 +40,9 @@ public class D9Row : INotifyPropertyChanged {
     public object Items { get; set; }   // вкладений перелік (файли й папки знахідки)
     public string Hint { get; set; }
     // Кнопка дії в рядку знахідки («Виправити» / «Як виправити»); null — кнопки немає
-    string fixLabel; string fixTip; string guideLabel;
+    string fixLabel; string fixTip; string guideLabel; string hideLabel;
+    public string HideLabel { get { return hideLabel; } set { hideLabel = value; On("HideLabel"); } }
+    public string HideTip { get; set; }
     public string GuideLabel { get { return guideLabel; } set { guideLabel = value; On("GuideLabel"); } }
     public string FixLabel { get { return fixLabel; } set { fixLabel = value; On("FixLabel"); } }
     public string FixTip { get { return fixTip; } set { fixTip = value; On("FixTip"); } }
@@ -345,7 +347,7 @@ function Show-D9Gui {
     $win = [Windows.Markup.XamlReader]::Parse($xamlText)
     $ui = @{}
     foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
-                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'FindingsTitle', 'ScoreExplain',
+                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'FindingsTitle', 'ScoreExplain',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DebloatSummary', 'DebloatGrid', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
@@ -646,6 +648,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $scan = $state.Scan
         if (-not $scan) { return }
         $state.FindingsCategory = $categoryId
+        $state.ShowingHidden = $false
+        & $updateHiddenLink
         if (-not $state.ChecksConfig) { $state.ChecksConfig = ConvertFrom-Json (Get-D9ConfigText 'checks.json') }
         $list = @($scan.findings | Where-Object { -not $categoryId -or $_.category -eq $categoryId })
         Set-D9Items $ui.FindingsList @(foreach ($f in $list) {
@@ -658,6 +662,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                          FixLabel = $(if ($fixKind -eq 'fix') { T-D9 'Виправити' } else { $null })
                          FixTip = $(if ($fixKind -eq 'fix') { T-D9 'Debora виправить це сама: спершу покаже, що саме зміниться' } else { $null })
                          GuideLabel = $(if ($hasGuide) { T-D9 'Як виправити' } else { $null })
+                         HideLabel = (T-D9 'Приховати'); HideTip = $(if (Test-D9EventBasedCheck $f.checkId $state.ChecksConfig) { T-D9 'Прийнято: не показувати й не враховувати в оцінці, доки не станеться новий випадок' } else { T-D9 'Прийнято: не показувати й не враховувати в оцінці (повернути — «Приховані»)' })
                          Items = $items; Hint = $(if ($items) { T-D9 '{0} файлів і папок — натисніть, щоб побачити перелік' $items.Count } else { '' })
                          Kind = $(if ($pen) { "−$pen" } else { '' }); Note = $(if ($categoryId) { T-D9 ($script:D9SevUi[[string]$f.severity].Name) } else { "$($state.CategoryNames[[string]$f.category]) · $(T-D9 ($script:D9SevUi[[string]$f.severity].Name))" }) }
         })
@@ -680,11 +685,75 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     $ui.BtnAllFindings.Add_Click({ & $showFindings $null })
 
+    # ---------- Приховані знахідки ----------
+    $updateHiddenLink = {
+        $n = (Get-D9HiddenFindings).Count
+        $ui.BtnHiddenFindings.Visibility = if ($n) { 'Visible' } else { 'Collapsed' }
+        $ui.BtnHiddenFindings.Content = T-D9 'Приховані: {0}' $n
+    }
+    # Список прихованого (з hidden.json): рядок з «Показати знову»
+    $showHidden = {
+        $state.ShowingHidden = $true
+        $h = Get-D9HiddenFindings
+        Set-D9Items $ui.FindingsList @(foreach ($k in ($h.Keys | Sort-Object { $h[$_].at } -Descending)) {
+            $e = $h[$k]
+            $st = $script:D9SevUi[[string]$e.severity]
+            $when = try { ([datetime]$e.at).ToString('dd.MM.yyyy') } catch { '' }
+            New-D9Row @{ Badge = $st.Badge; Color = '#8E8E93'; Title = [string]$e.title; Detail = [string]$e.details
+                         Note = (T-D9 'приховано {0}' $when) + $(if ($e.event) { ' · ' + (T-D9 'повернеться з новим випадком') } else { '' })
+                         Tag = [pscustomobject]@{ key = $k; checkId = $e.checkId; category = $e.category; severity = $e.severity; title = $e.title; details = $e.details }
+                         HideLabel = (T-D9 'Показати знову'); HideTip = (T-D9 'Знову показувати й враховувати в оцінці') }
+        })
+        $ui.FindingsTitle.Text = T-D9 'Приховані знахідки'
+        $ui.ScoreExplain.Visibility = 'Visible'
+        $ui.ScoreExplain.Text = T-D9 'Приховане не показується й не знижує оцінку. Знахідки з подій журналу повертаються самі, щойно станеться новий випадок; решта — коли натиснете «Показати знову».'
+        $ui.BtnAllFindings.Visibility = 'Visible'
+        $ui.BtnHiddenFindings.Visibility = 'Collapsed'
+    }
+    $ui.BtnHiddenFindings.Add_Click({ & $showHidden })
+    $hideFinding = {
+        param($row)
+        $f = $row.Tag
+        if (-not $f) { return }
+        if (-not $state.ShowingHidden) {
+            Set-D9FindingHidden $f -Config $state.ChecksConfig
+            & $log (T-D9 'Приховано: {0}' $f.title)
+            if ($state.Scan) {
+                $state.Scan.findings = @($state.Scan.findings | Where-Object { $_.key -ne $f.key })
+                [void](Update-D9ScanFindings -Scan $state.Scan -Categories $state.Categories -CheckIds @('-') -Fresh @())   # лише перерахунок оцінки
+                try { [void](Save-D9Scan $state.Scan) } catch { }
+                $cat = $state.FindingsCategory
+                & $fillOverview $state.Scan $state.Categories
+                if ($cat -and $null -ne $state.Scan.score.categories.$cat) { & $showFindings $cat }
+            }
+            return
+        }
+        # «Показати знову»: прибрати з прихованого й перевірити саме цю перевірку
+        Set-D9FindingHidden $f -Unhide -Config $state.ChecksConfig
+        & $log (T-D9 'Знову показується: {0}' $f.title)
+        & $showHidden
+        if (-not (Get-D9HiddenFindings).Count) { & $showFindings $state.FindingsCategory }
+        & $startJob (T-D9 'Перевірка: {0}' $f.title) {
+            param($a)
+            $ctx = New-D9ScanContext -Catalog $a.Catalog -SystemInfo $a.Sys
+            @((Invoke-D9Scan -Context $ctx -OnlyChecks @($a.CheckId)).findings)
+        } @{ Catalog = $Catalog; Sys = $SystemInfo; CheckId = $f.checkId } {
+            param($fresh, $c)
+            if (-not $state.Scan) { return }
+            [void](Update-D9ScanFindings -Scan $state.Scan -Categories $state.Categories -CheckIds @($c.CheckId) -Fresh @($fresh))
+            try { [void](Save-D9Scan $state.Scan) } catch { }
+            $wasHidden = $state.ShowingHidden
+            & $fillOverview $state.Scan $state.Categories
+            if ($wasHidden -and (Get-D9HiddenFindings).Count) { & $showHidden }
+        } @{ CheckId = $f.checkId }
+    }
+
     # Кнопка в рядку знахідки: «Виправити» — лише ця знахідка (діалог «що зміниться» → виконання → повторна
     # перевірка лише її), «Як виправити» — покрокова інструкція з checks.json (guide) і посилання
     $ui.FindingsList.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{
         param($sender, $e)
         $b = $e.OriginalSource
+        if ($b -is [Windows.Controls.Button] -and $b.Name -eq 'BtnFindingHide') { $e.Handled = $true; & $hideFinding $b.Tag; return }
         if (-not ($b -is [Windows.Controls.Button]) -or $b.Name -notin 'BtnFindingFix', 'BtnFindingGuide') { return }
         $e.Handled = $true
         $f = $b.Tag.Tag

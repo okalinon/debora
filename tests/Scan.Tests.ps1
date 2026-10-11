@@ -658,3 +658,46 @@ Describe 'Спрацювання Захисника на файли самої D
         (Test-D9EventRule $rule $ctx).title | Should -Match '1'
     }
 }
+
+Describe 'Приховані знахідки' {
+    BeforeEach {
+        $p = Get-D9HiddenPath; if (Test-Path $p) { [IO.File]::WriteAllText($p, '{}') }
+        $m = Get-D9FixMarksPath; if (Test-Path $m) { [IO.File]::WriteAllText($m, '{}') }
+    }
+    It 'прихована знахідка не показується й не знижує оцінку; «Показати знову» повертає' {
+        $tpm = New-TestFinding 'sec.tpm' 'security' 'warning' @{ type = 'manual' }
+        $tmp = New-TestFinding 'clean.temp' 'cleanliness' 'suggestion' @{ type = 'tweaks'; ids = @('cleanup.temp') }
+        Set-D9FindingHidden $tpm -Config $scanConfig.Checks
+        $s = Split-D9HiddenFindings @($tpm, $tmp) (Get-D9HiddenFindings)
+        @($s.Visible.checkId) | Should -Be @('clean.temp')
+        @($s.Hidden.checkId) | Should -Be @('sec.tpm')
+        (Get-D9HiddenFindings)['sec.tpm'].title | Should -Be 't-sec.tpm'
+        Set-D9FindingHidden $tpm -Unhide -Config $scanConfig.Checks
+        (Get-D9HiddenFindings).Count | Should -Be 0
+    }
+    It 'знахідка з подій: при прихованні рахуються лише нові події, новий випадок повертає її сам' {
+        $def = New-TestFinding 'sec.defender-detections' 'security' 'warning' @{ type = 'manual' }
+        Set-D9FindingHidden $def -Config $scanConfig.Checks
+        (Get-D9FixMarks)['sec.defender-detections'] | Should -Not -BeNullOrEmpty
+        $h = Get-D9HiddenFindings
+        $s = Split-D9HiddenFindings @($def) $h      # з'явилась знову — це вже нові події
+        @($s.Visible).Count | Should -Be 1
+        $s.Changed | Should -BeTrue
+        $h.ContainsKey('sec.defender-detections') | Should -BeFalse
+        Set-D9FindingHidden $def -Config $scanConfig.Checks
+        Set-D9FindingHidden $def -Unhide -Config $scanConfig.Checks
+        (Get-D9FixMarks).ContainsKey('sec.defender-detections') | Should -BeFalse   # повернули — знову видно й старі події
+    }
+    It 'сканування: приховане не потрапляє у знахідки й оцінку, лічильник прихованого' {
+        $tpm = New-TestFinding 'sec.tpm' 'security' 'warning' @{ type = 'manual' }
+        Set-D9FindingHidden $tpm -Config $scanConfig.Checks
+        Mock Invoke-D9ProbesParallel { $null }
+        $cfg = [pscustomobject]@{ categories = $scanConfig.Checks.categories; checks = @($scanConfig.Checks.checks | Where-Object id -eq 'sec.tpm') }
+        $ctx = [pscustomobject]@{ System = (New-TestSystemInfo); Catalog = $catalog; Recommendation = $null; Deep = $false; IsAdmin = $true; Now = (Get-Date); Config = $cfg; FixMarks = @{} }
+        Mock Test-D9Tpm { New-D9Finding $Check warning 't-sec.tpm' 'd' @{ type = 'manual' } }
+        $scan = Invoke-D9Scan -Context $ctx -Sequential
+        @($scan.findings).Count | Should -Be 0
+        $scan.hiddenCount | Should -Be 1
+        $scan.score.categories.security | Should -Be 100
+    }
+}

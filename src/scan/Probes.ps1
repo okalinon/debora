@@ -506,10 +506,16 @@ function Test-D9DiskErrors {
         $lastB = ($blocks | Sort-Object TimeCreated -Descending | Select-Object -First 1).TimeCreated
         $today = @($blocks | Where-Object { $_.TimeCreated -gt $Ctx.Now.AddDays(-1) }).Count
         $severity = if ($blocks.Count -ge 3) { 'critical' } else { 'warning' }
+        # Від адміністратора звіряємо з SMART: якщо диск справний і не рахує невиправних помилок, події можуть
+        # бути збоями зв'язку з диском (драйвер, прошивка, живлення) — це попередження, а не «диск помирає»
+        $sys = if ($Ctx.IsAdmin) { @(try { Get-D9DiskHealth } catch { }) | Where-Object IsSystem | Select-Object -First 1 }
+        $smartClean = $sys -and (Get-D9DiskVerdict $sys).Level -eq 'ok' -and [long]$sys.ReadErrorsUncorrected -eq 0
+        if ($smartClean) { $severity = 'warning' }
         $title = T-D9 'Системний диск повідомляє про пошкоджені блоки: {0} за {1} днів (остання {2})' $blocks.Count $days ($lastB.ToString('dd.MM.yyyy HH:mm'))
         $details = (T-D9 'Диск сам не може прочитати частину даних — це ознака зносу або несправності накопичувача, і перевірка файлової системи (chkdsk) тут не допоможе.') + ' ' +
             $(if ($today -ge 3) { (T-D9 'За останню добу — {0}: проблема наростає.' $today) + ' ' }) +
-            (T-D9 'Негайно скопіюйте важливі файли на інший диск або в хмару.') + ' ' + $smart
+            (T-D9 'Негайно скопіюйте важливі файли на інший диск або в хмару.') + ' ' +
+            $(if ($smartClean) { T-D9 'SMART диска поки чистий (невиправних помилок 0): можливо, це збої зв''язку з диском — оновіть прошивку й драйвер накопичувача і стежте, чи події повторюються.' } else { $smart })
         $found += New-D9Finding $Check $severity $title $details @{ type = 'manual' } -Key 'stab.disk-errors:blocks'
     }
     if ($fsErrors.Count) {

@@ -599,5 +599,12 @@ Describe 'Помилки диска: пошкоджені блоки окрем�
         $blocks.details | Should -Match 'наростає'
         ($f | Where-Object key -eq 'stab.disk-errors:fs').fix.action | Should -Be 'chkdskScan'
         Get-D9FindingGuide $blocks | Should -Not -BeNullOrEmpty
+        # Від адміністратора й SMART чистий — попередження, а не критично
+        Mock Get-D9DiskHealth { [pscustomobject]@{ IsSystem = $true; HealthStatus = 0; PredictFailure = $false; ReadErrorsUncorrected = 0 } }
+        Mock Get-D9DiskVerdict { [pscustomobject]@{ Level = 'ok'; Problems = @() } }
+        $f2 = @(Test-D9DiskErrors $check ([pscustomobject]@{ Now = $now; IsAdmin = $true }))
+        $b2 = $f2 | Where-Object key -eq 'stab.disk-errors:blocks'
+        $b2.severity | Should -Be 'warning'
+        $b2.details | Should -Match 'SMART'
     }
 }

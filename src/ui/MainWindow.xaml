@@ -1057,7 +1057,7 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Border Margin="0,0,12,12" CornerRadius="12" Background="White" ToolTip="{Binding Id}">
-                      <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" Padding="12,0,0,0" Margin="16,14" VerticalContentAlignment="Top">
+                      <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" Opacity="1" Padding="12,0,0,0" Margin="16,14" VerticalContentAlignment="Top">
                         <DockPanel>
                           <Grid DockPanel.Dock="Left" Width="44" Height="44" Margin="0,0,12,0" VerticalAlignment="Top">
                             <Border CornerRadius="11" Background="#E5E5EA">

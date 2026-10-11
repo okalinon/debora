@@ -93,7 +93,7 @@ Describe 'Вікно' {
         $r.SelText | Should -Match "Вибрано: $(@($cat.bundles[0].apps).Count)"
         $r.Chrome | Should -Be 'є оновлення: 1.0 → 2.0'
         $r.ChromeOn | Should -BeTrue
-        $r.Vlc | Should -Be 'встановлено'
+        $r.Vlc | Should -Be '✓ встановлено'
         $r.VlcOn | Should -BeFalse
         $r.Cats | Should -Be (5 + @($cat.categories).Count)
     }

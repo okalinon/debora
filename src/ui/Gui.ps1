@@ -1828,7 +1828,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($row, [bool]$installed)
         $up = $state.AppUpgrades[[string]$row.Id]
         if ($installed -and $up) { $row.Status = (T-D9 'є оновлення: {0} → {1}' $up.Version $up.Available); $row.Kind = 'update'; $row.Color = '#007AFF'; $row.Enabled = $true }
-        elseif ($installed) { $row.Status = (T-D9 'встановлено'); $row.Kind = 'installed'; $row.Color = '#248A3D'; $row.Selected = $false; $row.Enabled = $false }
+        elseif ($installed) { $row.Status = '✓ ' + (T-D9 'встановлено'); $row.Kind = 'installed'; $row.Color = '#248A3D'; $row.Selected = $false; $row.Enabled = $false }
         else { $row.Status = (T-D9 'не встановлено'); $row.Kind = 'none'; $row.Color = '#6E6E73'; $row.Enabled = $true }
     }
     $loadApps = {

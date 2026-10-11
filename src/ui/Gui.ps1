@@ -2183,6 +2183,17 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         )
         Show-D9GuideDialog $win (T-D9 'З чого почати') (T-D9 'Debora перевіряє, прибирає й налаштовує Windows. Кілька порад на початок:') $steps @() | Out-Null
         try { if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }; Set-ItemProperty $key -Name Welcomed -Value 1 -Type DWord } catch { }
+        # Ярлик на робочому столі (лише за згодою): запуск через run.bat, тобто одразу з правами адміністратора
+        if ($script:D9ScriptPath) {
+            $bat = Join-Path (Split-Path $script:D9ScriptPath) 'run.bat'
+            $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Debora.lnk'
+            if ((Test-Path $bat) -and -not (Test-Path $lnk) -and [Windows.MessageBox]::Show($win, (T-D9 'Створити ярлик Debora на робочому столі?'), 'Debora', 'YesNo', 'Question') -eq 'Yes') {
+                try {
+                    $sc = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+                    $sc.TargetPath = $bat; $sc.WorkingDirectory = (Split-Path $bat); $sc.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"; $sc.Save()
+                } catch { & $log (T-D9 'Не вдалося створити ярлик: {0}' $_.Exception.Message) }
+            }
+        }
     })
     $state.NoWelcome = [bool]$TestAction   # тести й самоперевірка: без модальних вікон
     $win.Add_Closing({ param($sender, $e)

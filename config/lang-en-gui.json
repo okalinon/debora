@@ -466,6 +466,8 @@
     "Готово: {0}": "Done: {0}",
     "Не вдалося: {0}": "Failed: {0}",
     "Пошук": "Search",
-    "вкладка": "tab"
+    "вкладка": "tab",
+    "Створити ярлик Debora на робочому столі?": "Create a Debora shortcut on the desktop?",
+    "Не вдалося створити ярлик: {0}": "Couldn't create the shortcut: {0}"
   }
 }

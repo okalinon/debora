@@ -830,7 +830,7 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="20,0,20,24" MaxWidth="1240" HorizontalAlignment="Stretch">
             <TextBlock Style="{StaticResource Intro}" Margin="4,0,0,4"
-                       Text="Щойно встановлена Windows — за один прохід: драйвери, деблоат, налаштування, програми, оновлення й перевірка. Позначте кроки, виберіть програми й натисніть «Почати налаштування». Профіль зберігається сам; його можна записати у файл і повторити на іншому ПК, а флешка перевстановлення виконає його після першого входу."/>
+                       Text="Щойно встановлена Windows — драйвери, деблоат, налаштування, програми й оновлення за один прохід. Позначте кроки й натисніть «Почати налаштування»."/>
             <TextBlock Style="{StaticResource Section}" Text="Кроки"/>
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -1337,7 +1337,7 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="20,0,20,24" MaxWidth="1240" HorizontalAlignment="Stretch">
             <TextBlock Style="{StaticResource Intro}" Margin="4,0,0,4"
-                       Text="Чиста Windows без зайвих запитань і з усіма драйверами. Створіть звичайну флешку з Windows (Media Creation Tool від Microsoft або Rufus), вставте її й натисніть «Підготувати флешку». Під час встановлення вручну лишиться тільки вибір диска; після першого входу Debora сама застосує налаштування й доставить драйвери з інтернету."/>
+                       Text="Чиста Windows без зайвих запитань і з драйверами цього ПК: вставте флешку з Windows (Media Creation Tool або Rufus) і натисніть «Підготувати флешку»."/>
             <TextBlock Style="{StaticResource Section}" Text="Інсталяційна флешка"/>
             <Border Style="{StaticResource Group}">
               <StackPanel>
@@ -1393,7 +1393,7 @@
         <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <WrapPanel>
-            <Button x:Name="BtnUndo" Style="{StaticResource Primary}" Content="Відкотити вибрану сесію" Margin="0,0,8,6"/>
+            <Button x:Name="BtnUndo" Style="{StaticResource Primary}" Content="Відкотити вибрані зміни" Margin="0,0,8,6"/>
             <Button x:Name="BtnRefreshSessions" Content="Оновити" Margin="0,0,8,6"/>
             <Button x:Name="BtnSystemRestore" Content="Відновлення системи Windows" Margin="0,0,8,6"/>
             <Button x:Name="BtnDiagnostics" Content="Зібрати діагностику" Margin="0,0,8,6" ToolTip="Один zip з відомостями про систему, драйвери, помилки й журнал змін — щоб розібратися з проблемою"/>

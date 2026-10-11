@@ -453,6 +453,9 @@
     "Усі пристрої мають драйвери.": "All devices have drivers.",
     "рекомендовано": "recommended",
     "уже зроблено": "already done",
-    "ще ні": "not yet"
+    "ще ні": "not yet",
+    "Вибрати програми": "Choose apps",
+    "Пошук: назва або для чого програма": "Search: name or what the app is for",
+    "Нічого вимикати: програми, які радимо вимкнути, вже не запускаються": "Nothing to disable: the programs we recommend disabling no longer start"
   }
 }

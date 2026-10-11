@@ -197,6 +197,40 @@ function New-D9FilesWindow {
     $w
 }
 
+# Вибір програм із каталогу (майстер «З нуля»): пошук і галочки замість ручного введення ID winget.
+# Повертає вибрані ID або $null (скасовано). Обробники — без локальних змінних (лише Tag вікна).
+function New-D9AppPickerWindow {
+    param($Owner, [object[]]$Apps, [string[]]$Selected)
+    $w = New-Object Windows.Window
+    $w.Title = T-D9 'Вибрати програми'; $w.Width = 640; $w.Height = 680
+    if ($Owner -and $Owner.IsLoaded) { $w.Owner = $Owner }
+    $w.WindowStartupLocation = 'CenterOwner'; $w.FontFamily = 'Segoe UI Variable Text, Segoe UI'; $w.FontSize = 14
+    if ($Owner) { $w.Resources = $Owner.Resources; $w.Background = $Owner.Background; $w.Foreground = $Owner.Foreground }
+    $dock = New-Object Windows.Controls.DockPanel; $dock.Margin = '18'
+    $search = New-Object Windows.Controls.TextBox; $search.Margin = '0,0,0,10'; $search.ToolTip = T-D9 'Пошук: назва або для чого програма'
+    [Windows.Controls.DockPanel]::SetDock($search, 'Top'); [void]$dock.Children.Add($search)
+    $buttons = New-Object Windows.Controls.StackPanel; $buttons.Orientation = 'Horizontal'; $buttons.HorizontalAlignment = 'Right'; $buttons.Margin = '0,10,0,0'
+    [Windows.Controls.DockPanel]::SetDock($buttons, 'Bottom'); [void]$dock.Children.Add($buttons)
+    $list = New-Object Windows.Controls.StackPanel
+    $boxes = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($a in @($Apps | Sort-Object { -not $_.popular }, name)) {
+        $cb = New-Object Windows.Controls.CheckBox; $cb.Margin = '0,3'; $cb.Tag = [string]$a.id
+        $cb.Content = "$($a.name) — $(Get-D9Text $a.description)"; $cb.ToolTip = [string]$a.id
+        $cb.IsChecked = @($Selected) -contains [string]$a.id
+        [void]$list.Children.Add($cb); [void]$boxes.Add($cb)
+    }
+    $sv = New-Object Windows.Controls.ScrollViewer; $sv.VerticalScrollBarVisibility = 'Auto'; $sv.Content = $list
+    [void]$dock.Children.Add($sv)
+    $search.Add_TextChanged({ param($s) $q = $s.Text.Trim(); foreach ($b in [Windows.Window]::GetWindow($s).Tag) { $b.Visibility = if (-not $q -or "$($b.Content) $($b.Tag)" -like "*$q*") { 'Visible' } else { 'Collapsed' } } })
+    $ok = New-Object Windows.Controls.Button; $ok.Content = T-D9 'Готово'; $ok.Margin = '0,0,8,0'; $ok.IsDefault = $true
+    if ($Owner) { $ok.Style = $Owner.FindResource('Primary') }
+    $ok.Add_Click({ param($s) [Windows.Window]::GetWindow($s).DialogResult = $true })
+    $cancel = New-Object Windows.Controls.Button; $cancel.Content = T-D9 'Скасувати'; $cancel.Margin = '0'; $cancel.IsCancel = $true
+    [void]$buttons.Children.Add($ok); [void]$buttons.Children.Add($cancel)
+    $w.Content = $dock; $w.Tag = $boxes
+    $w
+}
+
 # «Як виправити»: опис знахідки, нумеровані кроки й посилання-кнопки (ms-settings:, .exe, сайти)
 # Повертає $true, якщо натиснуто «Вирішено» (для знахідок з подій журналу: далі рахуються лише нові події)
 function Show-D9GuideDialog {
@@ -363,7 +397,7 @@ function Show-D9Gui {
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
                    'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnStyle', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage',
                    'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
-                   'ChkSuDrivers', 'ChkSuDebloat', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
+                   'ChkSuDrivers', 'ChkSuDebloat', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'BtnSuPickApps', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
@@ -1321,6 +1355,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $on = @($items | Where-Object Enabled).Count
         $rec = @($items | Where-Object { $_.Enabled -and ($_.Verdict -eq 'disable' -or $_.Missing) }).Count
         $ui.BtnStartupRecommended.IsEnabled = [bool]$rec
+        $ui.BtnStartupRecommended.ToolTip = if ($rec) { T-D9 'Зняти галочки з програм, яким не потрібно стартувати разом із Windows (лаунчери ігор, «помічники», реклама виробника), і застосувати' } else { T-D9 'Нічого вимикати: програми, які радимо вимкнути, вже не запускаються' }
         $ui.BtnStartupRecommended.Content = if ($rec) { T-D9 'Вимкнути рекомендовані ({0})' $rec } else { T-D9 'Вимкнути рекомендовані' }
         $ui.StartupSummary.Text = (T-D9 'Програм в автозавантаженні: {0}, запускаються: {1}' (@($items).Count) $on) + $(if ($rec) { T-D9 ', з них рекомендуємо вимкнути: {0}' $rec }) + (T-D9 '. Зніміть галочку з тих, яким не потрібно стартувати разом із Windows, і натисніть «Застосувати зміни» — або «Вимкнути рекомендовані». Програми не видаляються; усе відкочується в «Журналі змін».')
     }
@@ -1850,6 +1885,12 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         })
     }
     $loadSetup = { $state.SetupLoaded = $true; & $fillSetup (Get-D9SetupProfile) }
+    $ui.BtnSuPickApps.Add_Click({
+        $cur = @($ui.SuAppsBox.Text -split '[,;\s]+' | Where-Object { $_ })
+        $w = New-D9AppPickerWindow $win @((Import-D9AppCatalog).apps) $cur
+        if (-not $w.ShowDialog()) { return }
+        $ui.SuAppsBox.Text = @($w.Tag | Where-Object { $_.IsChecked } | ForEach-Object { [string]$_.Tag }) -join ', '
+    })
     $ui.BtnSuAddSelected.Add_Click({
         $sel = @($state.AppRows | Where-Object Selected | ForEach-Object Id)
         if (-not $sel) { [void][Windows.MessageBox]::Show($win, (T-D9 'На вкладці «Програми» нічого не вибрано. Клацніть по картках потрібних програм і поверніться сюди.'), 'Debora'); return }

@@ -556,7 +556,7 @@
                   <Button x:Name="BtnFixAll" Style="{StaticResource Primary}" Content="Сканувати й виправити все" Margin="0,0,8,6" ToolTip="Перевірити ПК і виконати все, що Debora виправляє сама: точка відновлення, виправлення, очищення, оновлення, драйвери"/>
                   <Button x:Name="BtnScan" Content="Лише сканувати" Margin="0,0,8,6"/>
                   <Button x:Name="BtnDeepScan" Content="Глибоке сканування" Margin="0,0,8,6"/>
-                  <Button x:Name="BtnOpenReport" Content="Відкрити звіт" IsEnabled="False" Margin="0,0,8,6"/>
+                  <Button x:Name="BtnOpenReport" ToolTipService.ShowOnDisabled="True" ToolTip="Звіт з'явиться після сканування" Content="Відкрити звіт" IsEnabled="False" Margin="0,0,8,6"/>
                 </WrapPanel>
               </StackPanel>
             </DockPanel>
@@ -773,7 +773,7 @@
         <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <WrapPanel>
-            <Button x:Name="BtnDebloatRun" Style="{StaticResource Primary}" Content="Виконати деблоат вибраного" IsEnabled="False" Margin="0,0,8,6"/>
+            <Button x:Name="BtnDebloatRun" ToolTipService.ShowOnDisabled="True" ToolTip="Позначте пункти в списку" Style="{StaticResource Primary}" Content="Застосувати вибране" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatRecommended" Content="Вибрати рекомендоване" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatNone" Content="Зняти все" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatRefresh" Content="Оновити" Margin="0,0,8,6"/>
@@ -852,9 +852,10 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Style="{StaticResource RowNote}" Margin="0,12,0,4" Text="Окремі програми — ID з каталогу через кому (наприклад Google.Chrome, 7zip.7zip)."/>
+                <TextBlock Style="{StaticResource RowNote}" Margin="0,12,0,4" Text="Окремі програми — кнопкою «Вибрати програми…» (або ID з каталогу через кому, наприклад Google.Chrome, 7zip.7zip)."/>
                 <DockPanel>
                   <Button x:Name="BtnSuAddSelected" DockPanel.Dock="Right" Content="Додати вибрані на вкладці «Програми»" Margin="8,0,0,0"/>
+                  <Button x:Name="BtnSuPickApps" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Вибрати програми…" Margin="8,0,0,0"/>
                   <TextBox x:Name="SuAppsBox"/>
                 </DockPanel>
               </StackPanel>
@@ -888,7 +889,7 @@
           <StackPanel Margin="20,0,20,20">
             <WrapPanel>
               <Button x:Name="BtnDriverScan" Style="{StaticResource Primary}" Content="Перевірити драйвери" Margin="0,0,8,6"/>
-              <Button x:Name="BtnOemPage" Content="Сторінка драйверів виробника" IsEnabled="False" Margin="0,0,8,6"/>
+              <Button x:Name="BtnOemPage" ToolTipService.ShowOnDisabled="True" ToolTip="Активна, коли виробника ПК знайдено в базі" Content="Сторінка драйверів виробника" IsEnabled="False" Margin="0,0,8,6"/>
               <Button x:Name="BtnOemTool" Content="Утиліта виробника" Visibility="Collapsed" Margin="0,0,8,6" ToolTip="Встановить і запустить фірмову утиліту виробника ПК: драйвери й BIOS саме для вашої моделі"/>
             </WrapPanel>
             <TextBlock x:Name="OemText" Style="{StaticResource Intro}" Margin="4,6,0,0"/>
@@ -906,7 +907,7 @@
                            Text="Debora шукає драйвери для пристроїв без драйвера і новіші версії для решти в офіційному каталозі Microsoft (там драйвери від Intel, AMD, NVIDIA, Realtek та інших) і серед рекомендацій Windows Update. Завантаження перевіряються за контрольною сумою, попередні драйвери зберігаються для відкату."/>
                 <WrapPanel>
                   <Button x:Name="BtnDriverOnline" Style="{StaticResource Primary}" Content="Знайти нові драйвери" Margin="0,0,8,6"/>
-                  <Button x:Name="BtnDriverOnlineInstall" Content="Завантажити й встановити вибрані" IsEnabled="False" Margin="0,0,8,6"/>
+                  <Button x:Name="BtnDriverOnlineInstall" ToolTipService.ShowOnDisabled="True" ToolTip="Спершу натисніть «Знайти нові драйвери» й відмітьте потрібні" Content="Завантажити й встановити вибрані" IsEnabled="False" Margin="0,0,8,6"/>
                 </WrapPanel>
                 <DataGrid x:Name="DriverOnlineGrid" Margin="-6,6,-6,0" MinHeight="40" MaxHeight="320">
                   <DataGrid.Columns>
@@ -1002,7 +1003,7 @@
                   </DataGrid.Columns>
                 </DataGrid>
                 <WrapPanel Margin="0,10,0,0">
-                  <Button x:Name="BtnInstallDrivers" Style="{StaticResource Primary}" Content="Встановити вибрані драйвери" IsEnabled="False"/>
+                  <Button x:Name="BtnInstallDrivers" ToolTipService.ShowOnDisabled="True" ToolTip="Спершу знайдіть драйвери в папці й відмітьте потрібні" Style="{StaticResource Primary}" Content="Встановити вибрані драйвери" IsEnabled="False"/>
                 </WrapPanel>
               </StackPanel>
             </Border>
@@ -1081,7 +1082,7 @@
               <Button x:Name="BtnAppsClear" Content="Зняти вибір"/>
               <Button x:Name="BtnAppsRefresh" Content="Перевірити встановлені"/>
               <Button x:Name="BtnAppsUpgrade" Content="Оновити всі програми"/>
-              <Button x:Name="BtnAppsInstall" Style="{StaticResource Primary}" Content="Встановити вибрані" IsEnabled="False" Margin="0" MinWidth="230" VerticalAlignment="Center"/>
+              <Button x:Name="BtnAppsInstall" ToolTipService.ShowOnDisabled="True" ToolTip="Клацніть по картках програм, щоб вибрати" Style="{StaticResource Primary}" Content="Встановити вибрані" IsEnabled="False" Margin="0" MinWidth="230" VerticalAlignment="Center"/>
             </StackPanel>
             <TextBlock x:Name="AppSelectedText" VerticalAlignment="Center" Text="Нічого не вибрано" Foreground="#6E6E73" Margin="4,0,12,0" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="42"/>
           </DockPanel>
@@ -1127,7 +1128,7 @@
           <DockPanel Grid.Row="3" Margin="0,10,0,12">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
               <Button x:Name="BtnUninstRefresh" Content="Оновити список"/>
-              <Button x:Name="BtnUninstall" Style="{StaticResource Primary}" Content="Видалити вибрані" IsEnabled="False" Margin="0" MinWidth="200"/>
+              <Button x:Name="BtnUninstall" ToolTipService.ShowOnDisabled="True" ToolTip="Позначте програми в списку" Style="{StaticResource Primary}" Content="Видалити вибрані" IsEnabled="False" Margin="0" MinWidth="200"/>
             </StackPanel>
             <TextBlock x:Name="UninstSelectedText" VerticalAlignment="Center" Foreground="#6E6E73" Margin="4,0,12,0" Text="Нічого не вибрано" TextTrimming="CharacterEllipsis"/>
           </DockPanel>
@@ -1140,7 +1141,7 @@
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <WrapPanel>
             <Button x:Name="BtnStartupApply" Style="{StaticResource Primary}" Content="Застосувати зміни" Margin="0,0,8,6"/>
-            <Button x:Name="BtnStartupRecommended" Content="Вимкнути рекомендовані" Margin="0,0,8,6" ToolTip="Зняти галочки з програм, яким не потрібно стартувати разом із Windows (лаунчери ігор, «помічники», реклама виробника), і застосувати"/>
+            <Button x:Name="BtnStartupRecommended" ToolTipService.ShowOnDisabled="True" Content="Вимкнути рекомендовані" Margin="0,0,8,6" ToolTip="Зняти галочки з програм, яким не потрібно стартувати разом із Windows (лаунчери ігор, «помічники», реклама виробника), і застосувати"/>
             <Button x:Name="BtnStartupRefresh" Content="Оновити список" Margin="0,0,8,6"/>
           </WrapPanel>
           <TextBlock x:Name="StartupSummary" Grid.Row="1" Style="{StaticResource Intro}" Margin="4,8,0,12"

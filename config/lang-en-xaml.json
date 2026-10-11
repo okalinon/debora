@@ -11,7 +11,7 @@
     "Оновлення Windows (може тривати довго)": "Windows updates (may take a while)",
     "Сканування й автоматичне виправлення знайденого": "Scan and fix what is found automatically",
     "Перезавантажити ПК наприкінці, якщо потрібно": "Restart the PC at the end if needed",
-    "Окремі програми — ID з каталогу через кому (наприклад Google.Chrome, 7zip.7zip).": "Individual apps — catalog IDs separated by commas (for example Google.Chrome, 7zip.7zip).",
+    "Окремі програми — кнопкою «Вибрати програми…» (або ID з каталогу через кому, наприклад Google.Chrome, 7zip.7zip).": "Individual apps — use “Choose apps…” (or catalog IDs separated by commas, e.g. Google.Chrome, 7zip.7zip).",
     "Додати вибрані на вкладці «Програми»": "Add the ones selected on the “Apps” tab",
     "Профіль": "Profile",
     "Назва профілю": "Profile name",
@@ -223,6 +223,14 @@
     "Сканувати знову": "Scan again",
     "Як рахується оцінка?": "How is the score calculated?",
     "Поради": "Tips",
-    "Рекомендація": "Recommendation"
+    "Рекомендація": "Recommendation",
+    "Вибрати програми…": "Choose apps…",
+    "Звіт з'явиться після сканування": "The report appears after a scan",
+    "Активна, коли виробника ПК знайдено в базі": "Available when the PC maker is in the database",
+    "Спершу натисніть «Знайти нові драйвери» й відмітьте потрібні": "First click “Find new drivers” and tick the ones you want",
+    "Спершу знайдіть драйвери в папці й відмітьте потрібні": "First find drivers in a folder and tick the ones you want",
+    "Клацніть по картках програм, щоб вибрати": "Click app cards to select them",
+    "Позначте програми в списку": "Tick programs in the list",
+    "Позначте пункти в списку": "Tick items in the list"
   }
 }

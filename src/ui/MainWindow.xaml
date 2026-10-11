@@ -795,6 +795,69 @@
         </Grid>
       </TabItem>
 
+      <!-- ================= Налаштування з нуля ================= -->
+      <TabItem Uid="setup" Header="З нуля" Tag="&#xE9F5;" Background="#32ADE6">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="20,0,20,24" MaxWidth="1240" HorizontalAlignment="Stretch">
+            <TextBlock Style="{StaticResource Intro}" Margin="4,0,0,4"
+                       Text="Щойно встановлена Windows — за один прохід: драйвери, деблоат, налаштування, програми, оновлення й перевірка. Позначте кроки, виберіть програми й натисніть «Почати налаштування». Профіль зберігається сам; його можна записати у файл і повторити на іншому ПК, а флешка перевстановлення виконає його після першого входу."/>
+            <TextBlock Style="{StaticResource Section}" Text="Кроки"/>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <CheckBox x:Name="ChkSuDrivers" Content="Драйвери з інтернету (каталог Microsoft і Windows Update)" Margin="0,3"/>
+                <CheckBox x:Name="ChkSuDebloat" Content="Деблоат Windows: нав'язані застосунки, реклама, Copilot, телеметрія (рекомендоване)" Margin="0,3"/>
+                <DockPanel Margin="0,3">
+                  <ComboBox x:Name="SuPresetBox" DockPanel.Dock="Right" Width="360" Margin="12,0,0,0"/>
+                  <CheckBox x:Name="ChkSuTweaks" Content="Профіль налаштувань: приватність, швидкодія, Провідник" VerticalAlignment="Center"/>
+                </DockPanel>
+                <CheckBox x:Name="ChkSuApps" Content="Програми (набори й окремі — нижче)" Margin="0,3"/>
+                <CheckBox x:Name="ChkSuWindows" Content="Оновлення Windows (може тривати довго)" Margin="0,3"/>
+                <CheckBox x:Name="ChkSuScanFix" Content="Сканування й автоматичне виправлення знайденого" Margin="0,3"/>
+                <CheckBox x:Name="ChkSuReboot" Content="Перезавантажити ПК наприкінці, якщо потрібно" Margin="0,12,0,0"/>
+              </StackPanel>
+            </Border>
+            <TextBlock Style="{StaticResource Section}" Text="Програми"/>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <ItemsControl x:Name="SuBundles">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}" Margin="0,3">
+                        <StackPanel><TextBlock Text="{Binding Title}"/><TextBlock Text="{Binding Detail}" Style="{StaticResource RowNote}" Margin="0"/></StackPanel>
+                      </CheckBox>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Style="{StaticResource RowNote}" Margin="0,12,0,4" Text="Окремі програми — ID з каталогу через кому (наприклад Google.Chrome, 7zip.7zip)."/>
+                <DockPanel>
+                  <Button x:Name="BtnSuAddSelected" DockPanel.Dock="Right" Content="Додати вибрані на вкладці «Програми»" Margin="8,0,0,0"/>
+                  <TextBox x:Name="SuAppsBox"/>
+                </DockPanel>
+              </StackPanel>
+            </Border>
+            <TextBlock Style="{StaticResource Section}" Text="Профіль"/>
+            <Border Style="{StaticResource Group}">
+              <StackPanel>
+                <DockPanel Style="{StaticResource Row}">
+                  <TextBox x:Name="SuNameBox" DockPanel.Dock="Right" Width="380"/>
+                  <TextBlock Text="Назва профілю" VerticalAlignment="Center"/>
+                </DockPanel>
+                <Border Style="{StaticResource Sep}"/>
+                <StackPanel Margin="16,12,14,14">
+                  <WrapPanel>
+                    <Button x:Name="BtnSuRun" Style="{StaticResource Primary}" Content="Почати налаштування"/>
+                    <Button x:Name="BtnSuPlan" Content="Що буде зроблено"/>
+                    <Button x:Name="BtnSuSave" Content="Зберегти профіль у файл…"/>
+                    <Button x:Name="BtnSuLoad" Content="Завантажити профіль з файлу…"/>
+                  </WrapPanel>
+                  <TextBlock x:Name="SuState" Style="{StaticResource RowNote}" Margin="0,10,0,0"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <!-- ================= Драйвери ================= -->
       <TabItem Uid="drivers" Header="Драйвери" Tag="&#xE772;" Background="#FF9500">
         <ScrollViewer VerticalScrollBarVisibility="Auto">

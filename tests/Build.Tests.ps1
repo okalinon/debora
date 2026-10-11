@@ -26,7 +26,7 @@ Describe 'Збірка' {
     It 'вікно будується із вбудованої розмітки' {
         $output = powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File $file -Gui -SelfTest -Language uk 2>&1 | Out-String
         $LASTEXITCODE | Should -Be 0 -Because $output
-        $output | Should -Match 'вкладок 11'
+        $output | Should -Match 'вкладок 12'
     }
     It 'поруч лежать обидва запускачі й інструкція' {
         foreach ($f in 'run.bat', 'run-menu.bat', 'Інструкція.txt') { Test-Path (Join-Path $out $f) | Should -BeTrue -Because $f }

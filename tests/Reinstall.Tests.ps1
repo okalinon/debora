@@ -45,6 +45,14 @@ Describe 'autounattend.xml' {
         Get-Component $x 'specialize' 'Microsoft-Windows-Deployment' | Should -BeNullOrEmpty
         (Get-Component $x 'oobeSystem' 'Microsoft-Windows-Shell-Setup').FirstLogonCommands | Should -BeNullOrEmpty
     }
+    It 'профіль майстра: одна команда -Setup після першого входу замість профілю й драйверів' {
+        $x = Get-Xml @{ UserName = 'U'; PostInstall = 'Standard'; DriverUpdate = $true; SetupProfile = 'C:\x\setup-profile.json' }
+        $cmds = @($x.unattend.settings | Where-Object pass -eq 'oobeSystem' | ForEach-Object { $_.component.FirstLogonCommands.SynchronousCommand })
+        $cmds.Count | Should -Be 1
+        $cmds[0].CommandLine | Should -Match '-Setup -ProfilePath'
+        $cmds[0].CommandLine | Should -Match 'setup-profile\.json'
+        $cmds[0].CommandLine | Should -Not -Match '-Preset'
+    }
     It 'недопустимі імена відхиляються' {
         { New-D9AutounattendXml -Options @{ UserName = 'a/b' } } | Should -Throw
         { New-D9AutounattendXml -Options @{ ComputerName = 'ПК Олі' } } | Should -Throw

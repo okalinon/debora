@@ -233,7 +233,8 @@ function Show-D9Gui {
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
-                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnStyle', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage') {
+                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnStyle', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage',
+                   'ChkSuDrivers', 'ChkSuDebloat', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
@@ -1419,6 +1420,85 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
     })
 
+    # ---------- Налаштування з нуля ----------
+    $suSteps = [ordered]@{ drivers = 'ChkSuDrivers'; debloat = 'ChkSuDebloat'; tweaks = 'ChkSuTweaks'; apps = 'ChkSuApps'; windowsUpdate = 'ChkSuWindows'; scanFix = 'ChkSuScanFix' }
+    [void]$ui.SuPresetBox.Items.Add((T-D9 'Рекомендований для цього ПК ({0})' (Get-D9Text (Get-D9Preset $Catalog $Recommendation.Preset).name)))
+    foreach ($p in $Catalog.Presets) { [void]$ui.SuPresetBox.Items.Add((Get-D9Text $p.name)) }
+    $fillSetup = {
+        param($p)
+        $state.SetupProfile = $p
+        foreach ($k in $suSteps.Keys) { $ui[$suSteps[$k]].IsChecked = [bool]($p.steps -contains $k) }
+        $ui.SuPresetBox.SelectedIndex = if ($p.preset -and $p.preset -ne 'Recommended') { [math]::Max(0, [array]::IndexOf(@($Catalog.Presets.id), [string]$p.preset) + 1) } else { 0 }
+        Set-D9Items $ui.SuBundles @(foreach ($b in $appCatalog.bundles) { New-D9Row @{ Id = [string]$b.id; Title = (Get-D9Text $b.name); Detail = (Get-D9Text $b.description); Selected = [bool]($p.bundles -contains $b.id) } })
+        $ui.SuAppsBox.Text = ($p.apps -join ', ')
+        $ui.SuNameBox.Text = $p.name
+        $ui.ChkSuReboot.IsChecked = [bool]$p.reboot
+        $last = Get-D9SetupLast
+        $ui.SuState.Text = if ($last) { T-D9 'Останній прохід {0}: {1}.' (([datetime]$last.finished).ToString('dd.MM.yyyy HH:mm')) (Format-D9SetupSummary $last) } else { T-D9 'Профіль зберігається сам; флешка з вкладки «Перевстановлення» виконає його після першого входу.' }
+    }
+    $readSetup = {
+        $idx = $ui.SuPresetBox.SelectedIndex
+        ConvertTo-D9SetupProfile ([pscustomobject]@{
+            name = $ui.SuNameBox.Text.Trim(); created = $state.SetupProfile.created
+            steps = @($suSteps.Keys | Where-Object { $ui[$suSteps[$_]].IsChecked })
+            preset = $(if ($idx -gt 0) { @($Catalog.Presets)[$idx - 1].id } else { 'Recommended' })
+            bundles = @($ui.SuBundles.ItemsSource | Where-Object Selected | ForEach-Object Id)
+            apps = @($ui.SuAppsBox.Text -split '[,;\s]+' | Where-Object { $_ })
+            reboot = [bool]$ui.ChkSuReboot.IsChecked
+        })
+    }
+    $loadSetup = { $state.SetupLoaded = $true; & $fillSetup (Get-D9SetupProfile) }
+    $ui.BtnSuAddSelected.Add_Click({
+        $sel = @($state.AppRows | Where-Object Selected | ForEach-Object Id)
+        if (-not $sel) { [void][Windows.MessageBox]::Show($win, (T-D9 'На вкладці «Програми» нічого не вибрано. Клацніть по картках потрібних програм і поверніться сюди.'), 'Debora'); return }
+        $cur = @($ui.SuAppsBox.Text -split '[,;\s]+' | Where-Object { $_ })
+        $ui.SuAppsBox.Text = (@($cur) + @($sel) | Select-Object -Unique) -join ', '
+    })
+    $ui.BtnSuSave.Add_Click({
+        $p = & $readSetup
+        Save-D9SetupProfile $p | Out-Null
+        $dlg = New-Object Microsoft.Win32.SaveFileDialog
+        $dlg.Filter = (T-D9 'Профіль Debora (*.json)|*.json'); $dlg.FileName = (T-D9 'Debora-профіль.json')
+        if (-not $dlg.ShowDialog($win)) { return }
+        try { Export-D9SetupProfile -Profile $p -Path $dlg.FileName | Out-Null; $ui.SuState.Text = (T-D9 'Профіль збережено: {0}. Скопіюйте файл на інший ПК і завантажте його там.' $dlg.FileName) }
+        catch { [void][Windows.MessageBox]::Show($win, $_.Exception.Message, 'Debora', 'OK', 'Error') }
+    })
+    $ui.BtnSuLoad.Add_Click({
+        $dlg = New-Object Microsoft.Win32.OpenFileDialog
+        $dlg.Filter = (T-D9 'Профіль Debora (*.json)|*.json')
+        if (-not $dlg.ShowDialog($win)) { return }
+        try { $p = Import-D9SetupProfile $dlg.FileName; Save-D9SetupProfile $p | Out-Null; & $fillSetup $p; $ui.SuState.Text = (T-D9 'Завантажено профіль «{0}».' $p.name) }
+        catch { [void][Windows.MessageBox]::Show($win, $_.Exception.Message, 'Debora', 'OK', 'Error') }
+    })
+    $suPlanText = { param($plan) (@($plan | ForEach-Object { "• $($_.title)`r`n    $($_.detail)" }) -join "`r`n") }
+    $ui.BtnSuPlan.Add_Click({
+        $p = & $readSetup
+        if (-not $p.steps) { [void][Windows.MessageBox]::Show($win, (T-D9 'Позначте хоча б один крок.'), 'Debora'); return }
+        Save-D9SetupProfile $p | Out-Null
+        & $startJob (T-D9 'Підготовка плану') { param($a) @(Get-D9SetupPlan -Profile $a.Profile -Catalog $a.Catalog -SystemInfo $a.Sys) } @{ Profile = $p; Catalog = $Catalog; Sys = $SystemInfo } {
+            param($plan, $c)
+            [void](Show-D9TextDialog $win (T-D9 'Що буде зроблено') (T-D9 'Профіль «{0}»: {1} кроків.' $c.Name @($plan).Count) (& $suPlanText $plan) -InfoOnly)
+        } @{ Name = $p.name }
+    })
+    $ui.BtnSuRun.Add_Click({
+        if (-not (& $needAdmin)) { return }
+        $p = & $readSetup
+        if (-not $p.steps) { [void][Windows.MessageBox]::Show($win, (T-D9 'Позначте хоча б один крок.'), 'Debora'); return }
+        Save-D9SetupProfile $p | Out-Null
+        & $startJob (T-D9 'Підготовка плану') { param($a) @(Get-D9SetupPlan -Profile $a.Profile -Catalog $a.Catalog -SystemInfo $a.Sys) } @{ Profile = $p; Catalog = $Catalog; Sys = $SystemInfo } {
+            param($plan, $c)
+            if (-not (Show-D9TextDialog $win (T-D9 'Налаштування з нуля') (T-D9 'Профіль «{0}»: {1} кроків. Спершу — точка відновлення; усе відкочується в «Журналі змін». Може тривати від кількох хвилин до години; не вимикайте ПК.' $c.Profile.name @($plan).Count) (& $suPlanText $plan) (T-D9 'Почати'))) { return }
+            $ui.LogExpander.IsExpanded = $true
+            & $startJob (T-D9 'Налаштування з нуля') { param($a) Invoke-D9Setup -Profile $a.Profile -Catalog $a.Catalog -SystemInfo $a.Sys } @{ Profile = $c.Profile; Catalog = $Catalog; Sys = $SystemInfo } {
+                param($s, $c2)
+                & $fillSessions; & $loadTweakStates; & $fillSetup $c2.Profile
+                $msg = (T-D9 'Готово. {0}.' (Format-D9SetupSummary $s))
+                if ($s.reboot) { if ([Windows.MessageBox]::Show($win, "$msg`n`n" + (T-D9 'Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?'), 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force } }
+                else { [void][Windows.MessageBox]::Show($win, $msg, 'Debora') }
+            } @{ Profile = $c.Profile }
+        } @{ Profile = $p }
+    })
+
     # ---------- Перевстановлення Windows ----------
     $fillUsb = {
         $state.UsbMedia = @(Get-D9InstallMedia)
@@ -1441,7 +1521,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $media = $state.UsbMedia[$ui.UsbBox.SelectedIndex]
         $opts = @{ UserName = $ui.UserNameBox.Text.Trim(); Password = $ui.AccountPasswordBox.Password; Edition = @('', 'Home', 'Pro')[$ui.EditionBox.SelectedIndex]
                    BypassRequirements = [bool]$ui.ChkUsbBypass.IsChecked; BypassNetwork = $true
-                   PostInstall = $(if ($ui.ChkUsbPost.IsChecked) { 'Recommended' } else { '' }); DriverUpdate = [bool]$ui.ChkUsbPost.IsChecked }
+                   PostInstall = $(if ($ui.ChkUsbPost.IsChecked) { 'Recommended' } else { '' }); DriverUpdate = [bool]$ui.ChkUsbPost.IsChecked
+                   SetupProfile = $(if ($ui.ChkUsbPost.IsChecked -and (Test-Path -LiteralPath (Get-D9SetupProfilePath))) { Get-D9SetupProfilePath } else { '' }) }
         try { [void](New-D9AutounattendXml -Options $opts) } catch { [void][Windows.MessageBox]::Show($win, $_.Exception.Message, 'Debora', 'OK', 'Warning'); return }
         $warn = if ($opts.Password) { "`n`n" + (T-D9 'Пароль зберігається у файлі на флешці відкритим текстом — не залишайте її без нагляду.') } else { '' }
         if ([Windows.MessageBox]::Show($win, (T-D9 'Підготувати флешку {0}?' $media.Drive) + "`n" + (T-D9 'Обліковий запис: {0}' $opts.UserName) + $(if ($drivers) { "`n" + (T-D9 'Драйвери цього ПК буде скопійовано (кілька хвилин).') }) + $warn, 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
@@ -1496,6 +1577,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($ui.Tabs.SelectedItem.Uid -eq 'maintenance' -and -not $state.DisksLoaded -and -not $state.Job) { & $loadDisks }
         if ($ui.Tabs.SelectedItem.Uid -eq 'debloat' -and -not $state.DebloatLoaded -and -not $state.Job) { & $loadDebloat }
         if ($ui.Tabs.SelectedItem.Uid -eq 'drivers' -and $null -eq $state.Devices -and -not $state.Job) { & $driverReport }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'setup' -and -not $state.SetupLoaded) { & $loadSetup }
     })
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job) {

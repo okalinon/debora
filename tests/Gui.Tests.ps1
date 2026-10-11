@@ -24,7 +24,7 @@ Describe 'Стилі вікна' {
             & $fillOverview ([pscustomobject]@{ score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('performance')); findings = $f; checks = @(1); durationSec = 1; time = (Get-Date).ToString('s') }) $cats
             @{ Tabs = $ui.Tabs.Items.Count; Score = $ui.ScoreText.Text; StyleBtn = [string]$ui.BtnStyle.Content; Ring = [string]$ui.ScoreRing.Visibility }
         }
-        $r.Tabs | Should -Be 11
+        $r.Tabs | Should -Be 12
         $r.Score | Should -Be '90'
         $r.Ring | Should -Be 'Collapsed'
         $r.StyleBtn | Should -Match $(if ($style -eq 'focus') { 'Фокус' } else { 'Швейцарський' })
@@ -172,11 +172,32 @@ Describe 'Вікно' {
             & $refreshMaintenance
             @{ Tabs = $ui.Tabs.Items.Count; Rows = $state.StartupRows; Pause = $ui.PauseState.Text; Drivers = $ui.WuDriversState.Text }
         }
-        $r.Tabs | Should -Be 11
+        $r.Tabs | Should -Be 12
         $r.Rows[0].Selected | Should -BeTrue
         $r.Rows[0].Status | Should -Match 'файл відсутній'
         $r.Pause | Should -Not -BeNullOrEmpty
         $r.Drivers | Should -Match 'Windows'
+    }
+
+    It 'вкладка «З нуля»: профіль заповнює елементи й читається назад' {
+        $r = Invoke-InGui {
+            $p = ConvertTo-D9SetupProfile ([pscustomobject]@{ name = 'Тест'; steps = @('drivers', 'apps', 'hack'); preset = 'WeakPC'; bundles = @('games'); apps = @('Google.Chrome'); reboot = $false })
+            & $fillSetup $p
+            $back = & $readSetup
+            @{ Drivers = $ui.ChkSuDrivers.IsChecked; Debloat = $ui.ChkSuDebloat.IsChecked; Preset = $ui.SuPresetBox.SelectedIndex; Bundles = @($ui.SuBundles.ItemsSource).Count
+               Back = $back; Items = @($ui.SuPresetBox.Items).Count }
+        }
+        $r.Drivers | Should -BeTrue
+        $r.Debloat | Should -BeFalse
+        $r.Preset | Should -BeGreaterThan 0
+        $r.Bundles | Should -BeGreaterThan 3
+        $r.Items | Should -BeGreaterThan 3
+        $r.Back.steps | Should -Be @('drivers', 'apps')
+        $r.Back.preset | Should -Be 'WeakPC'
+        $r.Back.bundles | Should -Be @('games')
+        $r.Back.apps | Should -Be @('Google.Chrome')
+        $r.Back.reboot | Should -BeFalse
+        $r.Back.name | Should -Be 'Тест'
     }
 
     It 'темна тема: розмітка будується, кольори фону й статусів темні/світлі' {

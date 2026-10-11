@@ -1,6 +1,14 @@
 {
   "note": "English strings for the CLI, text menu, core engine and actions (src/Main.ps1, src/core, src/actions). Keys are the exact Ukrainian T-D9 templates.",
   "strings": {
+    "Налаштування з нуля — профіль «{0}»": "Setup from scratch — profile “{0}”",
+    "У профілі не вибрано жодного кроку.": "No steps are selected in the profile.",
+    "Виконати {0} кроків? Спершу — точка відновлення; усе відкочується через -Undo.": "Run {0} steps? A restore point comes first; everything can be undone with -Undo.",
+    "Підсумок: {0}": "Summary: {0}",
+    "Перезавантаження через 60 секунд (shutdown /a — скасувати).": "Restarting in 60 seconds (shutdown /a to cancel).",
+    "Профіль майстра збережено: {0}": "Setup profile saved: {0}",
+    "  -Setup [-ProfilePath f] [-WhatIf] налаштування з нуля: драйвери, деблоат, профіль, програми, оновлення, перевірка": "  -Setup [-ProfilePath f] [-WhatIf] setup from scratch: drivers, debloat, profile, apps, updates, check-up",
+    " 15. Налаштування з нуля (після чистої Windows: драйвери, деблоат, програми, оновлення)": " 15. Setup from scratch (after a clean Windows: drivers, debloat, apps, updates)",
     "{0}: capability без name": "{0}: capability without name",
     "{0}: feature без name": "{0}: feature without name",
     "{0}: state має бути NotPresent або Installed": "{0}: state must be NotPresent or Installed",

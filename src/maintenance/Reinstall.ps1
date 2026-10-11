@@ -42,7 +42,8 @@ $script:D9EditionKeys = @{
 function ConvertTo-D9XmlText { param([string]$Text) [Security.SecurityElement]::Escape([string]$Text) }
 
 # Генерує autounattend.xml. Options: Language, Keyboard (uk-UA;en-US), TimeZone, UserName, Password, ComputerName,
-# Edition (''|Home|Pro), BypassRequirements, BypassNetwork, PostInstall ('' або назва профілю), DriverUpdate
+# Edition (''|Home|Pro), BypassRequirements, BypassNetwork, PostInstall ('' або назва профілю), DriverUpdate,
+# SetupProfile (шлях до профілю майстра — тоді після першого входу йде -Setup замість PostInstall і DriverUpdate)
 function New-D9AutounattendXml {
     param([Parameter(Mandatory)][hashtable]$Options)
     $o = @{ Language = 'uk-UA'; Keyboard = 'uk-UA;en-US'; TimeZone = 'FLE Standard Time'; UserName = 'User'; Password = ''
@@ -73,12 +74,18 @@ function New-D9AutounattendXml {
     $first = New-Object Collections.Generic.List[string]
     $find = '$f = Get-PSDrive -PSProvider FileSystem | ForEach-Object { Join-Path $_.Root ''Debora\Debora.ps1'' } | Where-Object { Test-Path $_ } | Select-Object -First 1'
     $n = 0
-    if ($o.PostInstall) {
+    if ($o.SetupProfile) {
+        # Профіль майстра «Налаштування з нуля» лежить поруч із Debora.ps1 на флешці — один прохід замість окремих команд
+        $n++
+        $cmd = "$find; if (`$f) { & `$f -Setup -ProfilePath (Join-Path (Split-Path `$f) 'setup-profile.json') -Yes -NoRestorePoint -LogPath `$env:PUBLIC\Debora-firstlogon.log }"
+        $first.Add("<SynchronousCommand wcm:action=`"add`"><Order>$n</Order><Description>Debora: налаштування з нуля</Description><CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$(ConvertTo-D9XmlText $cmd)&quot;</CommandLine></SynchronousCommand>")
+    }
+    if ($o.PostInstall -and -not $o.SetupProfile) {
         $n++
         $cmd = "$find; if (`$f) { & `$f -Preset $($o.PostInstall) -Yes -NoRestorePoint -LogPath `$env:PUBLIC\Debora-firstlogon.log }"
         $first.Add("<SynchronousCommand wcm:action=`"add`"><Order>$n</Order><Description>Debora: профіль налаштувань</Description><CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$(ConvertTo-D9XmlText $cmd)&quot;</CommandLine></SynchronousCommand>")
     }
-    if ($o.DriverUpdate) {
+    if ($o.DriverUpdate -and -not $o.SetupProfile) {
         $n++
         $cmd = "$find; if (`$f) { & `$f -DriverUpdate -Yes -NoRestorePoint -LogPath `$env:PUBLIC\Debora-firstlogon.log }"
         $first.Add("<SynchronousCommand wcm:action=`"add`"><Order>$n</Order><Description>Debora: драйвери з інтернету</Description><CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$(ConvertTo-D9XmlText $cmd)&quot;</CommandLine></SynchronousCommand>")
@@ -154,6 +161,10 @@ function Initialize-D9InstallUsb {
         Get-ChildItem $ProgramFolder -File | Where-Object Extension -in '.ps1', '.bat', '.txt', '' | Copy-Item -Destination $dst -Force
         Write-D9Log (T-D9 'Debora скопійовано на флешку ({0})' $dst) Ok
         $done += T-D9 'Debora (запуститься після першого входу)'
+        if ($Options.SetupProfile -and (Test-Path -LiteralPath $Options.SetupProfile)) {
+            Copy-Item -LiteralPath $Options.SetupProfile -Destination (Join-Path $dst 'setup-profile.json') -Force
+            $done += T-D9 'профіль «Налаштування з нуля»'
+        }
     }
     [pscustomobject]@{ Drive = $root; Done = $done; Language = $Options.Language }
 }

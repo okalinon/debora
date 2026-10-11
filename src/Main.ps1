@@ -57,6 +57,7 @@
     .\Debora.ps1 -Disks                       # стан дисків: температура, знос, помилки (SMART)
 .EXAMPLE
     .\Debora.ps1 -Debloat -WhatIf             # що прибере рекомендований деблоат (без змін); без -WhatIf — виконати
+    .\Debora.ps1 -Setup -WhatIf               # налаштування з нуля за збереженим профілем (-ProfilePath файл.json — інший профіль)
 .EXAMPLE
     .\Debora.ps1 -Battery                    # стан батареї: знос, історія ємності, прогноз, поради
 .EXAMPLE
@@ -173,6 +174,16 @@ param(
     [Parameter(ParameterSetName = 'Debloat', Mandatory)]
     [switch]$Debloat,
 
+    [Parameter(ParameterSetName = 'Setup', Mandatory)]
+    [switch]$Setup,
+
+    [Parameter(ParameterSetName = 'Setup')]
+    [Parameter(ParameterSetName = 'PrepareUsb')]
+    [string]$ProfilePath,
+
+    [Parameter(ParameterSetName = 'ExportProfile', Mandatory)]
+    [string]$ExportProfile,
+
     # Куди покласти zip діагностики (типово — папка «Звіти» поруч із програмою)
     [Parameter(ParameterSetName = 'Diagnostics')]
     [string]$OutDir,
@@ -210,11 +221,13 @@ param(
     [Parameter(ParameterSetName = 'Apply')]
     [Parameter(ParameterSetName = 'DriverUpdate')]
     [Parameter(ParameterSetName = 'Debloat')]
+    [Parameter(ParameterSetName = 'Setup')]
     [switch]$WhatIf,
 
     [Parameter(ParameterSetName = 'Apply')]
     [Parameter(ParameterSetName = 'DriverInstall')]
     [Parameter(ParameterSetName = 'DriverUpdate')]
+    [Parameter(ParameterSetName = 'Setup')]
     [switch]$NoRestorePoint,
 
     [Parameter(ParameterSetName = 'List')]
@@ -238,6 +251,7 @@ param(
     [Parameter(ParameterSetName = 'DriverUpdate')]
     [Parameter(ParameterSetName = 'Uninstall')]
     [Parameter(ParameterSetName = 'Debloat')]
+    [Parameter(ParameterSetName = 'Setup')]
     [switch]$Yes,
 
     [ValidateSet('auto', 'uk', 'en')]
@@ -261,7 +275,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.29.0-dev'
+$script:D9Version  = '0.30.0-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен
@@ -426,6 +440,7 @@ switch ($PSCmdlet.ParameterSetName) {
             Write-Host (T-D9 ' 12. Стан дисків (температура, знос, помилки)')
             if ($sys.HasBattery) { Write-Host (T-D9 ' 13. Стан батареї (знос, прогноз, поради)') }
             Write-Host (T-D9 ' 14. Деблоат Windows (нав''язані застосунки, реклама, Copilot)')
+            Write-Host (T-D9 ' 15. Налаштування з нуля (після чистої Windows: драйвери, деблоат, програми, оновлення)')
             Write-Host (T-D9 '  0. Вихід')
             $choice = Read-Host (T-D9 'Ваш вибір')
             switch ($choice) {
@@ -480,6 +495,7 @@ switch ($PSCmdlet.ParameterSetName) {
                 '12' { & $runSelf @('-Disks') }
                 '13' { & $runSelf @('-Battery') }
                 '14' { & $runSelf @('-Debloat') }
+                '15' { & $runSelf @('-Setup') }
                 '0' { exit $ExitCodes.Ok }
                 default { Write-Host (T-D9 'Введіть номер пункту.') -ForegroundColor Yellow }
             }
@@ -562,7 +578,8 @@ switch ($PSCmdlet.ParameterSetName) {
     'PrepareUsb' {
         if (-not $NoDrivers -and -not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Для збереження драйверів потрібні права адміністратора (або додайте -NoDrivers).') Error; exit $ExitCodes.NotAdmin }
         $opts = @{ UserName = $UserName; Password = $AccountPassword; Edition = $Edition; BypassRequirements = -not $KeepRequirements
-                   PostInstall = $(if ($Preset) { $Preset } else { 'Recommended' }); DriverUpdate = $true }
+                   PostInstall = $(if ($Preset) { $Preset } else { 'Recommended' }); DriverUpdate = $true
+                   SetupProfile = $(if ($ProfilePath) { $ProfilePath } elseif (-not $Preset -and (Test-Path -LiteralPath (Get-D9SetupProfilePath))) { Get-D9SetupProfilePath } else { '' }) }
         Write-Host ""
         Write-Host (T-D9 'Флешка {0} буде доповнена: autounattend.xml{1}, Debora.' $PrepareUsb $(if (-not $NoDrivers) { T-D9 ', драйвери цього ПК' } else { '' })) -ForegroundColor Cyan
         Write-Host (T-D9 'Під час встановлення вручну лишиться тільки вибір диска. Усе на флешці, крім autounattend.xml, не змінюється.') -ForegroundColor DarkGray
@@ -660,6 +677,31 @@ switch ($PSCmdlet.ParameterSetName) {
         $errors = @($session.entries | Where-Object result -eq 'error')
         Write-D9Log (T-D9 'Деблоат виконано. Змін: {0}, помилок: {1}. Відкат: -Undo {2}' @($session.entries | Where-Object result -eq 'ok').Count $errors.Count $session.id) $(if ($errors) { 'Warn' } else { 'Ok' })
         exit $(if ($errors) { $ExitCodes.Partial } else { $ExitCodes.Ok })
+    }
+
+    'Setup' {
+        $setupProfile = if ($ProfilePath) { Import-D9SetupProfile $ProfilePath } else { Get-D9SetupProfile }
+        Write-Host ""
+        Write-Host (T-D9 'Налаштування з нуля — профіль «{0}»' $setupProfile.name) -ForegroundColor Cyan
+        foreach ($row in @(Get-D9SetupPlan -Profile $setupProfile -Catalog $catalog -SystemInfo $sys -Quick)) {
+            Write-Host "  [x] $($row.title)"
+            Write-Host "      $($row.detail)" -ForegroundColor DarkGray
+        }
+        if (-not @($setupProfile.steps).Count) { Write-D9Log (T-D9 'У профілі не вибрано жодного кроку.') Error; exit $ExitCodes.BadArgs }
+        if ($WhatIf) { exit $ExitCodes.Ok }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
+        if (-not (Confirm-D9 (T-D9 'Виконати {0} кроків? Спершу — точка відновлення; усе відкочується через -Undo.' @($setupProfile.steps).Count))) { exit $ExitCodes.Cancelled }
+        $summary = Invoke-D9Setup -Profile $setupProfile -Catalog $catalog -SystemInfo $sys -NoRestorePoint:$NoRestorePoint
+        $bad = @($summary.results | Where-Object { -not $_.ok })
+        Write-D9Log (T-D9 'Підсумок: {0}' (Format-D9SetupSummary $summary)) $(if ($bad) { 'Warn' } else { 'Ok' })
+        if ($summary.reboot -and $setupProfile.reboot -and $Yes) { Write-D9Log (T-D9 'Перезавантаження через 60 секунд (shutdown /a — скасувати).') Warn; & shutdown.exe /r /t 60 }
+        exit $(if ($bad) { $ExitCodes.Partial } elseif ($summary.reboot) { $ExitCodes.Reboot } else { $ExitCodes.Ok })
+    }
+
+    'ExportProfile' {
+        $path = Export-D9SetupProfile -Profile (Get-D9SetupProfile) -Path $ExportProfile
+        Write-D9Log (T-D9 'Профіль майстра збережено: {0}' $path) Ok
+        exit $ExitCodes.Ok
     }
 
     'Battery' {
@@ -838,6 +880,7 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host (T-D9 '  -Disks                          стан дисків: температура, знос, помилки (SMART)')
         if ($sys.HasBattery) { Write-Host (T-D9 '  -Battery                        стан батареї: знос, прогноз, поради') }
         Write-Host (T-D9 '  -Debloat [-WhatIf]              деблоат: нав''язані застосунки, реклама, Copilot, телеметрія')
+        Write-Host (T-D9 '  -Setup [-ProfilePath f] [-WhatIf] налаштування з нуля: драйвери, деблоат, профіль, програми, оновлення, перевірка')
         Write-Host (T-D9 '  -Apps / -InstallApp / -UpgradeApps   програми через winget')
         Write-Host (T-D9 '  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити')
         Write-Host (T-D9 '  -PrepareUsb E: -UserName Ім''я   флешка для перевстановлення Windows без запитань і з драйверами')

@@ -885,8 +885,8 @@
                   <WrapPanel>
                     <Button x:Name="BtnSuRun" Style="{StaticResource Primary}" Content="Почати налаштування"/>
                     <Button x:Name="BtnSuPlan" Content="Що буде зроблено"/>
-                    <Button x:Name="BtnSuSave" Content="Зберегти план у файл…"/>
-                    <Button x:Name="BtnSuLoad" Content="Завантажити план з файлу…"/>
+                    <Button x:Name="BtnSuSave" Style="{StaticResource LinkButton}" VerticalAlignment="Center" Margin="16,0,0,0" Content="Зберегти план у файл…"/>
+                    <Button x:Name="BtnSuLoad" Style="{StaticResource LinkButton}" VerticalAlignment="Center" Margin="16,0,0,0" Content="Завантажити план з файлу…"/>
                   </WrapPanel>
                   <TextBlock x:Name="SuState" Style="{StaticResource RowNote}" Margin="0,10,0,0"/>
                 </StackPanel>

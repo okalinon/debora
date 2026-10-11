@@ -2048,8 +2048,8 @@
         "en": "Delete crash dumps and installer leftovers"
       },
       "description": {
-        "uk": "Дампи пам'яті, звіти про помилки (WER), розпаковані інсталятори відеодрайверів у C:\\NVIDIA і C:\\AMD.",
-        "en": "Memory dumps, Windows Error Reporting files, extracted GPU driver installers in C:\\NVIDIA and C:\\AMD."
+        "uk": "Дампи пам'яті, звіти про помилки (WER), розпаковані інсталятори відеодрайверів у C:\\NVIDIA і C:\\AMD, завантажені Debora пакети драйверів і старі (понад 7 днів) кеші Windows Update після скидання.",
+        "en": "Memory dumps, Windows Error Reporting files, extracted GPU driver installers in C:\\NVIDIA and C:\\AMD, driver packages downloaded by Debora and Windows Update caches left by a reset more than 7 days ago."
       },
       "actions": [
         {
@@ -2058,7 +2058,7 @@
             "uk": "видалення дампів, звітів WER і C:\\NVIDIA, C:\\AMD",
             "en": "delete dumps, WER reports and C:\\NVIDIA, C:\\AMD"
           },
-          "run": "$w = $env:SystemRoot; foreach ($p in @(\"$w\\MEMORY.DMP\", \"$w\\Minidump\\*\", \"$w\\LiveKernelReports\\*\", \"$env:LOCALAPPDATA\\CrashDumps\\*\", \"$env:ProgramData\\Microsoft\\Windows\\WER\\ReportArchive\\*\", \"$env:ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\*\", \"$env:SystemDrive\\NVIDIA\", \"$env:SystemDrive\\AMD\")) { Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue }"
+          "run": "$w = $env:SystemRoot; foreach ($p in @(\"$w\\MEMORY.DMP\", \"$w\\Minidump\\*\", \"$w\\LiveKernelReports\\*\", \"$env:LOCALAPPDATA\\CrashDumps\\*\", \"$env:ProgramData\\Microsoft\\Windows\\WER\\ReportArchive\\*\", \"$env:ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\*\", \"$env:SystemDrive\\NVIDIA\", \"$env:SystemDrive\\AMD\")) { Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue }; [void](Clear-D9DeboraLeftovers)"
         }
       ]
     },

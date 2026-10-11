@@ -8,6 +8,26 @@ AfterAll {
     Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue
 }
 
+Describe 'Залишки Debora' {
+    BeforeAll { $script:realRoot = $env:SystemRoot }
+    AfterAll { $env:SystemRoot = $realRoot }
+    It 'знаходить завантажені драйвери й кеші оновлень, старші за тиждень, і видаляє їх' {
+        $win = Join-Path $TestDrive 'win'
+        $env:SystemRoot = $win
+        $old = (Get-Date).AddDays(-10).ToString('yyyyMMdd')
+        $new = (Get-Date).AddDays(-2).ToString('yyyyMMdd')
+        New-Item -ItemType Directory "$win\SoftwareDistribution.d9-$old-010120\Download", "$win\System32\catroot2.d9-$old-010120", "$win\SoftwareDistribution.d9-$new-010120" -Force | Out-Null
+        New-Item -ItemType Directory (Join-Path $env:D9_DATA_ROOT 'driver-downloads\NVIDIA (1.0) a10da5a1') -Force | Out-Null
+        Set-Content (Join-Path $env:D9_DATA_ROOT 'driver-downloads\NVIDIA (1.0) a10da5a1\x.cab') 'abc'
+        $found = @(Get-D9DeboraLeftovers)
+        $found.Count | Should -Be 3
+        $found | Where-Object { $_ -like "*$new*" } | Should -BeNullOrEmpty
+        Clear-D9DeboraLeftovers | Should -BeGreaterThan 0
+        @(Get-D9DeboraLeftovers).Count | Should -Be 0
+        Test-Path "$win\SoftwareDistribution.d9-$new-010120" | Should -BeTrue
+    }
+}
+
 Describe 'Розбір команди автозапуску' {
     It '<cmd> → <exe>' -TestCases @(
         @{ cmd = '"C:\Program Files\App\app.exe" --minimized'; exe = 'C:\Program Files\App\app.exe' }

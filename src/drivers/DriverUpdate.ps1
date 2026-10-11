@@ -288,7 +288,7 @@ function Save-D9DriverUpdates {
 # Повний цикл: знайти → завантажити → встановити (з точкою відновлення, журналом і відкатом).
 # Повертає @{ Candidates; Packages; Session }.
 function Invoke-D9DriverAutoUpdate {
-    param([Parameter(Mandatory)]$SystemInfo, [Parameter(Mandatory)][string]$Folder, [switch]$WhatIf, [switch]$NoRestorePoint, [switch]$IncludeOptional, [switch]$UseOemTool)
+    param([Parameter(Mandatory)]$SystemInfo, [Parameter(Mandatory)][string]$Folder, [switch]$WhatIf, [switch]$NoRestorePoint, [switch]$IncludeOptional, [switch]$UseOemTool, [switch]$CleanupDownloads)
     # Спершу утиліта виробника (Dell / Lenovo / HP): вона знає свої моделі найкраще, решту доповнить каталог Microsoft
     $oem = if ($UseOemTool -and -not $WhatIf) { Invoke-D9OemDriverTool -SystemInfo $SystemInfo } else { $null }
     if ($oem) { Clear-D9PnpCache }
@@ -304,5 +304,10 @@ function Invoke-D9DriverAutoUpdate {
     $cat = New-D9DriverCatalog -Packages $todo
     $plan = New-D9Plan -Catalog $cat -TweakIds @($cat.Tweaks.id) -SystemInfo $SystemInfo
     $session = Invoke-D9Plan -Plan $plan -SystemInfo $SystemInfo -Selection (T-D9 'драйвери з Microsoft Update Catalog') -NoRestorePoint:$NoRestorePoint
+    # Встановлені драйвери вже скопійовано у сховище Windows (а попередні — у driver-backup), тож пакети
+    # (відеодрайвери — гігабайти) не потрібні. Якщо були помилки — лишаємо, щоб не завантажувати вдруге
+    if ($CleanupDownloads -and -not @($session.entries | Where-Object result -eq 'error').Count) {
+        foreach ($d in @(Get-ChildItem -LiteralPath $Folder -Force -ErrorAction SilentlyContinue)) { Remove-Item -LiteralPath $d.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+    }
     [pscustomobject]@{ Candidates = $cands; Packages = $todo; Session = $session; RebootRecommended = $true }
 }

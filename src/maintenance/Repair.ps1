@@ -31,9 +31,9 @@ function Get-D9MaintenanceTitle {
 }
 
 # Крок чекліста: драйвери для пристроїв без драйвера й новіші версії для решти (без необов'язкових замін).
-# Точку відновлення вже створив чекліст; завантажені пакети лишаються в папці даних для повторного використання.
+# Точку відновлення вже створив чекліст; після вдалого встановлення завантажені пакети видаляються.
 function Invoke-D9DriverUpdateStep {
-    $r = Invoke-D9DriverAutoUpdate -SystemInfo (Get-D9SystemInfo) -Folder (Join-Path (Get-D9DataRoot) 'driver-downloads') -NoRestorePoint -UseOemTool
+    $r = Invoke-D9DriverAutoUpdate -SystemInfo (Get-D9SystemInfo) -Folder (Join-Path (Get-D9DataRoot) 'driver-downloads') -NoRestorePoint -UseOemTool -CleanupDownloads
     [pscustomobject]@{ Done = $true; RebootRecommended = [bool]$r.Session }
 }
 

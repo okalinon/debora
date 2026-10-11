@@ -47,8 +47,37 @@ function Invoke-D9WindowsUpdateReset {
     }
     Write-D9Log (T-D9 'Запуск служб оновлення...')
     foreach ($s in $services) { Start-Service $s -ErrorAction SilentlyContinue }
-    Write-D9Log (T-D9 'Готово. Windows Update створить кеш заново; старі папки *.d9-* можна видалити через тиждень.') Ok
+    Write-D9Log (T-D9 'Готово. Windows Update створить кеш заново; старі папки *.d9-* Debora прибере сама через тиждень під час очищення диска.') Ok
     return [pscustomobject]@{ Done = $true; RebootRecommended = $false }
+}
+
+# Власні залишки Debora: завантажені пакети драйверів (вже встановлені — копії лежать у сховищі драйверів
+# Windows, а для відкату — у driver-backup) і кеші Windows Update, перейменовані скиданням понад $Days днів тому.
+function Get-D9DeboraLeftovers {
+    param([int]$Days = 7, [datetime]$Now = (Get-Date))
+    $items = @()
+    $dl = Join-Path (Get-D9DataRoot) 'driver-downloads'
+    if (Test-Path -LiteralPath $dl) { $items += @(Get-ChildItem -LiteralPath $dl -Force -ErrorAction SilentlyContinue | ForEach-Object FullName) }
+    foreach ($parent in $env:SystemRoot, "$env:SystemRoot\System32") {
+        foreach ($d in @(Get-ChildItem -LiteralPath $parent -Directory -Filter '*.d9-*' -ErrorAction SilentlyContinue)) {
+            if ($d.Name -match '\.d9-(\d{8})-\d{6}$' -and [datetime]::ParseExact($Matches[1], 'yyyyMMdd', $null) -lt $Now.AddDays(-$Days)) { $items += $d.FullName }
+        }
+    }
+    $items
+}
+
+function Clear-D9DeboraLeftovers {
+    param([int]$Days = 7)
+    $freed = [long]0
+    foreach ($p in @(Get-D9DeboraLeftovers -Days $Days)) {
+        $size = Get-D9FolderSize $p
+        try {
+            Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction Stop   # -Force знімає «лише читання» з файлів кешу
+            $freed += $size
+        } catch { Write-D9Log ('  ' + (T-D9 'Не вдалося видалити {0}: {1}' $p $_.Exception.Message)) Detail }
+    }
+    if ($freed) { Write-D9Log ('  ' + (T-D9 'Залишки Debora (пакети драйверів, старі кеші оновлень): звільнено {0}.' (Format-D9Size $freed))) Detail }
+    return $freed
 }
 
 # Пауза оновлень Windows на N днів (як кнопка в Параметрах; максимум 35 днів)

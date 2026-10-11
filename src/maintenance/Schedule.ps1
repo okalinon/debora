@@ -68,7 +68,7 @@ function Invoke-D9MaintenanceStep {
             return (T-D9 'оновлено програм: {0}' $up.Count) + $(if ($r.Result -notin 'installed', 'upToDate') { ' ' + (T-D9 '(частину — ні)') })
         }
         'drivers' {
-            $r = Invoke-D9DriverAutoUpdate -SystemInfo $SystemInfo -Folder (Join-Path (Get-D9DataRoot) 'driver-downloads') -NoRestorePoint
+            $r = Invoke-D9DriverAutoUpdate -SystemInfo $SystemInfo -Folder (Join-Path (Get-D9DataRoot) 'driver-downloads') -NoRestorePoint -CleanupDownloads
             $ok = if ($r.Session) { @($r.Session.entries | Where-Object result -eq 'ok').Count } else { 0 }
             return $(if ($ok) { [pscustomobject]@{ Text = (T-D9 'встановлено драйверів: {0} (потрібне перезавантаження)' $ok); Reboot = $true } } else { T-D9 'драйвери актуальні' })
         }

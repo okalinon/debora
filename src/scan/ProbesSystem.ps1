@@ -52,8 +52,9 @@ function Test-D9CleanDumps {
 
 function Test-D9CleanInstallerLeftovers {
     param($Check, $Ctx)
-    $b = (Get-D9FolderSize "$env:SystemDrive\NVIDIA") + (Get-D9FolderSize "$env:SystemDrive\AMD")
-    New-D9SpaceFinding $Check $b (T-D9 'Розпаковані інсталятори драйверів NVIDIA/AMD: {size}') (T-D9 'Папки C:\NVIDIA і C:\AMD лишаються після встановлення відеодрайвера й більше не потрібні.') @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
+    $b = (Get-D9FolderSize "$env:SystemDrive\NVIDIA") + (Get-D9FolderSize "$env:SystemDrive\AMD") +
+         [long]((Get-D9DeboraLeftovers | ForEach-Object { Get-D9FolderSize $_ } | Measure-Object -Sum).Sum)
+    New-D9SpaceFinding $Check $b (T-D9 'Залишки інсталяторів драйверів: {size}') (T-D9 'Розпаковані інсталятори відеодрайверів (C:\NVIDIA, C:\AMD), уже встановлені пакети драйверів, завантажені Debora, і старі кеші Windows Update після скидання. Більше не потрібні.') @{ type = 'tweaks'; ids = @('cleanup.leftovers') }
 }
 
 function Test-D9CleanBrowserCache {

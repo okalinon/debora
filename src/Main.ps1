@@ -80,7 +80,6 @@ param(
     # Стиль вікна: focus (основний) | swiss; auto — збережений вибір (кнопка «Стиль» у вікні)
     [Parameter(ParameterSetName = 'Gui')]
     [ValidateSet('auto', 'focus', 'swiss')]
-    [string]$Style = 'auto',
 
     [Parameter(ParameterSetName = 'Menu', Mandatory)]
     [switch]$Menu,
@@ -275,7 +274,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.36.3-dev'
+$script:D9Version  = '0.37.0-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен
@@ -393,8 +392,7 @@ switch ($PSCmdlet.ParameterSetName) {
 
     'Gui' {
         $base = Split-Path $PSCommandPath
-        $script:D9Theme = $Theme
-        $script:D9Style = Resolve-D9Style $Style
+        $script:D9Theme = Resolve-D9Theme $Theme
         if ($SelfTest) {
             try {
                 $r = Show-D9Gui -Catalog $catalog -SystemInfo $sys -Recommendation $recommendation -ReportDir (Join-Path $base 'Звіти') -DriverDir (Join-Path $base 'Драйвери') -TestAction { T-D9 'вікно побудовано: вкладок {0}' "$($ui.Tabs.Items.Count)" }

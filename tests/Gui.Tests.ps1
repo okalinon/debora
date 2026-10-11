@@ -11,44 +11,37 @@ BeforeAll {
 }
 AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 
-Describe 'Стилі вікна' {
-    AfterAll { $script:D9Style = 'focus'; $script:D9Theme = 'auto' }
-    It 'стиль <style> (<theme>): вікно будується, усі елементи на місці, оцінка показується' -TestCases @(
-        @{ style = 'focus'; theme = 'light' }, @{ style = 'swiss'; theme = 'light' }, @{ style = 'focus'; theme = 'dark' }, @{ style = 'swiss'; theme = 'dark' }
-    ) {
-        $script:D9Style = $style; $script:D9Theme = $theme
+Describe 'Тема й параметри' {
+    AfterAll { $script:D9Theme = 'auto' }
+    It 'тема <theme>: вікно будується, усі елементи на місці, оцінка показується' -TestCases @(@{ theme = 'light' }, @{ theme = 'dark' }) {
+        $script:D9Theme = $theme
         $r = Invoke-InGui {
             $check = [pscustomobject]@{ id = 'perf.memory'; category = 'performance' }
             $f = @((New-D9Finding $check warning 'Пам''ять' 'деталі' @{ type = 'manual' }))
             $cats = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
             & $fillOverview ([pscustomobject]@{ score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('performance')); findings = $f; checks = @(1); durationSec = 1; time = (Get-Date).ToString('s') }) $cats
-            @{ Tabs = $ui.Tabs.Items.Count; Score = $ui.ScoreText.Text; StyleBtn = [string]$ui.BtnStyle.Content; Ring = [string]$ui.ScoreRing.Visibility }
+            @{ Tabs = $ui.Tabs.Items.Count; Score = $ui.ScoreText.Text; Ring = [string]$ui.ScoreRing.Visibility }
         }
-        $r.Tabs | Should -Be 11
+        $r.Tabs | Should -Be 12
         $r.Score | Should -Be '90'
         $r.Ring | Should -Be 'Collapsed'
-        $r.StyleBtn | Should -Match $(if ($style -eq 'focus') { 'Фокус' } else { 'Швейцарський' })
     }
-    It 'стиль <style>: клік по «Стиль» і «English» влучає в кнопку, а не в журнал виконання' -TestCases @(@{ style = 'focus' }, @{ style = 'swiss' }) {
-        $script:D9Style = $style; $script:D9Theme = 'light'
+    It '«Параметри»: мова, тема, сповіщення, приховане й дані заповнюються' {
         $r = Invoke-InGui {
-            $root = $win.Content; $win.Content = $null; $host2 = New-Object Windows.Controls.Border; foreach ($k in $win.Resources.Keys) { $host2.Resources[$k] = $win.Resources[$k] }; $host2.Child = $root; $host2.Measure((New-Object Windows.Size 1340, 900)); $host2.Arrange((New-Object Windows.Rect 0, 0, 1340, 900)); $host2.UpdateLayout()
-            foreach ($b in $ui.BtnStyle, $ui.BtnLanguage) {
-                $pt = $b.TranslatePoint((New-Object Windows.Point ($b.ActualWidth / 2), ($b.ActualHeight / 2)), $host2)
-                $hit = [Windows.Media.VisualTreeHelper]::HitTest($host2, $pt).VisualHit
-                $ok = $false
-                while ($hit) { if ($hit -eq $b) { $ok = $true; break }; $hit = [Windows.Media.VisualTreeHelper]::GetParent($hit) }
-                $ok
-            }
+            & $fillPrefs
+            @{ Lang = $ui.PrefLanguage.Items.Count; LangSel = $ui.PrefLanguage.SelectedIndex; Theme = $ui.PrefTheme.Items.Count; About = $ui.PrefAbout.Text; Hidden = $ui.PrefHiddenText.Text; Ready = $state.PrefsReady }
         }
-        @($r) | Should -Be @($true, $true)
+        $r.Lang | Should -Be 3
+        $r.LangSel | Should -BeGreaterOrEqual 0
+        $r.Theme | Should -Be 3
+        $r.About | Should -Match 'Debora'
+        $r.Hidden | Should -Not -BeNullOrEmpty
+        $r.Ready | Should -BeTrue
     }
-    It 'Resolve-D9Style: явний вибір, інакше фокус; Фокус ↔ Швейцарський' {
-        Resolve-D9Style 'swiss' | Should -Be 'swiss'
-        Resolve-D9Style 'nonsense' | Should -BeIn @('focus', 'swiss')
-        Resolve-D9Style 'classic' | Should -BeIn @('focus', 'swiss')
-        Get-D9NextStyle 'focus' | Should -Be 'swiss'
-        Get-D9NextStyle 'swiss' | Should -Be 'focus'
+    It 'Resolve-D9Theme: явний вибір має перевагу' {
+        Resolve-D9Theme 'dark' | Should -Be 'dark'
+        Resolve-D9Theme 'light' | Should -Be 'light'
+        Resolve-D9Theme 'auto' | Should -BeIn @('auto', 'light', 'dark')
     }
 }
 
@@ -208,7 +201,7 @@ Describe 'Вікно' {
             & $refreshMaintenance
             @{ Tabs = $ui.Tabs.Items.Count; Rows = $state.StartupRows; Pause = $ui.PauseState.Text; Drivers = $ui.WuDriversState.Text }
         }
-        $r.Tabs | Should -Be 11
+        $r.Tabs | Should -Be 12
         $r.Rows[0].Selected | Should -BeTrue
         $r.Rows[0].Status | Should -Match 'файл відсутній'
         $r.Pause | Should -Not -BeNullOrEmpty

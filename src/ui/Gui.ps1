@@ -374,6 +374,24 @@ function Test-D9DarkTheme {
     (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -ErrorAction SilentlyContinue).AppsUseLightTheme -eq 0
 }
 
+# Тема: явно задана (-Theme), інакше збережена в «Параметрах» (HKCU:\Software\Debora\Theme), інакше як у Windows
+function Resolve-D9Theme {
+    param([string]$Theme = 'auto')
+    if ($Theme -in 'light', 'dark') { return $Theme }
+    $saved = (Get-ItemProperty 'HKCU:\Software\Debora' -Name Theme -ErrorAction SilentlyContinue).Theme
+    if ($saved -in 'light', 'dark') { return [string]$saved }
+    'auto'
+}
+
+function Set-D9Pref {
+    param([Parameter(Mandatory)][string]$Name, $Value)
+    try {
+        if (-not (Test-Path 'HKCU:\Software\Debora')) { New-Item 'HKCU:\Software\Debora' -Force | Out-Null }
+        if ($null -eq $Value) { Remove-ItemProperty 'HKCU:\Software\Debora' -Name $Name -ErrorAction SilentlyContinue }
+        else { Set-ItemProperty 'HKCU:\Software\Debora' -Name $Name -Value $Value }
+    } catch { }
+}
+
 # Колір для поточної теми (для прямих присвоєнь Foreground у коді)
 function Get-D9UiColor {
     param([string]$Color)
@@ -441,7 +459,7 @@ function Show-D9Gui {
     )
     Initialize-D9GuiTypes
     $script:D9IsDark = Test-D9DarkTheme
-    $xamlText = Convert-D9XamlLanguage (Convert-D9XamlStyle (Get-D9UiText 'MainWindow.xaml'))
+    $xamlText = Convert-D9XamlLanguage (Get-D9UiText 'MainWindow.xaml')
     [D9Row]::ColorMap.Clear()
     if ($script:D9IsDark) {
         $xamlText = Convert-D9XamlTheme $xamlText
@@ -458,13 +476,13 @@ function Show-D9Gui {
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DebloatSummary', 'DebloatGrid', 'DebloatSearch', 'DebloatSearchHint', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
-                   'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'BtnAbout', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
+                   'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'PrefLanguage', 'PrefTheme', 'PrefHiddenText', 'BtnPrefShowHidden', 'BtnPrefUnhideAll', 'BtnPrefWelcome', 'PrefToasts', 'PrefAbout', 'BtnPrefData', 'BtnPrefLogs', 'BtnPrefReports', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid', 'StartupSelText',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
-                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnStyle', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage',
+                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset',
                    'UndoBar', 'UndoText', 'BtnUndoLast', 'BtnUndoClose', 'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
                    'ChkSuDrivers', 'ChkSuDebloat', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'BtnSuPickApps', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
         $ui[$n] = $win.FindName($n)
@@ -676,7 +694,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             if ($res.ok -and $job.Kind -and -not $sync.Cancel) { try { Add-D9Duration $job.Kind ((Get-Date) - $job.Started).TotalSeconds } catch { } }
             $state.Job = $null
             & $setBusy $false $null
-            if (((Get-Date) - $job.Started).TotalSeconds -ge 60 -and -not $win.IsActive) {
+            if (((Get-Date) - $job.Started).TotalSeconds -ge 60 -and -not $win.IsActive -and (Get-ItemProperty 'HKCU:\Software\Debora' -Name Toasts -ErrorAction SilentlyContinue).Toasts -ne 0) {
                 try { Show-D9Toast 'Debora' $(if ($res.ok) { T-D9 'Готово: {0}' $job.Title } else { T-D9 'Не вдалося: {0}' $job.Title }) } catch { }
             }
             # Поки йде $Done (часто з діалогом), черга чекає: таймер тікає й під час модального вікна
@@ -1531,6 +1549,56 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $applyCatalog (New-D9StartupCatalog -Changes $changes) (T-D9 'Зміна автозавантаження') (T-D9 'автозавантаження') { & $loadStartup } -NoRestorePoint
     })
 
+    # ---------- Параметри Debora ----------
+    $prefLangCodes = @('auto', 'uk', 'en'); $prefThemeCodes = @('auto', 'light', 'dark')
+    foreach ($x in (T-D9 'Автоматично'), 'Українська', 'English') { [void]$ui.PrefLanguage.Items.Add($x) }
+    foreach ($x in (T-D9 'Як у Windows'), (T-D9 'Світла'), (T-D9 'Темна')) { [void]$ui.PrefTheme.Items.Add($x) }
+    $fillPrefs = {
+        $state.PrefsReady = $false
+        $savedLang = (Get-ItemProperty 'HKCU:\Software\Debora' -Name Language -ErrorAction SilentlyContinue).Language
+        $ui.PrefLanguage.SelectedIndex = [math]::Max(0, [array]::IndexOf($prefLangCodes, $(if ($savedLang -in 'uk', 'en') { [string]$savedLang } else { 'auto' })))
+        $ui.PrefTheme.SelectedIndex = [math]::Max(0, [array]::IndexOf($prefThemeCodes, (Resolve-D9Theme)))
+        $ui.PrefToasts.IsChecked = (Get-ItemProperty 'HKCU:\Software\Debora' -Name Toasts -ErrorAction SilentlyContinue).Toasts -ne 0
+        $n = (Get-D9HiddenFindings).Count
+        $ui.PrefHiddenText.Text = if ($n) { T-D9 'Прийнятих і прихованих: {0}. Вони не показуються й не знижують оцінку.' $n } else { T-D9 'Немає прихованих знахідок.' }
+        $ui.BtnPrefShowHidden.IsEnabled = [bool]$n; $ui.BtnPrefUnhideAll.IsEnabled = [bool]$n
+        $root = Get-D9DataRoot
+        $ui.PrefAbout.Text = (T-D9 'Версія: {0}' $script:D9Version) + "`n" + (T-D9 'Дані Debora (журнал змін, знімки для відкату, скани, налаштування): {0}' $root) + "`n" + (T-D9 'Звіти й експортовані файли: {0}' $ReportDir) + "`n`n" + (T-D9 'Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).')
+        $state.PrefsReady = $true
+    }
+    # Мова й тема застосовуються перевідкриттям вікна
+    $restartGui = {
+        if ($state.Job) { [void][Windows.MessageBox]::Show($win, (T-D9 'Зміна застосується після завершення поточної задачі — перезапустіть Debora.'), 'Debora'); return }
+        if ($script:D9ScriptPath) {
+            Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$($script:D9ScriptPath)`" -Gui" -Verb $(if ($isAdmin) { 'RunAs' } else { 'Open' })
+            $win.Close()
+        }
+    }
+    $ui.PrefLanguage.Add_SelectionChanged({
+        if (-not $state.PrefsReady) { return }
+        $code = $prefLangCodes[$ui.PrefLanguage.SelectedIndex]
+        Set-D9Pref Language $(if ($code -eq 'auto') { $null } else { $code })
+        & $restartGui
+    })
+    $ui.PrefTheme.Add_SelectionChanged({
+        if (-not $state.PrefsReady) { return }
+        $code = $prefThemeCodes[$ui.PrefTheme.SelectedIndex]
+        Set-D9Pref Theme $(if ($code -eq 'auto') { $null } else { $code })
+        & $restartGui
+    })
+    $ui.PrefToasts.Add_Click({ Set-D9Pref Toasts $(if ($ui.PrefToasts.IsChecked) { $null } else { 0 }) })
+    $ui.BtnPrefShowHidden.Add_Click({ $ui.Tabs.SelectedItem = @($ui.Tabs.Items | Where-Object Uid -eq 'overview')[0]; & $showHidden })
+    $ui.BtnPrefUnhideAll.Add_Click({
+        $h = Get-D9HiddenFindings
+        foreach ($k in @($h.Keys)) { $e = $h[$k]; Set-D9FindingHidden ([pscustomobject]@{ key = $k; checkId = $e.checkId }) -Unhide -Config $state.ChecksConfig }
+        & $fillPrefs
+        [void][Windows.MessageBox]::Show($win, (T-D9 'Приховані знахідки повернуто: {0}. Вони з''являться після наступного сканування.' @($h.Keys).Count), 'Debora')
+    })
+    $ui.BtnPrefWelcome.Add_Click({ & $showWelcome })
+    $ui.BtnPrefData.Add_Click({ Start-Process explorer.exe "`"$(Get-D9DataRoot)`"" })
+    $ui.BtnPrefLogs.Add_Click({ $p = Join-Path (Get-D9DataRoot) 'logs'; if (Test-Path $p) { Start-Process explorer.exe "`"$p`"" } })
+    $ui.BtnPrefReports.Add_Click({ if (-not (Test-Path $ReportDir)) { New-Item -ItemType Directory -Path $ReportDir -Force | Out-Null }; Start-Process explorer.exe "`"$ReportDir`"" })
+
     # ---------- загальний пошук (Ctrl+K) ----------
     $openSearch = {
         $tabs = @{}; foreach ($tb in $ui.Tabs.Items) { $tabs[$tb.Uid] = $tb }
@@ -1560,28 +1628,6 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($e.Key -eq 'K' -and ([Windows.Input.Keyboard]::Modifiers -band [Windows.Input.ModifierKeys]::Control)) { $e.Handled = $true; & $openSearch }
     })
 
-    # ---------- мова інтерфейсу ----------
-    $ui.BtnLanguage.Content = if ($script:D9Language -eq 'uk') { 'English' } else { 'Українська' }
-    $ui.BtnLanguage.Add_Click({
-        if ($state.Job) { return }
-        Set-D9Language -Language $(if ($script:D9Language -eq 'uk') { 'en' } else { 'uk' }) -Save
-        if ($script:D9ScriptPath) {
-            Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($script:D9ScriptPath)`" -Gui"
-            $win.Close()
-        }
-    })
-
-    # ---------- стиль вікна: класичний → фокус → швейцарський (вікно перевідкривається, як і при зміні мови) ----------
-    $ui.BtnStyle.Content = T-D9 'Стиль: {0}' (Get-D9StyleName)
-    $ui.BtnStyle.Add_Click({
-        if ($state.Job) { return }
-        $next = Get-D9NextStyle
-        Save-D9Style $next
-        if ($script:D9ScriptPath) {
-            Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($script:D9ScriptPath)`" -Gui -Style $next"
-            $win.Close()
-        }
-    })
 
     # ---------- кнопки: Обслуговування ----------
     $diskColors = @{ ok = '#248A3D'; warn = '#B25000'; bad = '#D70015'; unknown = '#6E6E73' }
@@ -1697,24 +1743,6 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
 
     # ---------- кнопки: Журнал ----------
     $ui.BtnRefreshSessions.Add_Click({ & $fillSessions })
-    # «Про програму»: версія, де лежать дані, швидкий перехід до папок
-    $ui.BtnAbout.Add_Click({
-        $root = Get-D9DataRoot
-        $hidden = (Get-D9HiddenFindings).Count
-        $steps = @(
-            (T-D9 'Версія: {0}' $script:D9Version)
-            (T-D9 'Дані Debora (журнал змін, знімки для відкату, скани, налаштування): {0}' $root)
-            (T-D9 'Звіти й експортовані файли: {0}' $ReportDir)
-            (T-D9 'Приховані знахідки: {0} — переглянути й повернути можна на «Огляді» → «Приховані».' $hidden)
-            (T-D9 'Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).')
-        )
-        $links = @(
-            [pscustomobject]@{ label = (T-D9 'Папка даних'); url = $root }
-            [pscustomobject]@{ label = (T-D9 'Журнали'); url = (Join-Path $root 'logs') }
-            [pscustomobject]@{ label = (T-D9 'Звіти'); url = $ReportDir }
-        )
-        [void](Show-D9GuideDialog $win 'Debora' (T-D9 'Утиліта перевірки, прибирання й налаштування Windows 10/11.') $steps $links)
-    })
     # Вибір сесії — показати, що саме змінено і що не вдалося
     $ui.SessionGrid.Add_SelectionChanged({
         $row = $ui.SessionGrid.SelectedItem
@@ -2238,6 +2266,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($ui.Tabs.SelectedItem.Uid -eq 'debloat' -and -not $state.DebloatLoaded) { & $loadDebloat }
         if ($ui.Tabs.SelectedItem.Uid -eq 'drivers' -and $null -eq $state.Devices) { & $driverReport }
         if ($ui.Tabs.SelectedItem.Uid -eq 'setup' -and -not $state.SetupLoaded) { & $loadSetup }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'prefs') { & $fillPrefs }
     })
     # Перший запуск: коротко «з чого почати» (один раз; позначка — HKCU:\Software\Debora\Welcomed)
     $win.Add_ContentRendered({
@@ -2245,6 +2274,11 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $state.WelcomeChecked = $true
         $key = 'HKCU:\Software\Debora'
         if ((Get-ItemProperty $key -Name Welcomed -ErrorAction SilentlyContinue).Welcomed) { return }
+        & $showWelcome
+        try { if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }; Set-ItemProperty $key -Name Welcomed -Value 1 -Type DWord } catch { }
+        & $offerShortcut
+    })
+    $showWelcome = {
         $steps = @(
             (T-D9 'Запускайте Debora через run.bat — з правами адміністратора. Без них можна лише дивитися, але не змінювати.')
             (T-D9 '«Огляд» → «Лише сканувати»: Debora перевірить ПК і нічого не змінить. «Сканувати й виправити все» одразу виконає безпечні виправлення.')
@@ -2254,7 +2288,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             (T-D9 'Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).')
         )
         Show-D9GuideDialog $win (T-D9 'З чого почати') (T-D9 'Debora перевіряє, прибирає й налаштовує Windows. Кілька порад на початок:') $steps @() | Out-Null
-        try { if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }; Set-ItemProperty $key -Name Welcomed -Value 1 -Type DWord } catch { }
+    }
+    $offerShortcut = {
         # Ярлик на робочому столі (лише за згодою): запуск через run.bat, тобто одразу з правами адміністратора
         if ($script:D9ScriptPath) {
             $bat = Join-Path (Split-Path $script:D9ScriptPath) 'run.bat'
@@ -2266,7 +2301,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                 } catch { & $log (T-D9 'Не вдалося створити ярлик: {0}' $_.Exception.Message) }
             }
         }
-    })
+    }
     $state.NoWelcome = [bool]$TestAction   # тести й самоперевірка: без модальних вікон
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job) {

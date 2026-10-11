@@ -245,6 +245,26 @@
     "Завантажити план з файлу…": "Load plan from file…",
     "Набори:": "Bundles:",
     "Про програму": "About",
-    "Немає флешки з Windows? Завантажте:": "No Windows USB stick? Download:"
+    "Немає флешки з Windows? Завантажте:": "No Windows USB stick? Download:",
+    "Параметри": "Preferences",
+    "Вигляд і мова": "Appearance and language",
+    "Мова інтерфейсу": "Interface language",
+    "Автоматично — українська, якщо вона є в мовах Windows, інакше англійська.": "Automatic — Ukrainian if it is among the Windows languages, otherwise English.",
+    "Тема": "Theme",
+    "Як у Windows — світла або темна за налаштуванням «Режим застосунків».": "Same as Windows — light or dark following the “App mode” setting.",
+    "Зміна мови чи теми перевідкриває вікно.": "Changing the language or theme reopens the window.",
+    "Знахідки й підказки": "Findings and tips",
+    "Приховані знахідки": "Hidden findings",
+    "Переглянути": "View",
+    "Повернути всі": "Restore all",
+    "Підказки «З чого почати»": "“Getting started” tips",
+    "Вікно з порадами, яке з’являється при першому запуску.": "The tips window shown on first launch.",
+    "Показати": "Show",
+    "Сповіщення Windows": "Windows notifications",
+    "Коли довга задача завершилась, а вікно Debora неактивне.": "When a long task finishes and the Debora window isn't active.",
+    "Дані й про програму": "Data and about",
+    "Папка даних": "Data folder",
+    "Журнали": "Logs",
+    "Звіти": "Reports"
   }
 }

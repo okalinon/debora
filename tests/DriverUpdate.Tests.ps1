@@ -97,6 +97,23 @@ Describe 'Пошук оновлень (з підміною мережі)' {
     }
 }
 
+Describe 'Однойменні пакети з рекомендації Windows Update' {
+    It 'пробує кілька однойменних пакетів, а запасним — пакет, знайдений за ID пристрою' {
+        Mock Get-D9UpdatableDevices {
+            [pscustomobject]@{ InstanceId = 'USB\BT'; Name = 'Bluetooth'; Class = 'Bluetooth'; Problem = $false; HardwareIds = @('USB\VID_8087&PID_0026&REV_0002', 'USB\VID_8087&PID_0026'); Queries = @('USB\VID_8087&PID_0026'); Version = '23.160.0.9'; Date = [datetime]'2025-09-01'; Provider = 'Intel Corporation' }
+        }
+        Mock Get-D9WuaDriverUpdates { [pscustomobject]@{ Title = 'Intel - Bluetooth - 24.70.0.4'; Version = '24.70.0.4'; Date = [datetime]'2026-07-30'; HardwareId = 'USB\VID_8087&PID_0026' } }
+        $script:sameName = @(1..8 | ForEach-Object { New-Row 'Intel Bluetooth (24.70.0.4)' 'Windows 11 Client, version 22H2 and later' '24.70.0.4' })
+        $script:byId = New-Row 'Intel Bluetooth (24.50.1.3)' 'Windows 11 Client, version 22H2 and later' '24.50.1.3'
+        Mock Search-D9DriverCatalog { @{ 'USB\VID_8087&PID_0026' = @($byId); 'Intel - Bluetooth - 24.70.0.4' = $sameName } }
+        $c = @(Find-D9DriverUpdates -SystemInfo $win11 -IncludeWindowsUpdate)[0]
+        $c.Row.Version | Should -Be '24.70.0.4'
+        $c.Recommended | Should -BeTrue
+        @($c.Alternatives).Count | Should -Be 6
+        $c.Alternatives[-1].Id | Should -Be $byId.Id
+    }
+}
+
 Describe 'Драйвери в чеклісті' {
     It 'пристрої без драйвера → спершу автоматичний пошук в інтернеті; знахідка глибокого сканування не дублює крок' {
         $check = [pscustomobject]@{ id = 'upd.problem-devices'; category = 'updates' }

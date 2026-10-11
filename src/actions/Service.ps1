@@ -35,7 +35,15 @@ function Test-D9Service {
     $state = Get-D9ServiceState $Action
     if (-not $state.exists) { return $null }
     if ($Action.start -and $state.status -ne 'Running') { return $false }
-    return $state.startup -eq $Action.startup
+    return $state.startup -eq (Get-D9ServiceTargetStartup $Action $state.startup)
+}
+
+# Для відновлення служби (start = true) «Manual» означає «не нижче за Manual»: службу з автоматичним
+# запуском не понижуємо (так раніше W32Time з AutomaticDelayed ставав Manual)
+function Get-D9ServiceTargetStartup {
+    param($Action, [string]$Current)
+    if ($Action.start -and $Action.startup -eq 'Manual' -and $Current -in 'Automatic', 'AutomaticDelayed') { return $Current }
+    return $Action.startup
 }
 
 function Set-D9ServiceStartup {
@@ -50,7 +58,8 @@ function Invoke-D9Service {
     param([Parameter(Mandatory)]$Action)
     if (-not (Get-Service -Name $Action.name -ErrorAction SilentlyContinue)) { return }
     # Спочатку тип запуску, потім зупинка — щоб служба не піднялась знову
-    Set-D9ServiceStartup $Action.name $Action.startup
+    $target = Get-D9ServiceTargetStartup $Action (Get-D9ServiceStartup $Action.name)
+    if ($target -ne (Get-D9ServiceStartup $Action.name)) { Set-D9ServiceStartup $Action.name $target }
     if ($Action.stop) { Stop-Service -Name $Action.name -Force -ErrorAction SilentlyContinue }
     if ($Action.start) { Start-Service -Name $Action.name -ErrorAction Stop }
 }
@@ -70,5 +79,6 @@ function Get-D9ServiceDescription {
     if ($State -and -not $State.exists) { return (T-D9 'Служба {0}: немає в системі' "$($Action.name)") }
     $old = if ($State) { $State.startup } else { '?' }
     $stop = if ($Action.stop) { (T-D9 ', зупинити') } elseif ($Action.start) { (T-D9 ', запустити') } else { '' }
-    return (T-D9 'Служба {0}: {1} -> {2}{3}' "$($Action.name)" "$old" "$($Action.startup)" $stop)
+    $new = if ($State) { Get-D9ServiceTargetStartup $Action $State.startup } else { $Action.startup }
+    return (T-D9 'Служба {0}: {1} -> {2}{3}' "$($Action.name)" "$old" "$new" $stop)
 }

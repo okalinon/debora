@@ -2010,7 +2010,7 @@
             "uk": "очищення %TEMP% і C:\\Windows\\Temp",
             "en": "clean %TEMP% and C:\\Windows\\Temp"
           },
-          "run": "Remove-Item \"$env:TEMP\\*\" -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item \"$env:SystemRoot\\Temp\\*\" -Recurse -Force -ErrorAction SilentlyContinue"
+          "run": "foreach ($d in @($env:TEMP, \"$env:SystemRoot\\Temp\")) { $full = (Get-Item -LiteralPath $d -ErrorAction SilentlyContinue).FullName; if ($full) { Get-ChildItem -LiteralPath $full -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue } }"
         }
       ]
     },

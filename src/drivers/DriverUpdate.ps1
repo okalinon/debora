@@ -190,10 +190,16 @@ function Find-D9DriverUpdates {
             Sort-Object @{ Expression = { ConvertTo-D9Version $_.Version }; Descending = $true }, @{ Expression = { $_.Date }; Descending = $true })
         $newer = @($fit | Where-Object { $d.Problem -or (Test-D9DriverNewer $_.Version $_.Date $d.Version $d.Date) })
         if (-not $newer) { continue }
+        # Пошук за назвою з WUA дає десяток однойменних пакетів для різних моделей пристрою — пробуємо кілька,
+        # а запасним — найновіший пакет, знайдений за ID самого пристрою (він точно містить цей пристрій)
+        $direct = @($d.Queries | ForEach-Object { $found[$_] } | Where-Object { $_ } | ForEach-Object Id)
+        $alts = @($newer | Select-Object -Skip 1 -First 5)
+        $sure = $newer | Where-Object { $direct -contains $_.Id } | Select-Object -First 1
+        if ($sure -and $sure.Id -ne $newer[0].Id -and -not ($alts | Where-Object Id -eq $sure.Id)) { $alts += $sure }
         # Заміна робочого вбудованого драйвера Microsoft на системних пристроях — лише за бажанням
         $optional = -not $d.Problem -and -not $hint -and $d.Provider -eq 'Microsoft' -and $d.Class -notin $script:D9VendorDriverClasses
         [pscustomobject]@{
-            Device = $d; Row = $newer[0]; Alternatives = @($newer | Select-Object -Skip 1 -First 2)
+            Device = $d; Row = $newer[0]; Alternatives = $alts
             Status = $(if ($d.Problem) { 'missing' } else { 'newer' }); Recommended = [bool]$hint; Optional = $optional
         }
     }
@@ -205,16 +211,29 @@ function Save-D9CatalogFile {
     param([Parameter(Mandatory)]$Row, [Parameter(Mandatory)][string]$Folder)
     $dl = Get-D9CatalogDownload $Row.Id
     if (-not $dl) { throw (T-D9 'Каталог не дав посилання для {0}' $Row.Title) }
+    # Однойменні пакети для різних моделей не мають змішуватись — до назви додаємо початок ID запису
     $safe = ($Row.Title -replace '[\\/:*?"<>|]', '_').Trim()
-    $dir = Join-Path $Folder $safe
+    $dir = Join-Path $Folder "$safe $(([string]$Row.Id).Substring(0, [Math]::Min(8, ([string]$Row.Id).Length)))".Trim()
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $file = Join-Path $dir $dl.Name
     if (-not (Test-Path -LiteralPath $file)) {
         $http = Initialize-D9Web
         $resp = $http.GetAsync($dl.Url, [Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
         [void]$resp.EnsureSuccessStatusCode()
+        # Великі пакети (відеодрайвери ~1 ГБ) на повільному зв'язку йдуть хвилинами — показуємо хід кожні 100 МБ
+        $total = $resp.Content.Headers.ContentLength
+        $in = $resp.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
         $out = [IO.File]::Create($file)
-        try { $resp.Content.CopyToAsync($out).GetAwaiter().GetResult() } finally { $out.Dispose() }
+        try {
+            $buf = New-Object byte[] 1MB; $done = 0L; $next = 100MB
+            while (($n = $in.Read($buf, 0, $buf.Length)) -gt 0) {
+                $out.Write($buf, 0, $n); $done += $n
+                if ($done -ge $next) {
+                    $next += 100MB
+                    Write-D9Log ('  ' + $(if ($total) { T-D9 'Завантажено {0} з {1}' (Format-D9Size $done) (Format-D9Size $total) } else { T-D9 'Завантажено {0}' (Format-D9Size $done) })) Detail
+                }
+            }
+        } catch { $out.Dispose(); [IO.File]::Delete($file); throw } finally { $out.Dispose(); $in.Dispose() }
     }
     if ($dl.Sha256) {
         $want = ([BitConverter]::ToString([Convert]::FromBase64String($dl.Sha256)) -replace '-', '')

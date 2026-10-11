@@ -119,10 +119,37 @@ Describe 'Виконання, журнал і відкат' {
         ($session.entries | Where-Object tweak -eq 'ui.two').result | Should -Be 'ok'
     }
 
+    It 'дія, що впала, але встигла змінити систему, відкочується (partial)' {
+        Mock Invoke-D9Registry { Set-ItemProperty $testRoot -Name One -Value 1 -Type DWord; throw 'частково' }
+        $session = Invoke-D9Plan -Plan (New-D9Plan -Catalog $catalog -TweakIds 'ui.one' -SystemInfo $sys) -SystemInfo $sys -NoRestorePoint
+        $session.entries[0].result | Should -Be 'error'
+        $session.entries[0].partial | Should -BeTrue
+        $report = @(Undo-D9Session -Id $session.id)
+        $report[0].result | Should -Be 'restored'
+        (Get-ItemProperty $testRoot).One | Should -Be 5
+    }
+    It 'дія, що впала без змін, не відкочується' {
+        Mock Invoke-D9Registry { throw 'нічого не змінено' }
+        $session = Invoke-D9Plan -Plan (New-D9Plan -Catalog $catalog -TweakIds 'ui.one' -SystemInfo $sys) -SystemInfo $sys -NoRestorePoint
+        $session.entries[0].partial | Should -BeNullOrEmpty
+        @(Undo-D9Session -Id $session.id).Count | Should -Be 0
+    }
+
     It 'попередній перегляд показує стару і нову величину' {
         $preview = @(Get-D9Preview -Plan (New-D9Plan -Catalog $catalog -TweakIds 'ui.one' -SystemInfo $sys) -SystemInfo $sys)
         $preview[0].Change | Should -Match '5 -> 1'
         $preview[0].Pending | Should -BeTrue
+    }
+}
+
+Describe 'Дія service: відновлення не понижує тип запуску' {
+    It 'Manual + start не чіпає службу з автоматичним запуском, але піднімає вимкнену' {
+        $a = [pscustomobject]@{ type = 'service'; name = 'W32Time'; startup = 'Manual'; start = $true }
+        Get-D9ServiceTargetStartup $a 'AutomaticDelayed' | Should -Be 'AutomaticDelayed'
+        Get-D9ServiceTargetStartup $a 'Automatic' | Should -Be 'Automatic'
+        Get-D9ServiceTargetStartup $a 'Disabled' | Should -Be 'Manual'
+        $stop = [pscustomobject]@{ type = 'service'; name = 'Spooler'; startup = 'Manual'; stop = $true }
+        Get-D9ServiceTargetStartup $stop 'Automatic' | Should -Be 'Manual'
     }
 }
 

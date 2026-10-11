@@ -9,6 +9,12 @@ function Get-D9DriverBackupDir {
     return $dir
 }
 
+# Копія драйвера є, лише якщо в її папці лежить INF (порожня папка лишається після невдалого експорту)
+function Test-D9DriverBackup {
+    param([string]$Dir)
+    [bool](Test-Path -LiteralPath $Dir) -and [bool](Get-ChildItem -LiteralPath $Dir -Filter '*.inf' -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+}
+
 # Список пристроїв читається кілька секунд — тримаємо його хвилину (ідентифікатори обладнання не змінюються)
 $script:D9PnpCache = $null
 $script:D9PnpCacheTime = [datetime]::MinValue
@@ -59,9 +65,15 @@ function Invoke-D9Driver {
     if (-not (Test-Path -LiteralPath $Action.inf)) { throw (T-D9 'Файл драйвера не знайдено: {0}' "$($Action.inf)") }
     $backup = Get-D9DriverBackupDir
     foreach ($d in (Get-D9DriverState $Action).devices) {
-        if ($d.inf -like 'oem*.inf' -and -not (Test-Path (Join-Path $backup $d.inf))) {
-            $out = & pnputil.exe /export-driver $d.inf (Join-Path $backup $d.inf) 2>&1
-            if ($LASTEXITCODE -ne 0) { throw (T-D9 'Не вдалося зберегти поточний драйвер {0} для відкату: {1}' $d.inf "$out") }
+        $dir = Join-Path $backup $d.inf
+        if ($d.inf -like 'oem*.inf' -and -not (Test-D9DriverBackup $dir)) {
+            # pnputil не створює цільову папку сам («Missing or invalid target directory»)
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            $out = & pnputil.exe /export-driver $d.inf $dir 2>&1
+            if ($LASTEXITCODE -ne 0 -or -not (Test-D9DriverBackup $dir)) {
+                [IO.Directory]::Delete($dir, $true)   # порожня папка інакше вважалась би готовою копією
+                throw (T-D9 'Не вдалося зберегти поточний драйвер {0} для відкату: {1}' $d.inf "$out")
+            }
         }
     }
     $out = & pnputil.exe /add-driver $Action.inf /install 2>&1 | Out-String
@@ -80,7 +92,7 @@ function Restore-D9Driver {
         if ($now.inf -like 'oem*.inf') { & pnputil.exe /delete-driver $now.inf /uninstall /force | Out-Null }
         if ($old.inf -like 'oem*.inf') {
             $saved = Join-Path $backup $old.inf
-            if (Test-Path $saved) { & pnputil.exe /add-driver (Join-Path $saved '*.inf') /subdirs /install | Out-Null }
+            if (Test-D9DriverBackup $saved) { & pnputil.exe /add-driver (Join-Path $saved '*.inf') /subdirs /install | Out-Null }
             else { $notes += (T-D9 'резервної копії {0} немає' "$($old.inf)") }
         }
     }

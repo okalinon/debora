@@ -3,7 +3,10 @@
     $script:out  = Join-Path $TestDrive 'dist'
     & (Join-Path $root 'build\Compile.ps1') -OutDir $out -Version '0.0.0-test' *> $null
     $script:file = Join-Path $out 'Debora.ps1'
+    # Дочірні процеси успадковують змінну — журнал і дані йдуть у тимчасову папку, а не в журнал користувача
+    $env:D9_DATA_ROOT = Join-Path $TestDrive 'data'
 }
+AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 
 Describe 'Збірка' {
     It 'створює один файл і SHA256SUMS' {

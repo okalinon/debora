@@ -245,6 +245,7 @@
     "Схема живлення: {0} -> {1}": "Power plan: {0} -> {1}",
     "Некоректний шлях реєстру: {0}": "Invalid registry path: {0}",
     "Не вдалося відкрити ключ для запису: {0}": "Couldn't open the key for writing: {0}",
+    "Windows не дозволяє програмам змінювати це налаштування ({0}) — змініть його вручну в «Параметрах».": "Windows does not let programs change this setting ({0}) — change it manually in Settings.",
     "Невідомий тип значення реєстру: {0}": "Unknown registry value type: {0}",
     "<немає>": "<none>",
     "<видалити>": "<delete>",

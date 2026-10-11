@@ -12,8 +12,17 @@ function Write-D9Log {
     )
     # Файл — першим, щоб у нього потрапляли й повідомлення фонових завдань вікна (там $D9OnLog)
     if ($script:D9LogPath) {
-        try { Add-Content -Path $script:D9LogPath -Value ("{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}" -f (Get-Date), $Level, $Message) -Encoding UTF8 -ErrorAction Stop }
-        catch { }   # файл зайнятий іншим потоком — рядок пропускаємо, а не ламаємо операцію
+        # Спільний доступ (інший потік, антивірус, програма перегляду журналу) і кілька спроб — щоб рядки
+        # не губились мовчки; якщо файл так і не відкрився, пропускаємо рядок, а не ламаємо операцію
+        $bytes = [Text.Encoding]::UTF8.GetBytes(("{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}`r`n" -f (Get-Date), $Level, $Message))
+        for ($try = 0; $try -lt 5; $try++) {
+            try {
+                $fs = [IO.File]::Open($script:D9LogPath, 'Append', 'Write', 'ReadWrite, Delete')
+                try { $fs.Write($bytes, 0, $bytes.Length) } finally { $fs.Dispose() }
+                break
+            } catch [UnauthorizedAccessException] { break }
+            catch { Start-Sleep -Milliseconds (20 * ($try + 1)) }
+        }
     }
     if ($script:D9OnLog) { & $script:D9OnLog $Message $Level; return }
     $color = @{ Info = 'Gray'; Ok = 'Green'; Warn = 'Yellow'; Error = 'Red'; Detail = 'DarkGray' }[$Level]

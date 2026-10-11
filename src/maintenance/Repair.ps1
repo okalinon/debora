@@ -89,7 +89,15 @@ function Invoke-D9DefenderRepair {
 function Invoke-D9DefenderScan {
     Write-D9Log (T-D9 'Швидка перевірка Захисником Windows (зазвичай 5–15 хвилин)...')
     $since = Get-Date
-    try { Start-MpScan -ScanType QuickScan -ErrorAction Stop }
+    # Start-MpScan іноді не повертається (перевірка застрягла або чекає іншої) — чекаємо не довше 30 хвилин
+    try {
+        $job = Start-MpScan -ScanType QuickScan -AsJob -ErrorAction Stop
+        if (-not (Wait-Job $job -Timeout 1800)) {
+            Write-D9Log ('  ' + (T-D9 'Перевірка триває понад 30 хвилин — не чекаємо, Захисник завершить її сам.')) Warn
+            return [pscustomobject]@{ Done = $true; RebootRecommended = $false }
+        }
+        Receive-Job $job -ErrorAction Stop | Out-Null
+    }
     catch { Write-D9Log ('  ' + (T-D9 'Перевірку не запущено: {0}' $_.Exception.Message)) Warn; return [pscustomobject]@{ Done = $false; RebootRecommended = $false } }
     $found = @(Get-MpThreatDetection -ErrorAction SilentlyContinue | Where-Object { $_.InitialDetectionTime -ge $since })
     if ($found) {

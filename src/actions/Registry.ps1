@@ -101,6 +101,15 @@ function Set-D9RegValue {
         $key = $base.CreateSubKey($loc.SubKey)
         if (-not $key) { throw (T-D9 'Не вдалося відкрити ключ для запису: {0}' "$Path") }
         try { $key.SetValue($Name, (ConvertTo-D9RegWritable $Value $Kind), [Microsoft.Win32.RegistryValueKind]$Kind) }
+        catch [UnauthorizedAccessException] {
+            # Ключ відкрився на запис, а значення — ні: це не права доступу, а захист Windows 11 (драйвер UCPD
+            # блокує powershell.exe для віджетів, асоціацій файлів тощо). Обходити його не будемо
+            throw (T-D9 'Windows не дозволяє програмам змінювати це налаштування ({0}) — змініть його вручну в «Параметрах».' "$Path\$Name")
+        }
+        catch [Management.Automation.MethodInvocationException] {
+            if ($_.Exception.InnerException -is [UnauthorizedAccessException]) { throw (T-D9 'Windows не дозволяє програмам змінювати це налаштування ({0}) — змініть його вручну в «Параметрах».' "$Path\$Name") }
+            throw
+        }
         finally { $key.Dispose() }
     } finally { $base.Dispose() }
 }

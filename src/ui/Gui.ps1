@@ -508,11 +508,12 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                 param($list, $c)
                 & $fillChecklist $list
                 & $fillSessions
-                & $loadTweakStates
-                # Повторне сканування — щоб показати результат
+                # Повторне сканування — щоб показати результат. Стан твіків оновлюємо вже після нього:
+                # одночасно йде лише одне фонове завдання, і друге $startJob мовчки пропустив би
                 & $startJob (T-D9 'Повторне сканування') $scanWork @{ Catalog = $Catalog; Sys = $SystemInfo; Deep = $false; ReportDir = $ReportDir } {
                     param($r2, $c2)
                     & $onScanned $r2
+                    & $loadTweakStates
                     $left = @($r2.Checklist.items | Where-Object { $_.status -ne 'done' -and $_.action.action -ne 'reboot' }).Count
                     $msg = (T-D9 'Оцінка: {0} → {1}/100.' $c2.Before $r2.Scan.score.overall) + $(if ($left) { "`n" + (T-D9 'Лишилось порад: {0} — вкладка «Чекліст».' $left) }) + "`n`n" + (T-D9 'Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?')
                     if ([Windows.MessageBox]::Show($win, $msg, 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }

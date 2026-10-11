@@ -142,6 +142,14 @@ function Invoke-D9Plan {
                 $entry.result  = 'error'
                 $entry.message = $_.Exception.Message
                 Write-D9Log (T-D9 '    Помилка: {0}' $_.Exception.Message) Error
+                # Дія могла встигнути щось змінити (напр., застосунок видалено для цього користувача, а для іншого — ні).
+                # Тоді запис позначаємо partial — відкат його не пропустить
+                if ($null -ne $entry.before) {
+                    try {
+                        $after = Invoke-D9ActionVerb State $a
+                        if (-not (Test-D9StateEqual $after $entry.before)) { $entry.after = $after; $entry.partial = $true }
+                    } catch { }
+                }
             }
             Add-D9JournalEntry $session ([pscustomobject]$entry)
         }
@@ -156,7 +164,7 @@ function Invoke-D9Plan {
 function Undo-D9Session {
     param([Parameter(Mandatory)][string]$Id, [string[]]$TweakIds)
     $session = Get-D9Session $Id
-    $entries = @($session.entries | Where-Object { $_.result -eq 'ok' -and (-not $TweakIds -or $TweakIds -contains $_.tweak) })
+    $entries = @($session.entries | Where-Object { ($_.result -eq 'ok' -or $_.partial) -and (-not $TweakIds -or $TweakIds -contains $_.tweak) })
     [array]::Reverse($entries)
     $report = foreach ($e in $entries) {
         $record = [ordered]@{ tweak = $e.tweak; action = $e.action; result = $null; message = $null; time = (Get-Date).ToString('s') }

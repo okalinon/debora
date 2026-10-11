@@ -51,15 +51,30 @@ function Invoke-D9Appx {
     param([Parameter(Mandatory)]$Action)
     $installed   = Get-D9AppxInstalled $Action.package
     $provisioned = Get-D9AppxProvisioned $Action.package
+    $admin = Test-D9IsAdmin
+    $errors = @()
     try {
+        # -AllUsers на Windows 11 24H2+ падає («The system cannot find the path specified»), якщо пакет зареєстровано
+        # для профілю, якого вже немає, — тоді видаляємо хоча б для поточного користувача. Кожен етап окремо:
+        # помилка одного не має скасовувати решту (зокрема заборону встановлення для нових користувачів)
         foreach ($p in $installed) {
-            if (Test-D9IsAdmin) { Remove-AppxPackage -Package $p.PackageFullName -AllUsers -ErrorAction Stop }
-            else { Remove-AppxPackage -Package $p.PackageFullName -ErrorAction Stop }
+            try { if ($admin) { Remove-AppxPackage -Package $p.PackageFullName -AllUsers -ErrorAction Stop } else { Remove-AppxPackage -Package $p.PackageFullName -ErrorAction Stop } }
+            catch {
+                $errors += $_.Exception.Message
+                if ($admin -and (Get-AppxPackage -Name $p.Name -ErrorAction SilentlyContinue)) {
+                    try { Remove-AppxPackage -Package $p.PackageFullName -ErrorAction Stop } catch { $errors += $_.Exception.Message }
+                }
+            }
         }
         foreach ($p in $provisioned) {
-            Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName -ErrorAction Stop | Out-Null
+            try { Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName -ErrorAction Stop | Out-Null } catch { $errors += $_.Exception.Message }
         }
     } finally { Clear-D9AppxCache }
+    if (-not $errors) { return }
+    # Помилка важлива, лише якщо застосунок лишився в поточного користувача або для нових користувачів;
+    # залишки в інших (зокрема видалених) профілях не заважають
+    $left = @(Get-AppxPackage -Name $Action.package -ErrorAction SilentlyContinue) + @(Get-D9AppxProvisioned $Action.package)
+    if ($left) { throw (($errors | Sort-Object -Unique) -join '; ') }
 }
 
 # Повертає рядок-примітку, якщо щось повернути автоматично не вдалося

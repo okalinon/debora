@@ -1421,6 +1421,14 @@
       </TabItem>
     </TabControl>
 
+    <!-- Щойно застосовано зміни: швидкий відкат (зникає за хвилину або з новою задачею) -->
+    <Border x:Name="UndoBar" Grid.Row="1" Grid.Column="1" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,10" Visibility="Collapsed">
+      <DockPanel>
+        <Button x:Name="BtnUndoClose" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Закрити" Margin="14,0,0,0" VerticalAlignment="Center"/>
+        <Button x:Name="BtnUndoLast" DockPanel.Dock="Right" Content="Відкотити" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="UndoText" VerticalAlignment="Center" TextWrapping="Wrap"/>
+      </DockPanel>
+    </Border>
     <!-- Зараз виконується: назва, крок, шкала, таймер, оцінка часу; черга наступних задач -->
     <Border x:Name="TaskPanel" Grid.Row="1" Grid.Column="1" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,12,18,12" Visibility="Collapsed">
       <StackPanel>

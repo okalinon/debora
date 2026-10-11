@@ -368,6 +368,18 @@ Describe 'Вікно' {
         $r.Short | Should -Be 0
     }
 
+    It 'після змін з''являється смуга швидкого відкату' {
+        $r = Invoke-InGui {
+            & $startJob 'Тест змін' { [pscustomobject]@{ id = 'test-session'; entries = @([pscustomobject]@{ result = 'ok' }, [pscustomobject]@{ result = 'ok' }) } } $null $null
+            for ($i = 0; $i -lt 100 -and $state.Job; $i++) { [void]$state.Job.Handle.AsyncWaitHandle.WaitOne(100); & $onTick }
+            & $onTick
+            @{ Vis = [string]$ui.UndoBar.Visibility; Text = $ui.UndoText.Text; Id = $state.UndoId }
+        }
+        $r.Vis | Should -Be 'Visible'
+        $r.Text | Should -Match '2'
+        $r.Id | Should -Be 'test-session'
+    }
+
     It 'ланцюжок завдань через таймер: контекст доходить до $Done і до наступного завдання' {
         # Регресія: «Застосувати вибране» запускало друге завдання з $Done, де локальна $ids була порожня
         $r = Invoke-InGui {

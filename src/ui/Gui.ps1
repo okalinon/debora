@@ -465,7 +465,7 @@ function Show-D9Gui {
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
                    'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnStyle', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage',
-                   'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
+                   'UndoBar', 'UndoText', 'BtnUndoLast', 'BtnUndoClose', 'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
                    'ChkSuDrivers', 'ChkSuDebloat', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'BtnSuPickApps', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
@@ -690,7 +690,18 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                     try { & $job.Done $res.result $job.Context } catch { & $log (T-D9 'ПОМИЛКА інтерфейсу: {0}' $_.Exception.Message) }
                 }
             } finally { $state.InDone = $false }
+            # Задача повернула сесію журналу зі змінами — пропонуємо швидкий відкат
+            $sess = $res.result
+            if ($res.ok -and $sess -and $sess.PSObject.Properties['entries'] -and $sess.id -and $job.Title -ne (T-D9 'Відкат змін')) {
+                $n = @($sess.entries | Where-Object result -eq 'ok').Count
+                if ($n) {
+                    $state.UndoId = [string]$sess.id; $state.UndoUntil = (Get-Date).AddSeconds(60)
+                    $ui.UndoText.Text = T-D9 'Застосовано змін: {0} ({1}). Передумали?' $n $job.Title
+                }
+            }
         }
+        # Смуга відкату: доки не минула хвилина й не почалась інша задача
+        $ui.UndoBar.Visibility = if ($state.UndoId -and -not $state.Job -and (Get-Date) -lt $state.UndoUntil) { 'Visible' } else { 'Collapsed' }
         if (-not $state.Job -and -not $state.InDone -and $state.Queue.Count) {
             $next = $state.Queue[0]; $state.Queue.RemoveAt(0)
             & $refreshQueueList
@@ -701,6 +712,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     }
     $timer.Add_Tick($onTick)
 
+    $ui.BtnUndoClose.Add_Click({ $state.UndoId = $null; $ui.UndoBar.Visibility = 'Collapsed' })
+    $ui.BtnUndoLast.Add_Click({
+        $id = $state.UndoId
+        if (-not $id) { return }
+        $state.UndoId = $null; $ui.UndoBar.Visibility = 'Collapsed'
+        & $startJob (T-D9 'Відкат змін') { param($a) Undo-D9Session -Id $a.Id } @{ Id = $id } { & $fillSessions; & $loadTweakStates; [void][Windows.MessageBox]::Show($win, (T-D9 'Зміни відкочено.'), 'Debora') }
+    })
     # Кнопки панелі задач
     $ui.BtnTaskStop.Add_Click({
         if (-not $state.Job) { return }

@@ -701,6 +701,49 @@
             </WrapPanel>
             <TextBlock x:Name="OemText" Style="{StaticResource Intro}" Margin="4,6,0,0"/>
 
+            <TextBlock Style="{StaticResource Section}" Text="Усі пристрої й драйвери"/>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <DockPanel>
+                  <Button x:Name="BtnDevicesExport" DockPanel.Dock="Right" Content="Зберегти список (CSV)" IsEnabled="False" Margin="8,0,0,0"/>
+                  <ComboBox x:Name="DeviceView" DockPanel.Dock="Right" Width="230" Margin="8,0,0,0" SelectedIndex="0">
+                    <ComboBoxItem Tag="hardware" Content="Обладнання"/>
+                    <ComboBoxItem Tag="all" Content="Усі пристрої (з віртуальними)"/>
+                    <ComboBoxItem Tag="thirdparty" Content="Драйвери виробників"/>
+                    <ComboBoxItem Tag="old" Content="Драйвери старші за 3 роки"/>
+                    <ComboBoxItem Tag="problems" Content="З проблемами або вимкнені"/>
+                  </ComboBox>
+                  <Grid>
+                    <TextBox x:Name="DeviceSearch" Style="{StaticResource Search}" VerticalAlignment="Stretch"/>
+                    <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="16" Foreground="#6E6E73" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                    <TextBlock x:Name="DeviceSearchHint" Text="Пошук: назва, виробник, версія, INF або ID обладнання" Foreground="#8E8E93" FontSize="16" Margin="39,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                  </Grid>
+                </DockPanel>
+                <TextBlock x:Name="DevicesSummary" Style="{StaticResource Intro}" Margin="0,10,0,6" Text="Натисніть «Перевірити драйвери», щоб побачити всі пристрої комп'ютера з версіями й датами драйверів. Наведіть мишку на рядок — ID обладнання, INF-файл і виробник."/>
+                <DataGrid x:Name="DriverInstalledGrid" Margin="-6,0,-6,0" MinHeight="44" MaxHeight="560">
+                  <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}"><Setter Property="ToolTip" Value="{Binding Id}"/></Style>
+                  </DataGrid.RowStyle>
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="Тип" Binding="{Binding Group}" Width="0.9*" MinWidth="110" IsReadOnly="True">
+                      <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="200" IsReadOnly="True">
+                      <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Версія" Binding="{Binding Status}" Width="140" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Дата" Binding="{Binding Detail}" Width="110" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Постачальник" Binding="{Binding Note}" Width="*" MinWidth="130" IsReadOnly="True">
+                      <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTemplateColumn Header="Стан" Width="0.8*" MinWidth="90">
+                      <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                  </DataGrid.Columns>
+                </DataGrid>
+              </StackPanel>
+            </Border>
+
             <TextBlock Style="{StaticResource Section}" Text="Нові драйвери з інтернету"/>
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -769,18 +812,6 @@
               </StackPanel>
             </Border>
 
-            <TextBlock Style="{StaticResource Section}" Text="Встановлені важливі драйвери"/>
-            <Border Style="{StaticResource Panel}">
-              <DataGrid x:Name="DriverInstalledGrid" MaxHeight="320">
-                <DataGrid.Columns>
-                  <DataGridTextColumn Header="Тип" Binding="{Binding Group}" Width="*" MinWidth="70" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="Версія" Binding="{Binding Status}" Width="*" MinWidth="70" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="Дата" Binding="{Binding Detail}" Width="*" MinWidth="70" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="Постачальник" Binding="{Binding Note}" Width="*" MinWidth="70" IsReadOnly="True"/>
-                </DataGrid.Columns>
-              </DataGrid>
-            </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

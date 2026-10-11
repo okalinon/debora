@@ -8,10 +8,130 @@ $script:D9KeyDriverClasses = @{
     SCSIAdapter = 'Контролер дисків'; HDC = 'Контролер дисків'; Camera = 'Камера'; Image = 'Камера'
 }
 
+# Назви класів пристроїв (як у Диспетчері пристроїв); невідомий клас показується як є
+$script:D9DeviceClassNames = @{
+    System = 'Системні пристрої'; HIDClass = 'Пристрої введення (HID)'; Processor = 'Процесори'; Net = 'Мережа'
+    Bluetooth = 'Bluetooth'; MEDIA = 'Звук, відео та ігрові контролери'; SoftwareDevice = 'Програмні пристрої'; Volume = 'Томи дисків'
+    USB = 'Контролери USB'; SoftwareComponent = 'Програмні компоненти'; Firmware = 'Мікропрограми (UEFI)'; AudioEndpoint = 'Аудіовходи й аудіовиходи'
+    SCSIAdapter = 'Контролери дисків'; HDC = 'Контролери дисків'; Keyboard = 'Клавіатури'; Ports = 'Порти (COM і LPT)'; VolumeSnapshot = 'Тіньові копії'
+    DiskDrive = 'Диски'; Display = 'Відеоадаптери'; Mouse = 'Миші й тачпади'; Battery = 'Батареї'; Computer = 'Комп''ютер'
+    USBDevice = 'Пристрої USB'; Monitor = 'Монітори'; AudioProcessingObject = 'Звукові ефекти'; UCM = 'USB Type-C'
+    Camera = 'Камери'; Image = 'Камери й сканери'; SecurityDevices = 'Безпека (TPM)'; Printer = 'Принтери'; PrintQueue = 'Черги друку'
+    Biometric = 'Біометрія'; SmartCardReader = 'Зчитувачі смарт-карт'; Sensor = 'Датчики'; Extension = 'Розширення драйверів'
+    CDROM = 'Оптичні приводи'; WPD = 'Портативні пристрої'; MTD = 'Пам''ять'; SDHost = 'Кардридери (SD)'; Infrared = 'Інфрачервоні пристрої'
+}
+
+function Get-D9DeviceClassName {
+    param([string]$Class)
+    if (-not $Class) { return (T-D9 'Інші пристрої') }
+    $n = $script:D9DeviceClassNames[$Class]
+    if ($n) { T-D9 $n } else { $Class }
+}
+
+# Віртуальні й програмні пристрої (томи, програмні пристрої Windows, кореневі віртуальні адаптери) — не «залізо»
+function Test-D9VirtualDevice {
+    param([string]$InstanceId, [string]$Class)
+    $u = $InstanceId.ToUpper()
+    if ($Class -in 'Volume', 'VolumeSnapshot', 'SoftwareDevice', 'AudioEndpoint', 'AudioProcessingObject', 'PrintQueue', 'LegacyDriver') { return $true }
+    $u -match '^(ROOT|SWD|SW|HTREE|ACPI_HAL|UMB|STORAGE\\VOLUME|\{[0-9A-F-]+\})\\'
+}
+
+# Усі пристрої ПК з драйверами: тип, назва, виробник, версія/дата/постачальник/INF драйвера, підпис, стан,
+# ідентифікатор обладнання. $Entities — уже прочитаний Win32_PnPEntity (читання триває кілька секунд).
+function Get-D9DeviceInventory {
+    param([object[]]$Entities, [datetime]$Now = (Get-Date))
+    if (-not $Entities) { $Entities = @(Get-CimInstance Win32_PnPEntity -ErrorAction SilentlyContinue) }
+    $drivers = @{}
+    foreach ($d in @(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue)) { if ($d.DeviceID) { $drivers[[string]$d.DeviceID] = $d } }
+    foreach ($e in $Entities) {
+        if (-not $e.DeviceID) { continue }
+        $d = $drivers[[string]$e.DeviceID]
+        $class = if ($e.PNPClass) { [string]$e.PNPClass } elseif ($d.DeviceClass) { [string]$d.DeviceClass } else { '' }
+        $hwid = @($e.HardwareID) | Select-Object -First 1
+        $info = if ($hwid -match '^(PCI|USB|HDAUDIO|INTELAUDIO|ACPI|HID)\\') { Resolve-D9Device @($e.HardwareID) } else { $null }
+        $date = if ($d.DriverDate) { [datetime]$d.DriverDate } else { $null }
+        $provider = [string]$d.DriverProviderName
+        $code = [int]$e.ConfigManagerErrorCode
+        $status = if ($code -eq 0) { 'ok' } elseif ($code -eq 22) { 'disabled' } elseif ($code -eq 28) { 'nodriver' } else { 'problem' }
+        # Вбудовані драйвери Windows мають умовну дату 21.06.2006, чипсетні INF Intel — 1968 р.: вік за ними не рахуємо
+        $inbox = $date -and $date.Year -lt 2010
+        $ageYears = if ($date -and -not $inbox) { [math]::Round(($Now - $date).TotalDays / 365.25, 1) } else { $null }
+        [pscustomobject]@{
+            Class       = $class
+            ClassName   = Get-D9DeviceClassName $class
+            Name        = $(if ($e.Name) { [string]$e.Name } else { Get-D9DeviceDisplayName $info $null })
+            Recognized  = $(if ($info -and ($info.Name -or $info.Vendor)) { Get-D9DeviceDisplayName $info $null })
+            Manufacturer = [string]$e.Manufacturer
+            Provider    = $provider
+            Version     = [string]$d.DriverVersion
+            Date        = $date
+            DateText    = $(if (-not $date) { '' } elseif ($date.Year -lt 1990) { T-D9 'INF чипсета' } elseif ($inbox) { T-D9 'вбудований' } else { $date.ToString('dd.MM.yyyy') })
+            AgeYears    = $ageYears
+            Inf         = [string]$d.InfName
+            Signed      = $(if ($d) { [bool]$d.IsSigned } else { $null })
+            Status      = $status
+            StatusText  = $(switch ($status) { 'ok' { T-D9 'працює' } 'disabled' { T-D9 'вимкнено' } 'nodriver' { T-D9 'немає драйвера' } default { Get-D9DeviceErrorText $code } })
+            ErrorCode   = $code
+            HardwareId  = [string]$hwid
+            InstanceId  = [string]$e.DeviceID
+            Virtual     = Test-D9VirtualDevice ([string]$e.DeviceID) $class
+            ThirdParty  = [bool]($provider -and $provider -ne 'Microsoft')
+        }
+    }
+}
+
+# Фільтр переліку для вікна й командного рядка: hardware (типово) | all | thirdparty | problems | old
+function Select-D9DeviceInventory {
+    param([object[]]$Devices, [string]$View = 'hardware', [string]$Search, [double]$OldYears = 3)
+    $list = switch ($View) {
+        'all'        { @($Devices) }
+        'thirdparty' { @($Devices | Where-Object ThirdParty) }
+        'problems'   { @($Devices | Where-Object { $_.Status -ne 'ok' }) }
+        'old'        { @($Devices | Where-Object { $_.ThirdParty -and $_.AgeYears -ge $OldYears }) }
+        default      { @($Devices | Where-Object { -not $_.Virtual }) }
+    }
+    if ($Search) {
+        $s = $Search.Trim()
+        $list = @($list | Where-Object { "$($_.Name) $($_.Recognized) $($_.ClassName) $($_.Manufacturer) $($_.Provider) $($_.Version) $($_.Inf) $($_.HardwareId)" -like "*$s*" })
+    }
+    @($list | Sort-Object ClassName, Name)
+}
+
+# Однакові пристрої з тим самим драйвером (20 потоків процесора, кілька HID-колекцій) — одним рядком з кількістю
+function Group-D9DeviceInventory {
+    param([object[]]$Devices)
+    foreach ($g in @($Devices | Group-Object { "$($_.ClassName)|$($_.Name)|$($_.Version)|$($_.Provider)|$($_.Status)" })) {
+        $first = $g.Group[0]
+        $first | Select-Object *, @{ n = 'Count'; e = { $g.Count } }
+    }
+}
+
+# Підсумок: «Пристроїв 228 (обладнання 140), сторонніх драйверів 45, з проблемами 0, старших за 3 роки 6»
+function Get-D9DeviceInventorySummary {
+    param([object[]]$Devices, [double]$OldYears = 3)
+    T-D9 'Пристроїв: {0} (обладнання — {1}), сторонніх драйверів: {2}, з проблемами: {3}, сторонніх драйверів старших за {4} роки: {5}.' @($Devices).Count @($Devices | Where-Object { -not $_.Virtual }).Count @($Devices | Where-Object ThirdParty).Count @($Devices | Where-Object { $_.Status -ne 'ok' }).Count $OldYears @($Devices | Where-Object { $_.ThirdParty -and $_.AgeYears -ge $OldYears }).Count
+}
+
+# CSV для Excel: роздільник — із регіональних налаштувань (у нас «;»), UTF-8 з BOM, щоб кирилиця відкрилась правильно
+function Export-D9DeviceInventoryCsv {
+    param([Parameter(Mandatory)][object[]]$Devices, [Parameter(Mandatory)][string]$Path)
+    $rows = foreach ($d in @($Devices | Sort-Object ClassName, Name)) {
+        $o = [ordered]@{}
+        $o[(T-D9 'Тип')] = $d.ClassName; $o[(T-D9 'Пристрій')] = $d.Name; $o[(T-D9 'Розпізнано')] = $d.Recognized
+        $o[(T-D9 'Виробник')] = $d.Manufacturer; $o[(T-D9 'Версія')] = $d.Version; $o[(T-D9 'Дата')] = $d.DateText
+        $o[(T-D9 'Постачальник')] = $d.Provider; $o['INF'] = $d.Inf
+        $o[(T-D9 'Підписаний')] = if ($null -eq $d.Signed) { '' } elseif ($d.Signed) { T-D9 'так' } else { T-D9 'ні' }
+        $o[(T-D9 'Стан')] = $d.StatusText; $o[(T-D9 'Віртуальний')] = $(if ($d.Virtual) { T-D9 'так' } else { T-D9 'ні' }); $o['Hardware ID'] = $d.HardwareId; $o['Instance ID'] = $d.InstanceId
+        [pscustomobject]$o
+    }
+    $rows | Export-Csv -LiteralPath $Path -NoTypeInformation -Encoding UTF8 -Delimiter ((Get-Culture).TextInfo.ListSeparator)
+}
+
 function Get-D9DriverReport {
     param([Parameter(Mandatory)]$SystemInfo)
     $oem = Get-D9OemSupport $SystemInfo
-    $problems = @(Get-CimInstance Win32_PnPEntity -Filter 'ConfigManagerErrorCode <> 0' -ErrorAction SilentlyContinue |
+    $entities = @(Get-CimInstance Win32_PnPEntity -ErrorAction SilentlyContinue)
+    $problems = @($entities | Where-Object { $_.ConfigManagerErrorCode -ne 0 } |
         Where-Object { $_.ConfigManagerErrorCode -notin 22, 45 } | ForEach-Object {
             $info = Resolve-D9Device @($_.HardwareID)
             $reason = $script:D9DeviceErrors[[int]$_.ConfigManagerErrorCode]
@@ -24,20 +144,14 @@ function Get-D9DriverReport {
                 Links    = @(Get-D9DriverLinks $info $oem)
             }
         })
-    # Важливі встановлені драйвери: щоб бачити версію й вік
-    $important = @(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue | Where-Object {
-            $_.DeviceName -and $script:D9KeyDriverClasses.ContainsKey([string]$_.DeviceClass) -and $_.DriverProviderName -ne 'Microsoft' -and $_.DeviceID -match '^(PCI|HDAUDIO|ACPI|USB)\\'
-        } | Sort-Object DeviceClass, DeviceName -Unique | ForEach-Object {
-            [pscustomobject]@{
-                Group    = T-D9 $script:D9KeyDriverClasses[[string]$_.DeviceClass]
-                Name     = $_.DeviceName
-                Version  = $_.DriverVersion
-                # Чипсетні INF Intel мають умовну дату 1968 р. — вони лише називають пристрій, оновлювати нічого
-                Date     = if (-not $_.DriverDate) { '' } elseif (([datetime]$_.DriverDate).Year -lt 1990) { T-D9 'INF чипсета' } else { ([datetime]$_.DriverDate).ToString('dd.MM.yyyy') }
-                Provider = $_.DriverProviderName
-            }
+    $devices = @(Get-D9DeviceInventory -Entities $entities)
+    # Важливі встановлені драйвери (коротка таблиця для командного рядка): відео, мережа, звук… від виробників
+    $important = @($devices | Where-Object {
+            $_.Version -and $script:D9KeyDriverClasses.ContainsKey($_.Class) -and $_.ThirdParty -and $_.InstanceId -match '^(PCI|HDAUDIO|ACPI|USB)\\'
+        } | Sort-Object Class, Name -Unique | ForEach-Object {
+            [pscustomobject]@{ Group = T-D9 $script:D9KeyDriverClasses[$_.Class]; Name = $_.Name; Version = $_.Version; Date = $_.DateText; Provider = $_.Provider }
         })
-    [pscustomobject]@{ Oem = $oem; Problems = $problems; Important = $important }
+    [pscustomobject]@{ Oem = $oem; Problems = $problems; Important = $important; Devices = $devices }
 }
 
 # ---------- Розбір пакетів драйверів ----------

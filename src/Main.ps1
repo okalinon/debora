@@ -32,6 +32,8 @@
 .EXAMPLE
     .\Debora.ps1 -Drivers                     # які драйвери потрібні і де їх взяти
 .EXAMPLE
+    .\Debora.ps1 -Drivers -DeviceView hardware -Csv .\devices.csv   # усі пристрої з драйверами + CSV
+.EXAMPLE
     .\Debora.ps1 -DriverInstall D:\Драйвери   # встановити підходящі драйвери з папки
 .EXAMPLE
     .\Debora.ps1 -DriverUpdate -WhatIf        # які новіші драйвери є в каталозі Microsoft
@@ -77,6 +79,15 @@ param(
 
     [Parameter(ParameterSetName = 'Drivers', Mandatory)]
     [switch]$Drivers,
+
+    # Повний перелік пристроїв з драйверами: обладнання | усі | драйвери виробників | старші за 3 роки | з проблемами
+    [Parameter(ParameterSetName = 'Drivers')]
+    [ValidateSet('hardware', 'all', 'thirdparty', 'old', 'problems')]
+    [string]$DeviceView,
+
+    # Зберегти всі пристрої й драйвери у CSV (для Excel)
+    [Parameter(ParameterSetName = 'Drivers')]
+    [string]$Csv,
 
     [Parameter(ParameterSetName = 'DriverInstall', Mandatory)]
     [string]$DriverInstall,
@@ -237,7 +248,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.24.0-dev'
+$script:D9Version  = '0.24.1-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 Initialize-D9Console
@@ -657,6 +668,17 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host ""
         Write-Host (T-D9 'Важливі драйвери (версія, дата):') -ForegroundColor Cyan
         $rep.Important | Format-Table Group, Name, Version, Date, Provider -AutoSize | Out-String -Width 200 | Write-Host
+        Write-Host (Get-D9DeviceInventorySummary $rep.Devices) -ForegroundColor Cyan
+        if ($DeviceView) {
+            Write-Host ""
+            $list = @(Group-D9DeviceInventory (Select-D9DeviceInventory $rep.Devices $DeviceView))
+            $list | Format-Table @{ n = (T-D9 'Тип'); e = { $_.ClassName } }, @{ n = (T-D9 'Пристрій'); e = { if ($_.Count -gt 1) { "$($_.Name) ×$($_.Count)" } else { $_.Name } } },
+                @{ n = (T-D9 'Версія'); e = { $_.Version } }, @{ n = (T-D9 'Дата'); e = { $_.DateText } }, @{ n = (T-D9 'Постачальник'); e = { $_.Provider } }, @{ n = (T-D9 'Стан'); e = { $_.StatusText } } -AutoSize |
+                Out-String -Width 240 | Write-Host
+        } else {
+            Write-Host (T-D9 'Повний перелік пристроїв: -Drivers -DeviceView hardware (або all, thirdparty, old, problems); у файл: -Drivers -Csv <шлях>.csv') -ForegroundColor DarkGray
+        }
+        if ($Csv) { Export-D9DeviceInventoryCsv $rep.Devices $Csv; Write-D9Log (T-D9 'Перелік пристроїв збережено: {0}' $Csv) Ok }
         Write-Host (T-D9 'Як оновити: завантажте драйвери з сайту виробника в папку «Драйвери» поруч із програмою й виберіть у меню пункт 8.') -ForegroundColor DarkGray
         Write-Host (T-D9 'Програма сама підбере, що підходить до цього ПК, і поставить у правильному порядку (з можливістю відкату).') -ForegroundColor DarkGray
         exit $ExitCodes.Ok

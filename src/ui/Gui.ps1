@@ -211,7 +211,7 @@ function Show-D9Gui {
                    'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnReboot', 'ChecklistSummary', 'ChecklistList',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
-                   'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
+                   'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
                    'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
@@ -409,6 +409,41 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             New-D9Row @{ Id = $_.Id; Title = $when; Detail = $_.Selection; Number = [int]$_.Changed; Status = $status }
         })
     }
+    # Перелік усіх пристроїв: фільтр (ComboBox Tag), пошук, однакові пристрої — одним рядком «×N»
+    $deviceColors = @{ ok = '#248A3D'; disabled = '#6E6E73'; nodriver = '#D70015'; problem = '#D70015' }
+    $fillDevices = {
+        if (-not $state.Devices) { return }
+        $view = [string]$ui.DeviceView.SelectedItem.Tag
+        $list = @(Select-D9DeviceInventory $state.Devices $view $ui.DeviceSearch.Text)
+        $rows = foreach ($d in @(Group-D9DeviceInventory $list)) {
+            $old = $d.ThirdParty -and $d.AgeYears -ge 3
+            $kind = if ($d.Status -ne 'ok') { $d.StatusText } elseif ($old) { T-D9 'старий ({0} р.)' ([int][math]::Floor($d.AgeYears)) } else { $d.StatusText }
+            $tip = @("$($d.Name)")
+            if ($d.Recognized -and $d.Recognized -ne $d.Name) { $tip += (T-D9 'Розпізнано: {0}' $d.Recognized) }
+            if ($d.Manufacturer) { $tip += (T-D9 'Виробник: {0}' $d.Manufacturer) }
+            if ($d.Inf) { $tip += "INF: $($d.Inf)" + $(if ($null -ne $d.Signed) { ', ' + $(if ($d.Signed) { T-D9 'підписаний' } else { T-D9 'НЕ підписаний' }) }) }
+            if ($d.HardwareId) { $tip += "ID: $($d.HardwareId)" }
+            $tip += $d.InstanceId
+            New-D9Row @{ Group = $d.ClassName; Title = $(if ($d.Count -gt 1) { "$($d.Name)  ×$($d.Count)" } else { $d.Name })
+                         Status = $d.Version; Detail = $d.DateText; Note = $d.Provider; Kind = $kind; Id = ($tip -join "`n")
+                         Color = $(if ($old) { '#B25000' } else { $deviceColors[$d.Status] }) }
+        }
+        Set-D9Items $ui.DriverInstalledGrid @($rows)
+        $ui.DevicesSummary.Text = (Get-D9DeviceInventorySummary $state.Devices) + ' ' + (T-D9 'Показано: {0}. Наведіть мишку на рядок — ID обладнання, INF-файл і виробник.' @($list).Count)
+    }
+    $ui.DeviceView.Add_SelectionChanged({ & $fillDevices })
+    $ui.DeviceSearch.Add_TextChanged({
+        $ui.DeviceSearchHint.Visibility = if ($ui.DeviceSearch.Text) { 'Collapsed' } else { 'Visible' }
+        & $fillDevices
+    })
+    $ui.BtnDevicesExport.Add_Click({
+        if (-not (Test-Path $ReportDir)) { New-Item -ItemType Directory -Path $ReportDir | Out-Null }
+        $path = Join-Path $ReportDir ("{0} {1:yyyy-MM-dd HH-mm}.csv" -f (T-D9 'Пристрої й драйвери'), (Get-Date))
+        try {
+            Export-D9DeviceInventoryCsv $state.Devices $path
+            Start-Process explorer.exe "/select,`"$path`""
+        } catch { [void][Windows.MessageBox]::Show($win, (T-D9 'Не вдалося зберегти: {0}' $_.Exception.Message), 'Debora', 'OK', 'Error') }
+    })
     $fillDrivers = {
         param($rep)
         $state.Oem = $rep.Oem
@@ -426,7 +461,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         })
         if (-not $problems) { $problems = @(New-D9Row @{ Badge = '✓'; Color = '#248A3D'; Title = (T-D9 'Усі пристрої мають драйвери'); Detail = (T-D9 'Перевірте лише вік драйверів у таблиці нижче.') }) }
         Set-D9Items $ui.DriverProblemsList $problems
-        Set-D9Items $ui.DriverInstalledGrid @($rep.Important | ForEach-Object { New-D9Row @{ Group = $_.Group; Title = $_.Name; Status = $_.Version; Detail = $_.Date; Note = $_.Provider } })
+        $state.Devices = @($rep.Devices)
+        $ui.BtnDevicesExport.IsEnabled = [bool]$state.Devices
+        & $fillDevices
     }
     $statusUi = @{ missing = @((T-D9 'встановити'), '#D70015'); newer = @((T-D9 'оновити'), '#007AFF'); current = @((T-D9 'вже актуальний'), '#6E6E73') }
     $fillPackages = {
@@ -1320,6 +1357,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($ui.Tabs.SelectedItem.Uid -eq 'uninstall' -and $null -eq $state.UninstRows -and -not $state.Job) { & $loadUninst }
         if ($ui.Tabs.SelectedItem.Uid -eq 'reinstall' -and $null -eq $state.UsbMedia) { & $fillUsb }
         if ($ui.Tabs.SelectedItem.Uid -eq 'maintenance' -and -not $state.DisksLoaded -and -not $state.Job) { & $loadDisks }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'drivers' -and $null -eq $state.Devices -and -not $state.Job) { & $driverReport }
     })
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job) {

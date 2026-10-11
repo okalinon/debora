@@ -1,6 +1,8 @@
 {
   "note": "English strings for the CLI, text menu, core engine and actions (src/Main.ps1, src/core, src/actions). Keys are the exact Ukrainian T-D9 templates.",
   "strings": {
+    "Перелік пристроїв збережено: {0}": "Device list saved: {0}",
+    "Повний перелік пристроїв: -Drivers -DeviceView hardware (або all, thirdparty, old, problems); у файл: -Drivers -Csv \u003cшлях\u003e.csv": "Full device list: -Drivers -DeviceView hardware (or all, thirdparty, old, problems); to a file: -Drivers -Csv \u003cpath\u003e.csv",
     "  -Battery                        стан батареї: знос, прогноз, поради": "  -Battery                        battery health: wear, forecast, advice",
     " 13. Стан батареї (знос, прогноз, поради)": " 13. Battery health (wear, forecast, advice)",
     "Стан батареї: {0} {1}": "Battery health: {0} {1}",

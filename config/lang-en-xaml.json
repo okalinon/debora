@@ -1,6 +1,15 @@
 {
   "note": "English for the window markup (src/ui/MainWindow.xaml). Keys are the Ukrainian attribute values exactly as in the XAML.",
   "strings": {
+    "Усі пристрої й драйвери": "All devices and drivers",
+    "Зберегти список (CSV)": "Save list (CSV)",
+    "Обладнання": "Hardware",
+    "Усі пристрої (з віртуальними)": "All devices (incl. virtual)",
+    "Драйвери виробників": "Vendor drivers",
+    "Драйвери старші за 3 роки": "Drivers older than 3 years",
+    "З проблемами або вимкнені": "With problems or disabled",
+    "Пошук: назва, виробник, версія, INF або ID обладнання": "Search: name, manufacturer, version, INF or hardware ID",
+    "Натисніть «Перевірити драйвери», щоб побачити всі пристрої комп\u0027ютера з версіями й датами драйверів. Наведіть мишку на рядок — ID обладнання, INF-файл і виробник.": "Click “Check drivers” to see every device with its driver version and date. Hover over a row for the hardware ID, INF file and manufacturer.",
     "Стан батареї": "Battery health",
     "Ємність, історія зносу й час роботи від батареї.": "Capacity, wear history and runtime on battery.",
     "Готово": "Ready",

@@ -4,6 +4,57 @@
 }
 AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 
+Describe 'Перелік усіх пристроїв' {
+    BeforeAll {
+        function New-Entity($Id, $Name, $Class, [int]$Code = 0, $Hw) { [pscustomobject]@{ DeviceID = $Id; Name = $Name; PNPClass = $Class; ConfigManagerErrorCode = $Code; HardwareID = @($Hw); Manufacturer = 'M' } }
+        Mock Get-CimInstance -ParameterFilter { $ClassName -eq 'Win32_PnPSignedDriver' } {
+            [pscustomobject]@{ DeviceID = 'PCI\VEN_8086&DEV_51F0\1'; DriverVersion = '23.150.0.4'; DriverDate = [datetime]'2025-12-06'; DriverProviderName = 'Intel'; InfName = 'oem50.inf'; IsSigned = $true }
+            [pscustomobject]@{ DeviceID = 'PCI\VEN_10EC&DEV_8125\1'; DriverVersion = '10.54'; DriverDate = [datetime]'2021-11-11'; DriverProviderName = 'Realtek'; InfName = 'oem7.inf'; IsSigned = $true }
+            [pscustomobject]@{ DeviceID = 'ACPI\GENUINEINTEL\0'; DriverVersion = '10.0.26100.1'; DriverDate = [datetime]'2006-06-21'; DriverProviderName = 'Microsoft'; InfName = 'cpu.inf'; IsSigned = $true }
+            [pscustomobject]@{ DeviceID = 'ACPI\GENUINEINTEL\1'; DriverVersion = '10.0.26100.1'; DriverDate = [datetime]'2006-06-21'; DriverProviderName = 'Microsoft'; InfName = 'cpu.inf'; IsSigned = $true }
+            [pscustomobject]@{ DeviceID = 'STORAGE\VOLUME\1'; DriverVersion = '10.0.26100.1'; DriverDate = [datetime]'2006-06-21'; DriverProviderName = 'Microsoft'; InfName = 'volume.inf'; IsSigned = $true }
+        }
+        $script:entities = @(
+            (New-Entity 'PCI\VEN_8086&DEV_51F0\1' 'Intel(R) Wi-Fi 6 AX201' 'Net' 0 'PCI\VEN_8086&DEV_51F0&SUBSYS_00748086')
+            (New-Entity 'PCI\VEN_10EC&DEV_8125\1' 'Realtek 2.5GbE' 'Net' 0 'PCI\VEN_10EC&DEV_8125')
+            (New-Entity 'ACPI\GENUINEINTEL\0' 'Intel Core i7' 'Processor')
+            (New-Entity 'ACPI\GENUINEINTEL\1' 'Intel Core i7' 'Processor')
+            (New-Entity 'STORAGE\VOLUME\1' 'Volume' 'Volume')
+            (New-Entity 'USB\VID_0BDA&PID_0001\1' 'Камера' 'Camera' 28 'USB\VID_0BDA&PID_0001')
+        )
+        $script:inv = @(Get-D9DeviceInventory -Entities $entities -Now ([datetime]'2026-10-11'))
+    }
+    It 'кожен пристрій з драйвером, класом, станом і віком' {
+        $inv.Count | Should -Be 6
+        $wifi = $inv | Where-Object Name -like '*Wi-Fi*'
+        $wifi.ClassName | Should -Be 'Мережа'; $wifi.Version | Should -Be '23.150.0.4'; $wifi.Inf | Should -Be 'oem50.inf'; $wifi.ThirdParty | Should -BeTrue
+        ($inv | Where-Object Name -eq 'Intel Core i7')[0].DateText | Should -Be 'вбудований'
+        ($inv | Where-Object Name -eq 'Камера').Status | Should -Be 'nodriver'
+        ($inv | Where-Object Name -eq 'Volume').Virtual | Should -BeTrue
+        ($inv | Where-Object Name -like 'Realtek*').AgeYears | Should -BeGreaterThan 4.5
+    }
+    It 'фільтри, пошук, згортання однакових, підсумок' {
+        @(Select-D9DeviceInventory $inv 'hardware').Count | Should -Be 5
+        @(Select-D9DeviceInventory $inv 'all').Count | Should -Be 6
+        @(Select-D9DeviceInventory $inv 'thirdparty').Count | Should -Be 2
+        @(Select-D9DeviceInventory $inv 'old').Name | Should -Be @('Realtek 2.5GbE')
+        @(Select-D9DeviceInventory $inv 'problems').Name | Should -Be @('Камера')
+        @(Select-D9DeviceInventory $inv 'all' 'oem50').Count | Should -Be 1
+        $g = @(Group-D9DeviceInventory (Select-D9DeviceInventory $inv 'hardware'))
+        $g.Count | Should -Be 4
+        ($g | Where-Object Name -eq 'Intel Core i7').Count | Should -Be 2
+        Get-D9DeviceInventorySummary $inv | Should -Match 'Пристроїв: 6 \(обладнання — 5\), сторонніх драйверів: 2, з проблемами: 1.*: 1\.$'
+    }
+    It 'CSV з роздільником регіональних налаштувань і BOM' {
+        $f = Join-Path $TestDrive 'dev.csv'
+        Export-D9DeviceInventoryCsv $inv $f
+        [IO.File]::ReadAllBytes($f)[0..2] | Should -Be @(0xEF, 0xBB, 0xBF)
+        $rows = @(Import-Csv $f -Delimiter ((Get-Culture).TextInfo.ListSeparator) -Encoding UTF8)
+        $rows.Count | Should -Be 6
+        ($rows | Where-Object INF -eq 'oem50.inf').'Підписаний' | Should -Be 'так'
+    }
+}
+
 Describe 'Розпізнавання пристроїв' {
     It 'PCI: Wi-Fi Qualcomm Atheros QCA9377 (Acer ES1-522)' {
         $d = Resolve-D9Device @('PCI\VEN_168C&DEV_0042&SUBSYS_0806105B&REV_31')

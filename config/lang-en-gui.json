@@ -1,6 +1,14 @@
 {
   "note": "English strings for src/ui/Gui.ps1 (T-D9 templates). Key = exact Ukrainian template; {0}, {1}… are placeholders.",
   "strings": {
+    "Виробник: {0}": "Manufacturer: {0}",
+    "Не вдалося зберегти: {0}": "Couldn\u0027t save: {0}",
+    "НЕ підписаний": "NOT signed",
+    "підписаний": "signed",
+    "Показано: {0}. Наведіть мишку на рядок — ID обладнання, INF-файл і виробник.": "Shown: {0}. Hover over a row for the hardware ID, INF file and manufacturer.",
+    "Пристрої й драйвери": "Devices and drivers",
+    "Розпізнано: {0}": "Recognized as: {0}",
+    "старий ({0} р.)": "old ({0} yr)",
     "Windows не віддає даних батареї.": "Windows does not report battery data.",
     "Ємність з {0} по {1} (шкала {2}–100%)": "Capacity from {0} to {1} (scale {2}–100%)",
     "Застосувати": "Apply",

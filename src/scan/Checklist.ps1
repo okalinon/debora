@@ -84,7 +84,7 @@ function New-D9Checklist {
         & $use $space
     }
     # 52 — очищення вручну (Windows.old, кеш браузерів, «Завантаження»...)
-    foreach ($x in (& $free | Where-Object { $_.category -eq 'cleanliness' -and $_.fix.type -eq 'manual' })) { & $manual 52 $x }
+    foreach ($x in (& $free | Where-Object { $_.category -eq 'cleanliness' -and $_.fix.type -in 'manual', 'files' })) { & $manual 52 $x }
     # 55 — небажані сторонні програми: видалення деінсталяторами (тихо, де можливо)
     foreach ($x in (& $free | Where-Object checkId -eq 'perf.known-bloat')) {
         if ($x.fix.type -eq 'uninstall') {
@@ -137,6 +137,7 @@ function New-D9Checklist {
 
     # 12-75 — обслуговування: один крок на кожну дію, навіть якщо до неї ведуть кілька знахідок
     foreach ($name in $script:D9MaintenanceActions.Keys) {
+        if ($script:D9MaintenanceActions[$name].OnRequest) { continue }   # лише кнопкою «Виправити» в знахідці
         $fs = @(& $free | Where-Object { $_.fix.type -eq 'maintenance' -and $_.fix.action -eq $name })
         if (-not $fs) { continue }
         $existing = $items | Where-Object { $_.action.type -eq 'maintenance' -and $_.action.action -eq $name } | Select-Object -First 1
@@ -287,6 +288,10 @@ function Invoke-D9ChecklistStep {
                 if ($bad) { $Item.note = (T-D9 'не видалено: {0}' (($bad.name) -join ', ')) }
             }
         }
+        'files' {
+            $n = Move-D9FilesToRecycleBin -Paths @($Item.action.paths)
+            $Item.note = (T-D9 'у Кошик: {0}' $n)
+        }
         'apps' {
             $res = @(Update-D9Apps -Ids @($Item.action.ids))
             $bad = @($res | Where-Object { $_.result -in 'failed', 'notFound' })
@@ -326,6 +331,7 @@ function New-D9ChecklistItemForFinding {
         }
         'apps'        { if (@($fix.ids).Count) { @{ type = 'apps'; ids = @($fix.ids) } } }
         'uninstall'   { if (@($fix.names).Count) { @{ type = 'uninstall'; names = @($fix.names) } } }
+        'files'       { $p = @($f.data.items | Where-Object { $_.path } | ForEach-Object { [string]$_.path }); if ($p) { @{ type = 'files'; paths = $p } } }
     }
     # Пристрій без драйвера: Debora шукає драйвери в інтернеті сама (як крок 29 чекліста)
     if (-not $action -and $f.checkId -eq 'upd.problem-devices') { $action = @{ type = 'maintenance'; action = 'driverUpdate' } }
@@ -357,6 +363,7 @@ function Get-D9FindingFixPreview {
         'restorePoint' { return (T-D9 'Створити точку відновлення') }
         'apps'         { return (T-D9 'Оновити через winget: {0}' (@($a.ids) -join ', ')) }
         'uninstall'    { return (T-D9 'Видалити програми: {0}. Залишки (папки й записи реєстру) — у Кошик і резервну копію .reg.' (@($a.names) -join ', ')) }
+        'files'        { return ((T-D9 'Перенести в Кошик ({0}):' @($a.paths).Count) + "`r`n" + (@($a.paths) -join "`r`n")) }
     }
 }
 
@@ -365,6 +372,7 @@ function Test-D9FindingFixNeedsAdmin {
     param([Parameter(Mandatory)]$Finding, $Catalog)
     $item = New-D9ChecklistItemForFinding $Finding
     if (-not $item) { return $false }
+    if ($item.action.type -eq 'files') { return [bool](@($item.action.paths | Where-Object { $_ -notlike "$env:USERPROFILE\*" }).Count) }
     $actions = switch ($item.action.type) {
         'actions' { @($Finding.fix.actions) }
         'tweaks'  { if ($Catalog) { @($item.action.ids | ForEach-Object { Get-D9Tweak $Catalog $_ } | Where-Object { $_ } | ForEach-Object { $_.actions }) } }
@@ -377,8 +385,9 @@ function Test-D9FindingFixNeedsAdmin {
 # Точка відновлення: перед твіками й діями її робить рушій, перед іншим — ця функція; -NoRestorePoint — уже є.
 # Повертає { Done; Fixed; Fresh (нові знахідки цієї перевірки); Reboot; Note }
 function Invoke-D9FindingFix {
-    param([Parameter(Mandatory)]$Finding, [Parameter(Mandatory)]$Context, [switch]$NoRestorePoint)
+    param([Parameter(Mandatory)]$Finding, [Parameter(Mandatory)]$Context, [switch]$NoRestorePoint, [string[]]$Paths)
     $item = New-D9ChecklistItemForFinding $Finding
+    if ($item -and $item.action.type -eq 'files' -and $PSBoundParameters.ContainsKey('Paths')) { $item.action.paths = @($Paths) }
     if (-not $item) { return [pscustomobject]@{ Done = $false; Fixed = $false; Fresh = @($Finding); Reboot = $false; Note = (T-D9 'Це потрібно зробити вручну.') } }
     $list = [pscustomobject]@{ items = @($item) }
     $type = $item.action.type

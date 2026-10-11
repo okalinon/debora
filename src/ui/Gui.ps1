@@ -40,7 +40,8 @@ public class D9Row : INotifyPropertyChanged {
     public object Items { get; set; }   // вкладений перелік (файли й папки знахідки)
     public string Hint { get; set; }
     // Кнопка дії в рядку знахідки («Виправити» / «Як виправити»); null — кнопки немає
-    string fixLabel; string fixTip;
+    string fixLabel; string fixTip; string guideLabel;
+    public string GuideLabel { get { return guideLabel; } set { guideLabel = value; On("GuideLabel"); } }
     public string FixLabel { get { return fixLabel; } set { fixLabel = value; On("FixLabel"); } }
     public string FixTip { get { return fixTip; } set { fixTip = value; On("FixTip"); } }
 }
@@ -121,7 +122,7 @@ function Show-D9TextDialog {
     $box.VerticalScrollBarVisibility = 'Auto'; $box.HorizontalScrollBarVisibility = 'Auto'
     [void]$dock.Children.Add($box)
     $ok = New-Object Windows.Controls.Button; $ok.Content = $(if ($InfoOnly) { T-D9 'Закрити' } else { $OkText }); $ok.Margin = '0,0,8,0'; $ok.IsDefault = $true; if ($Owner) { $ok.Style = $Owner.FindResource('Primary') }
-    $ok.Add_Click({ $w.DialogResult = $true })
+    $ok.Add_Click({ param($s) [Windows.Window]::GetWindow($s).DialogResult = $true })
     [void]$buttons.Children.Add($ok)
     if (-not $InfoOnly) {
         $cancel = New-Object Windows.Controls.Button; $cancel.Content = (T-D9 'Скасувати'); $cancel.Margin = '0'; $cancel.IsCancel = $true
@@ -129,6 +130,69 @@ function Show-D9TextDialog {
     }
     $w.Content = $dock
     return [bool]$w.ShowDialog()
+}
+
+# Вибір файлів знахідки (галочки, розмір, дата) → вибрані шляхи або $null. Усе відмічено; «Відкрити» — у Провіднику.
+function Show-D9FilesDialog {
+    param($Owner, [string]$Title, [object[]]$Items)
+    $w = New-D9FilesWindow $Owner $Title $Items
+    if (-not $w.ShowDialog()) { return $null }
+    @($w.Tag.Boxes | Where-Object { $_.IsChecked } | ForEach-Object { [string]$_.Tag })
+}
+
+# Підсумок «Вибрано: N (розмір)» у вікні вибору файлів (обробники WPF не бачать локальних змінних — усе через Tag вікна)
+function Update-D9FilesSummary {
+    param($Window)
+    $sel = @($Window.Tag.Boxes | Where-Object IsChecked)
+    $Window.Tag.Sum.Text = T-D9 'Вибрано: {0} ({1})' $sel.Count (Format-D9Size ([long](($sel | ForEach-Object { [long]$_.Uid } | Measure-Object -Sum).Sum)))
+}
+
+function New-D9FilesWindow {
+    param($Owner, [string]$Title, [object[]]$Items)
+    $w = New-Object Windows.Window
+    $w.Title = T-D9 'Виправити'; $w.Width = 760; $w.Height = 620
+    if ($Owner -and $Owner.IsLoaded) { $w.Owner = $Owner }
+    $w.WindowStartupLocation = 'CenterOwner'; $w.FontFamily = 'Segoe UI Variable Text, Segoe UI'; $w.FontSize = 14
+    if ($Owner) { $w.Resources = $Owner.Resources; $w.Background = $Owner.Background; $w.Foreground = $Owner.Foreground }
+    $dock = New-Object Windows.Controls.DockPanel; $dock.Margin = '20'
+    $h = New-Object Windows.Controls.TextBlock; $h.Text = $Title; $h.TextWrapping = 'Wrap'; $h.FontSize = 18; $h.FontWeight = 'SemiBold'; $h.Margin = '0,0,0,6'
+    [Windows.Controls.DockPanel]::SetDock($h, 'Top'); [void]$dock.Children.Add($h)
+    $note = New-Object Windows.Controls.TextBlock; $note.TextWrapping = 'Wrap'; $note.Opacity = 0.75; $note.Margin = '0,0,0,10'
+    $note.Text = T-D9 'Зніміть галочки з того, що ще потрібне. Вибране буде перенесено в Кошик — звідти файл можна відновити.'
+    [Windows.Controls.DockPanel]::SetDock($note, 'Top'); [void]$dock.Children.Add($note)
+    $buttons = New-Object Windows.Controls.DockPanel; $buttons.Margin = '0,12,0,0'
+    [Windows.Controls.DockPanel]::SetDock($buttons, 'Bottom'); [void]$dock.Children.Add($buttons)
+    $list = New-Object Windows.Controls.StackPanel
+    $boxes = New-Object 'System.Collections.Generic.List[object]'
+    $sum = New-Object Windows.Controls.TextBlock; $sum.VerticalAlignment = 'Center'
+    foreach ($i in @($Items | Where-Object { $_ -and $_.path })) {
+        $row = New-Object Windows.Controls.DockPanel; $row.Margin = '0,3,0,3'
+        $open = New-Object Windows.Controls.Button; $open.Content = (T-D9 'Відкрити в Провіднику'); $open.Tag = "select:$($i.path)"; $open.Margin = '12,0,0,0'
+        if ($Owner) { $open.Style = $Owner.FindResource('LinkButton') }
+        $open.Add_Click({ param($s) $p = $s.Tag.Substring(7); try { Start-Process explorer.exe "/select,`"$p`"" } catch { } })
+        [Windows.Controls.DockPanel]::SetDock($open, 'Right'); [void]$row.Children.Add($open)
+        $date = ''; try { $date = ([datetime]$i.date).ToString('dd.MM.yyyy') } catch { }
+        $meta = New-Object Windows.Controls.TextBlock; $meta.Text = "$(Format-D9Size ([long]$i.bytes))   $date"; $meta.Opacity = 0.7; $meta.Margin = '12,0,0,0'; $meta.VerticalAlignment = 'Center'
+        [Windows.Controls.DockPanel]::SetDock($meta, 'Right'); [void]$row.Children.Add($meta)
+        $cb = New-Object Windows.Controls.CheckBox; $cb.IsChecked = $true; $cb.Tag = [string]$i.path; $cb.Uid = [string][long]$i.bytes
+        $cb.Content = Split-Path ([string]$i.path) -Leaf; $cb.ToolTip = [string]$i.path; $cb.VerticalAlignment = 'Center'
+        $cb.Add_Click({ param($s) Update-D9FilesSummary ([Windows.Window]::GetWindow($s)) })
+        [void]$row.Children.Add($cb); [void]$boxes.Add($cb); [void]$list.Children.Add($row)
+    }
+    $sv = New-Object Windows.Controls.ScrollViewer; $sv.VerticalScrollBarVisibility = 'Auto'; $sv.Content = $list
+    [void]$dock.Children.Add($sv)
+    $right = New-Object Windows.Controls.StackPanel; $right.Orientation = 'Horizontal'
+    $ok = New-Object Windows.Controls.Button; $ok.Content = (T-D9 'У Кошик'); $ok.Margin = '0,0,8,0'; $ok.IsDefault = $true
+    if ($Owner) { $ok.Style = $Owner.FindResource('Primary') }
+    $ok.Add_Click({ param($s) [Windows.Window]::GetWindow($s).DialogResult = $true })
+    $cancel = New-Object Windows.Controls.Button; $cancel.Content = (T-D9 'Скасувати'); $cancel.Margin = '0'; $cancel.IsCancel = $true
+    [void]$right.Children.Add($ok); [void]$right.Children.Add($cancel)
+    [Windows.Controls.DockPanel]::SetDock($right, 'Right'); [void]$buttons.Children.Add($right)
+    [void]$buttons.Children.Add($sum)
+    $w.Content = $dock
+    $w.Tag = @{ Boxes = $boxes; Sum = $sum }
+    Update-D9FilesSummary $w
+    $w
 }
 
 # «Як виправити»: опис знахідки, нумеровані кроки й посилання-кнопки (ms-settings:, .exe, сайти)
@@ -172,7 +236,7 @@ function New-D9GuideWindow {
     [void]$dock.Children.Add($sv)
     $ok = New-Object Windows.Controls.Button; $ok.Content = (T-D9 'Закрити'); $ok.Margin = '0'; $ok.IsDefault = $true; $ok.IsCancel = $true
     if ($Owner) { $ok.Style = $Owner.FindResource('Primary') }
-    $ok.Add_Click({ $w.DialogResult = $true })
+    $ok.Add_Click({ param($s) [Windows.Window]::GetWindow($s).DialogResult = $true })
     [void]$buttons.Children.Add($ok)
     $w.Content = $dock
     $w
@@ -439,9 +503,11 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $pen = Get-D9FindingPenalty $f
             $items = ConvertTo-D9UiItems $(if ($f.data) { $f.data.items } else { $null })
             $fixKind = Get-D9FindingFixKind $f -Config $state.ChecksConfig
+            $hasGuide = $fixKind -eq 'guide' -or @(Get-D9FindingGuide $f $state.ChecksConfig).Count
             New-D9Row @{ Badge = $st.Badge; Color = $st.Color; Title = $f.title; Detail = $f.details; Links = (ConvertTo-D9UiLinks $f.links); Tag = $f
-                         FixLabel = $(switch ($fixKind) { 'fix' { T-D9 'Виправити' } 'guide' { T-D9 'Як виправити' } default { $null } })
-                         FixTip = $(switch ($fixKind) { 'fix' { T-D9 'Debora виправить це сама: спершу покаже, що саме зміниться' } 'guide' { T-D9 'Покрокова інструкція: що і де зробити' } default { $null } })
+                         FixLabel = $(if ($fixKind -eq 'fix') { T-D9 'Виправити' } else { $null })
+                         FixTip = $(if ($fixKind -eq 'fix') { T-D9 'Debora виправить це сама: спершу покаже, що саме зміниться' } else { $null })
+                         GuideLabel = $(if ($hasGuide) { T-D9 'Як виправити' } else { $null })
                          Items = $items; Hint = $(if ($items) { T-D9 '{0} файлів і папок — натисніть, щоб побачити перелік' $items.Count } else { '' })
                          Kind = $(if ($pen) { "−$pen" } else { '' }); Note = $(if ($categoryId) { T-D9 ($script:D9SevUi[[string]$f.severity].Name) } else { "$($state.CategoryNames[[string]$f.category]) · $(T-D9 ($script:D9SevUi[[string]$f.severity].Name))" }) }
         })
@@ -469,26 +535,34 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.FindingsList.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{
         param($sender, $e)
         $b = $e.OriginalSource
-        if (-not ($b -is [Windows.Controls.Button]) -or $b.Name -ne 'BtnFindingFix') { return }
+        if (-not ($b -is [Windows.Controls.Button]) -or $b.Name -notin 'BtnFindingFix', 'BtnFindingGuide') { return }
         $e.Handled = $true
         $f = $b.Tag.Tag
         if (-not $f) { return }
-        if ((Get-D9FindingFixKind $f -Config $state.ChecksConfig) -ne 'fix') {
+        if ($b.Name -eq 'BtnFindingGuide' -or (Get-D9FindingFixKind $f -Config $state.ChecksConfig) -ne 'fix') {
             Show-D9GuideDialog $win $f.title $f.details @(Get-D9FindingGuide $f $state.ChecksConfig) @($f.links)
             return
         }
         if ($state.Job) { [void][Windows.MessageBox]::Show($win, (T-D9 'Зачекайте, поки завершиться поточна операція.'), 'Debora'); return }
         if ((Test-D9FindingFixNeedsAdmin $f $Catalog) -and -not (& $needAdmin)) { return }
-        $ctx = New-D9ScanContext -Catalog $Catalog -SystemInfo $SystemInfo -ScanConfig ([pscustomobject]@{ Checks = $state.ChecksConfig })
-        $preview = try { Get-D9FindingFixPreview -Finding $f -Context $ctx } catch { '' }
-        $rp = if ($state.FixRestorePoint) { T-D9 'Точку відновлення в цьому сеансі вже створено.' } else { T-D9 'Перед змінами Debora створить точку відновлення.' }
-        if (-not (Show-D9TextDialog $win (T-D9 'Виправити') ((T-D9 'Що буде зроблено: {0}' $f.title) + "`n" + $rp + ' ' + (T-D9 'Зміни можна скасувати на вкладці «Журнал змін».')) $preview (T-D9 'Виправити'))) { return }
+        $paths = $null
+        if ($f.fix.type -eq 'files') {
+            # Особисті файли: людина сама вибирає, що прибрати; усе — у Кошик
+            $paths = Show-D9FilesDialog $win $f.title @($f.data.items)
+            if (-not $paths) { return }
+        } else {
+            $ctx = New-D9ScanContext -Catalog $Catalog -SystemInfo $SystemInfo -ScanConfig ([pscustomobject]@{ Checks = $state.ChecksConfig })
+            $preview = try { Get-D9FindingFixPreview -Finding $f -Context $ctx } catch { '' }
+            $rp = if ($state.FixRestorePoint) { T-D9 'Точку відновлення в цьому сеансі вже створено.' } else { T-D9 'Перед змінами Debora створить точку відновлення.' }
+            if (-not (Show-D9TextDialog $win (T-D9 'Виправити') ((T-D9 'Що буде зроблено: {0}' $f.title) + "`n" + $rp + ' ' + (T-D9 'Зміни можна скасувати на вкладці «Журнал змін».')) $preview (T-D9 'Виправити'))) { return }
+        }
         $ui.LogExpander.IsExpanded = $true
         & $startJob (T-D9 'Виправлення: {0}' $f.title) {
             param($a)
             $ctx = New-D9ScanContext -Catalog $a.Catalog -SystemInfo $a.Sys
-            Invoke-D9FindingFix -Finding $a.Finding -Context $ctx -NoRestorePoint:$a.NoRp
-        } @{ Catalog = $Catalog; Sys = $SystemInfo; Finding = $f; NoRp = [bool]$state.FixRestorePoint } {
+            if ($a.Paths) { Invoke-D9FindingFix -Finding $a.Finding -Context $ctx -NoRestorePoint:$a.NoRp -Paths $a.Paths }
+            else { Invoke-D9FindingFix -Finding $a.Finding -Context $ctx -NoRestorePoint:$a.NoRp }
+        } @{ Catalog = $Catalog; Sys = $SystemInfo; Finding = $f; NoRp = [bool]$state.FixRestorePoint; Paths = $paths } {
             param($r, $c)
             $state.FixRestorePoint = $true
             if ($state.Scan) {

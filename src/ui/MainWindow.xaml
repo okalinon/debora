@@ -608,10 +608,18 @@
                       <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" VerticalAlignment="Top" Margin="12,2,4,0"/>
                       <!-- Дія знахідки: «Виправити» (Debora зробить сама) або «Як виправити» (покрокова інструкція) -->
                       <Button x:Name="BtnFindingFix" DockPanel.Dock="Right" Content="{Binding FixLabel}" Tag="{Binding}" ToolTip="{Binding FixTip}"
-                              Padding="13,5" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Top">
+                              Padding="13,5" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Top">
                         <Button.Style>
                           <Style TargetType="Button" BasedOn="{StaticResource Chip}">
                             <Style.Triggers><DataTrigger Binding="{Binding FixLabel}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding FixLabel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                          </Style>
+                        </Button.Style>
+                      </Button>
+                      <Button x:Name="BtnFindingGuide" DockPanel.Dock="Right" Content="{Binding GuideLabel}" Tag="{Binding}" ToolTip="Покрокова інструкція: що і де зробити"
+                              Padding="13,5" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Top">
+                        <Button.Style>
+                          <Style TargetType="Button" BasedOn="{StaticResource Chip}">
+                            <Style.Triggers><DataTrigger Binding="{Binding GuideLabel}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding GuideLabel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                           </Style>
                         </Button.Style>
                       </Button>

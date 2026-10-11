@@ -21,6 +21,10 @@ $script:D9MaintenanceActions = [ordered]@{
     vcRedist       = @{ Group = 69; Fn = 'Repair-D9VcRedist';           Title = 'Перевстановити бібліотеки Visual C++' }
     searchReset    = @{ Group = 73; Fn = 'Reset-D9SearchIndex';         Title = 'Перебудувати пошуковий індекс Windows' }
     memoryTest     = @{ Group = 85; Fn = 'Invoke-D9MemoryTestOnReboot'; Title = 'Перевірити оперативну пам''ять під час перезавантаження' }
+    cbsLogs        = @{ Group = 53; Fn = 'Clear-D9CbsLogs';             Title = 'Видалити старі журнали обслуговування Windows (CBS)' }
+    # OnRequest — лише кнопкою «Виправити» в знахідці, не в «Сканувати й виправити все»
+    iconCache      = @{ Group = 53; Fn = 'Reset-D9IconCache';           Title = 'Скинути кеш значків і ескізів'; OnRequest = $true }
+    windowsOld     = @{ Group = 54; Fn = 'Remove-D9WindowsOld';         Title = 'Видалити попередню версію Windows (Windows.old)'; OnRequest = $true }
 }
 
 # Назва кроку обслуговування поточною мовою (Title у таблиці — український шаблон для T-D9)

@@ -63,7 +63,7 @@ function Test-D9CleanWindowsOld {
     param($Check, $Ctx)
     $items = @((Get-D9FolderItem "$env:SystemDrive\Windows.old" 4000), (Get-D9FolderItem "$env:SystemDrive\`$WINDOWS.~BT" 2000), (Get-D9FolderItem "$env:SystemDrive\`$Windows.~WS" 2000))
     $b = [long](($items | ForEach-Object bytes | Measure-Object -Sum).Sum)
-    New-D9SpaceFinding $Check $b -Items $items (T-D9 'Попередня версія Windows займає {size}') (T-D9 'Windows.old потрібна лише для відкату на попередню версію (10 днів після оновлення). Видалення: Параметри → Система → Сховище → Тимчасові файли → «Попередня інсталяція Windows».') @{ type = 'manual' } @((New-D9Link (T-D9 'Тимчасові файли') 'ms-settings:storagepolicies'))
+    New-D9SpaceFinding $Check $b -Items $items (T-D9 'Попередня версія Windows займає {size}') (T-D9 'Windows.old потрібна лише для відкату на попередню версію (10 днів після оновлення). Debora видалить її штатним «Очищенням диска»; після цього відкотити оновлення не вийде.') @{ type = 'maintenance'; action = 'windowsOld' } @((New-D9Link (T-D9 'Тимчасові файли') 'ms-settings:storagepolicies'))
 }
 
 function Test-D9CleanDumps {
@@ -96,13 +96,13 @@ function Test-D9CleanOldDownloads {
     $cutoff = $Ctx.Now.AddDays(-$Check.thresholds.days)
     $files = @(Get-ChildItem $downloads -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.exe', '.msi', '.iso', '.zip', '.rar', '.7z', '.img' -and $_.LastWriteTime -lt $cutoff })
     $b = [long]($files | Measure-Object Length -Sum).Sum
-    New-D9SpaceFinding $Check $b (T-D9 'Старі інсталятори й архіви в «Завантаженнях»: {{size}} ({0} файлів)' $files.Count) (T-D9 'Файли .exe, .msi, .iso, .zip старші за {0} днів. Перегляньте й видаліть непотрібні: {1}' $Check.thresholds.days $downloads) @{ type = 'manual' } @((New-D9Link (T-D9 'Відкрити «Завантаження»') $downloads)) -Items @(Get-D9FileItem $files)
+    New-D9SpaceFinding $Check $b (T-D9 'Старі інсталятори й архіви в «Завантаженнях»: {{size}} ({0} файлів)' $files.Count) (T-D9 'Файли .exe, .msi, .iso, .zip старші за {0} днів. Позначте непотрібні — Debora перенесе їх у Кошик: {1}' $Check.thresholds.days $downloads) @{ type = 'files' } @((New-D9Link (T-D9 'Відкрити «Завантаження»') $downloads)) -Items @(Get-D9FileItem $files)
 }
 
 function Test-D9CleanThumbnails {
     param($Check, $Ctx)
     $b = [long](Get-ChildItem "$env:LOCALAPPDATA\Microsoft\Windows\Explorer" -Filter 'thumbcache_*.db' -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
-    New-D9SpaceFinding $Check $b (T-D9 'Кеш мініатюр займає {size}') (T-D9 'Видалити: «Очищення диска» → «Ескізи». Мініатюри відновляться самі.') @{ type = 'manual' } @((New-D9Link (T-D9 'Очищення диска') 'cleanmgr.exe'))
+    New-D9SpaceFinding $Check $b (T-D9 'Кеш мініатюр займає {size}') (T-D9 'Debora скине кеш (Провідник на мить перезапуститься). Мініатюри відновляться самі.') @{ type = 'maintenance'; action = 'iconCache' } @((New-D9Link (T-D9 'Очищення диска') 'cleanmgr.exe'))
 }
 
 function Test-D9CleanDoCache {
@@ -114,7 +114,7 @@ function Test-D9CleanDoCache {
 function Test-D9CleanCbsLogs {
     param($Check, $Ctx)
     $b = Get-D9FolderSize "$env:SystemRoot\Logs\CBS"
-    New-D9SpaceFinding $Check $b (T-D9 'Журнали обслуговування Windows (CBS): {size}') (T-D9 'Великий розмір — ознака проблем з оновленнями. Видаляються через «Очищення диска» → «Очистити системні файли» → «Файли журналу Windows Update».') @{ type = 'manual' } @((New-D9Link (T-D9 'Очищення диска') 'cleanmgr.exe'))
+    New-D9SpaceFinding $Check $b (T-D9 'Журнали обслуговування Windows (CBS): {size}') (T-D9 'Великий розмір — ознака проблем з оновленнями. Debora видалить старі архіви журналів; поточний журнал лишиться.') @{ type = 'maintenance'; action = 'cbsLogs' } @((New-D9Link (T-D9 'Очищення диска') 'cleanmgr.exe'))
 }
 
 function Test-D9Hiberfile {

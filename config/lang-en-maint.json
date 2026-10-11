@@ -1,4 +1,4 @@
-{
+﻿{
   "note": "English strings for maintenance (src/maintenance) and drivers (src/drivers). Key = exact Ukrainian template passed to T-D9; {0}, {1}... are placeholders.",
   "strings": {
     "Драйвери з інтернету (каталог Microsoft і Windows Update)": "Drivers from the internet (Microsoft catalog and Windows Update)",
@@ -370,6 +370,15 @@
     "Антивірусні бази Захисника": "Defender antivirus definitions",
     "Оновлення програм (winget)": "Apps update (winget)",
     "Новіші драйвери (каталог Microsoft, лише рекомендовані)": "Drivers — newer versions (Microsoft catalog, recommended only)",
-    "Оновлення Windows": "Windows updates"
+    "Оновлення Windows": "Windows updates",
+    "Windows.old ще є — частину файлів Windows видалить після перезавантаження.": "Windows.old is still there — Windows will remove some of the files after a restart.",
+    "Видалення попередньої версії Windows через «Очищення диска» (кілька хвилин)...": "Removing the previous Windows version with Disk Cleanup (a few minutes)...",
+    "Видалено старих журналів CBS: {0} з {1} ({2}).": "Old CBS logs deleted: {0} of {1} ({2}).",
+    "Не вдалося перенести в Кошик {0}: {1}": "Couldn't move {0} to the Recycle Bin: {1}",
+    "Перенесено в Кошик: {0}. Відновити можна з Кошика.": "Moved to the Recycle Bin: {0}. You can restore them from the Recycle Bin.",
+    "Попередню версію Windows видалено, звільнено близько {0}.": "The previous Windows version was removed, about {0} freed.",
+    "Видалити старі журнали обслуговування Windows (CBS)": "Delete old Windows servicing logs (CBS)",
+    "Скинути кеш значків і ескізів": "Reset the icon and thumbnail cache",
+    "Видалити попередню версію Windows (Windows.old)": "Remove the previous Windows version (Windows.old)"
   }
 }

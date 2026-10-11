@@ -539,3 +539,65 @@ Describe 'Дія в знахідці («Виправити» / «Як випра
         $scan.score.overall | Should -BeGreaterThan $before
     }
 }
+
+Describe 'Виправлення файлів і дій «на вимогу»' {
+    BeforeAll {
+        $items = @([pscustomobject]@{ path = "$env:USERPROFILE\Downloads\a.exe"; bytes = 3MB; date = '2026-01-01T00:00:00'; kind = 'file' },
+                   [pscustomobject]@{ path = "$env:USERPROFILE\Downloads\b.zip"; bytes = 1MB; date = '2026-01-01T00:00:00'; kind = 'file' })
+        $script:fFiles = New-TestFinding 'clean.old-downloads' 'cleanliness' 'warning' @{ type = 'files' } -Data ([pscustomobject]@{ bytes = 4MB; items = $items })
+        $script:fOld = New-TestFinding 'clean.windows-old' 'cleanliness' 'warning' @{ type = 'maintenance'; action = 'windowsOld' }
+        $script:fThumb = New-TestFinding 'clean.thumbnails' 'cleanliness' 'suggestion' @{ type = 'maintenance'; action = 'iconCache' }
+        $script:fCbs = New-TestFinding 'clean.cbs-logs' 'cleanliness' 'suggestion' @{ type = 'maintenance'; action = 'cbsLogs' }
+    }
+    It 'файли знахідки → крок «у Кошик», без прав адміністратора для папки користувача' {
+        $i = New-D9ChecklistItemForFinding $fFiles
+        $i.action.type | Should -Be 'files'
+        @($i.action.paths).Count | Should -Be 2
+        Get-D9FindingFixKind $fFiles | Should -Be 'fix'
+        Test-D9FindingFixNeedsAdmin $fFiles | Should -BeFalse
+        (Get-D9FindingFixPreview -Finding $fFiles -Context ([pscustomobject]@{ Catalog = $catalog; System = (New-TestSystemInfo) })) | Should -Match 'b\.zip'
+    }
+    It 'виконує лише вибрані файли (-Paths)' {
+        $script:moved = $null
+        Mock Move-D9FilesToRecycleBin { $script:moved = @($Paths); 1 }
+        Mock Invoke-D9Scan { [pscustomobject]@{ findings = @() } }
+        Mock New-D9RestorePoint { 'rp' }
+        $r = Invoke-D9FindingFix -Finding $fFiles -Context ([pscustomobject]@{ Catalog = $catalog; System = (New-TestSystemInfo) }) -Paths @("$env:USERPROFILE\Downloads\b.zip")
+        $r.Done | Should -BeTrue
+        $script:moved | Should -Be @("$env:USERPROFILE\Downloads\b.zip")
+        Should -Invoke New-D9RestorePoint -Times 0 -Exactly   # Кошик і є «відкат»
+    }
+    It 'кеш мініатюр, журнали CBS і Windows.old — кнопкою «Виправити»; у «виправити все» — лише CBS' {
+        foreach ($x in $fOld, $fThumb, $fCbs) { Get-D9FindingFixKind $x | Should -Be 'fix' -Because $x.checkId }
+        $list = New-D9Checklist -Scan (New-TestScan @($fFiles, $fOld, $fThumb, $fCbs)) -Catalog $catalog
+        $auto = @($list.items | Where-Object auto | ForEach-Object { $_.action.action })
+        $auto | Should -Contain 'cbsLogs'
+        $auto | Should -Not -Contain 'windowsOld'
+        $auto | Should -Not -Contain 'iconCache'
+        @($list.items | Where-Object { $_.action.type -eq 'files' }).Count | Should -Be 0
+    }
+}
+
+Describe 'Помилки диска: пошкоджені блоки окремо від файлової системи' {
+    It 'bad block (disk 7) — ручна знахідка про залізо без chkdsk; Ntfs 55 — chkdsk' {
+        $now = Get-Date
+        $evts = @(
+            1..4 | ForEach-Object { [pscustomobject]@{ ProviderName = 'disk'; Id = 7; TimeCreated = $now.AddHours(-1); Message = 'The device, \Device\Harddisk1\DR1, has a bad block.' } }
+            [pscustomobject]@{ ProviderName = 'Ntfs'; Id = 55; TimeCreated = $now.AddDays(-2); Message = 'corruption' }
+        )
+        Mock Get-D9EventCount { $evts }
+        Mock Get-CimInstance { [pscustomobject]@{ DiskNumber = 1 } } -ParameterFilter { $ClassName -eq 'MSFT_Partition' }
+        Mock Get-D9VolumeIndex { @{} }
+        Mock Test-D9NtfsEventOnSystem { $true }
+        $check = [pscustomobject]@{ id = 'stab.disk-errors'; category = 'disk'; thresholds = [pscustomobject]@{ days = 30 } }
+        $f = @(Test-D9DiskErrors $check ([pscustomobject]@{ Now = $now; IsAdmin = $false }))
+        $f.Count | Should -Be 2
+        $blocks = $f | Where-Object key -eq 'stab.disk-errors:blocks'
+        $blocks.severity | Should -Be 'critical'
+        $blocks.fix.type | Should -Be 'manual'
+        $blocks.details | Should -Match 'chkdsk'
+        $blocks.details | Should -Match 'наростає'
+        ($f | Where-Object key -eq 'stab.disk-errors:fs').fix.action | Should -Be 'chkdskScan'
+        Get-D9FindingGuide $blocks | Should -Not -BeNullOrEmpty
+    }
+}

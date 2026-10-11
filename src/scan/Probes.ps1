@@ -496,14 +496,30 @@ function Test-D9DiskErrors {
         else { Test-D9NtfsEventOnSystem $_ $volumes }
     })
     $other = $events.Count - $onSystem.Count
-    $bad = @($onSystem | Where-Object { $_.Id -in 7, 55, 98 })
-    $last = ($onSystem | Sort-Object TimeCreated -Descending | Select-Object -First 1).TimeCreated
-    $details = T-D9 'Зробіть резервну копію важливих файлів. Перевірте диск: командний рядок від адміністратора → chkdsk C: /scan.'
-    $details += ' ' + $(if ($Ctx.IsAdmin) { T-D9 'Стан SMART (температура, знос, помилки) — вкладка «Обслуговування» → «Стан дисків».' } else { T-D9 'Для перевірки SMART запустіть сканування від адміністратора.' })
-    if ($bad.Count) {
-        $severity = if ($bad.Count -ge 3) { 'critical' } else { 'warning' }
-        return New-D9Finding $Check $severity (T-D9 'Пошкоджені сектори або помилки файлової системи на системному диску: {0} за {1} днів (остання {2})' $bad.Count $days ($last.ToString('dd.MM.yyyy'))) (T-D9 '{0} Debora перевірить файлову систему (chkdsk) і, якщо треба, виправить її під час перезавантаження.' $details) @{ type = 'maintenance'; action = 'chkdskScan' }
+    $smart = if ($Ctx.IsAdmin) { T-D9 'Стан SMART (температура, знос, помилки) — вкладка «Обслуговування» → «Стан дисків».' } else { T-D9 'Для перевірки SMART запустіть сканування від адміністратора.' }
+    # Два різні випадки: пошкоджені блоки (disk 7) — сам диск не може прочитати дані, це залізо, і chkdsk тут
+    # не допоможе; помилки файлової системи (Ntfs 55, 98) — їх виправляє chkdsk
+    $blocks = @($onSystem | Where-Object { $_.ProviderName -eq 'disk' -and $_.Id -eq 7 })
+    $fsErrors = @($onSystem | Where-Object { $_.ProviderName -ne 'disk' -and $_.Id -in 55, 98 })
+    $found = @()
+    if ($blocks.Count) {
+        $lastB = ($blocks | Sort-Object TimeCreated -Descending | Select-Object -First 1).TimeCreated
+        $today = @($blocks | Where-Object { $_.TimeCreated -gt $Ctx.Now.AddDays(-1) }).Count
+        $severity = if ($blocks.Count -ge 3) { 'critical' } else { 'warning' }
+        $title = T-D9 'Системний диск повідомляє про пошкоджені блоки: {0} за {1} днів (остання {2})' $blocks.Count $days ($lastB.ToString('dd.MM.yyyy HH:mm'))
+        $details = (T-D9 'Диск сам не може прочитати частину даних — це ознака зносу або несправності накопичувача, і перевірка файлової системи (chkdsk) тут не допоможе.') + ' ' +
+            $(if ($today -ge 3) { (T-D9 'За останню добу — {0}: проблема наростає.' $today) + ' ' }) +
+            (T-D9 'Негайно скопіюйте важливі файли на інший диск або в хмару.') + ' ' + $smart
+        $found += New-D9Finding $Check $severity $title $details @{ type = 'manual' } -Key 'stab.disk-errors:blocks'
     }
+    if ($fsErrors.Count) {
+        $lastF = ($fsErrors | Sort-Object TimeCreated -Descending | Select-Object -First 1).TimeCreated
+        $severity = if ($fsErrors.Count -ge 3) { 'critical' } else { 'warning' }
+        $details = (T-D9 'Зробіть резервну копію важливих файлів.') + ' ' + $smart + ' ' + (T-D9 'Debora перевірить файлову систему (chkdsk) і, якщо треба, виправить її під час перезавантаження.')
+        $found += New-D9Finding $Check $severity (T-D9 'Помилки файлової системи на системному диску: {0} за {1} днів (остання {2})' $fsErrors.Count $days ($lastF.ToString('dd.MM.yyyy'))) $details @{ type = 'maintenance'; action = 'chkdskScan' } -Key 'stab.disk-errors:fs'
+    }
+    if ($found) { return $found }
+    $details = (T-D9 'Зробіть резервну копію важливих файлів.') + ' ' + $smart
     if ($onSystem.Count) {
         return New-D9Finding $Check warning (T-D9 'Помилки звернення до системного диска: {0} за {1} днів' $onSystem.Count $days) (T-D9 'Можливо, поганий кабель, перегрів або початок проблем з диском. {0}' $details) @{ type = 'manual' }
     }

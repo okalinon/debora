@@ -113,7 +113,8 @@ Describe 'Вікно' {
         $r.Cats | Should -Be 3
         $r.Findings.Count | Should -Be 2
         # Кнопка дії: ручна знахідка — «Як виправити», з твіком — «Виправити»; знахідка — у Tag
-        $r.Findings[0].FixLabel | Should -Be 'Як виправити'
+        $r.Findings[0].FixLabel | Should -BeNullOrEmpty
+        $r.Findings[0].GuideLabel | Should -Be 'Як виправити'
         $r.Findings[1].FixLabel | Should -Be 'Виправити'
         $r.Findings[1].Tag.checkId | Should -Be 'clean.temp'
         $r.Findings[0].Links[0].Url | Should -Be 'https://example.com'
@@ -122,6 +123,36 @@ Describe 'Вікно' {
         $r.Findings[0].Items[0].Tag | Should -Be 'select:C:\x\a.exe'
         $r.Findings[0].Items[1].Title | Should -Be 'C:\x\y'
         $r.Findings[0].Hint | Should -Match '^2 '
+    }
+
+    It 'вікна «Як виправити» і вибору файлів: кнопки працюють після показу (обробники без локальних змінних)' {
+        # Регресія: «Закрити» в «Як виправити» падало з «property DialogResult cannot be found» —
+        # обробник кліку посилався на змінну функції, якої вже не було
+        $r = Invoke-InGui {
+            function Find-Default($dep) { foreach ($c in [Windows.LogicalTreeHelper]::GetChildren($dep)) { if ($c -is [Windows.Controls.Button] -and $c.IsDefault) { return $c }; if ($c -is [Windows.DependencyObject]) { $x = Find-Default $c; if ($x) { return $x } } } }
+            $click = {
+                param($w)
+                $w.Left = -10000; $w.ShowActivated = $false
+                $w.Add_ContentRendered({ param($s) $b = Find-Default $s; $b.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent))) })
+                $t = New-Object Windows.Threading.DispatcherTimer; $t.Interval = [TimeSpan]::FromSeconds(5); $t.Tag = $w
+                $t.Add_Tick({ param($s) $s.Stop(); $s.Tag.Close() }); $t.Start()
+                $res = $w.ShowDialog(); $t.Stop(); $res
+            }
+            $guide = & $click (New-D9GuideWindow $win 'Заголовок' 'опис' @('крок 1', 'крок 2') @())
+            $items = @([pscustomobject]@{ path = 'C:\x\a.exe'; bytes = 3MB; date = '2026-01-01T00:00:00' }, [pscustomobject]@{ path = 'C:\x\b.zip'; bytes = 1MB; date = '2026-01-01T00:00:00' })
+            $fw = New-D9FilesWindow $win 'Файли' $items
+            $sumBefore = $fw.Tag.Sum.Text
+            $fw.Tag.Boxes[1].IsChecked = $false
+            $fw.Tag.Boxes[1].RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Primitives.ButtonBase]::ClickEvent)))
+            $sumAfter = $fw.Tag.Sum.Text
+            $files = & $click $fw
+            @{ Guide = $guide; Files = $files; Before = $sumBefore; After = $sumAfter; Selected = @($fw.Tag.Boxes | Where-Object IsChecked | ForEach-Object Tag) }
+        }
+        $r.Guide | Should -BeTrue
+        $r.Files | Should -BeTrue
+        $r.Before | Should -Match 'Вибрано: 2'
+        $r.After | Should -Match 'Вибрано: 1'
+        $r.Selected | Should -Be @('C:\x\a.exe')
     }
 
     It 'вкладка «Налаштування»: галочки за профілем, непридатні вимкнено' {

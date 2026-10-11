@@ -449,6 +449,18 @@
     "Паралельне сканування недоступне ({0}) — виконую послідовно.": "Parallel scanning unavailable ({0}) — running sequentially.",
     "Видалити програми: {0}. Залишки (папки й записи реєстру) — у Кошик і резервну копію .reg.": "Uninstall programs: {0}. Leftovers (folders and registry entries) go to the Recycle Bin and a .reg backup.",
     "Оновити через winget: {0}": "Update with winget: {0}",
-    "Це потрібно зробити вручну.": "This has to be done manually."
+    "Це потрібно зробити вручну.": "This has to be done manually.",
+    "Перенести в Кошик ({0}):": "Move to the Recycle Bin ({0}):",
+    "Debora скине кеш (Провідник на мить перезапуститься). Мініатюри відновляться самі.": "Debora will reset the cache (File Explorer restarts for a moment). Thumbnails come back by themselves.",
+    "Windows.old потрібна лише для відкату на попередню версію (10 днів після оновлення). Debora видалить її штатним «Очищенням диска»; після цього відкотити оновлення не вийде.": "Windows.old is only needed to roll back to the previous version (10 days after the upgrade). Debora will remove it with the built-in Disk Cleanup; after that the upgrade can't be rolled back.",
+    "Великий розмір — ознака проблем з оновленнями. Debora видалить старі архіви журналів; поточний журнал лишиться.": "A large size is a sign of update problems. Debora will delete the old log archives; the current log stays.",
+    "Файли .exe, .msi, .iso, .zip старші за {0} днів. Позначте непотрібні — Debora перенесе їх у Кошик: {1}": ".exe, .msi, .iso, .zip files older than {0} days. Tick the ones you don't need — Debora will move them to the Recycle Bin: {1}",
+    "Системний диск повідомляє про пошкоджені блоки: {0} за {1} днів (остання {2})": "The system drive reports bad blocks: {0} in {1} days (last {2})",
+    "Диск сам не може прочитати частину даних — це ознака зносу або несправності накопичувача, і перевірка файлової системи (chkdsk) тут не допоможе.": "The drive itself can't read part of its data — a sign of wear or a failing drive, and a file system check (chkdsk) won't help here.",
+    "За останню добу — {0}: проблема наростає.": "{0} in the last 24 hours: the problem is growing.",
+    "Негайно скопіюйте важливі файли на інший диск або в хмару.": "Copy important files to another drive or to the cloud right away.",
+    "Зробіть резервну копію важливих файлів.": "Back up your important files.",
+    "Debora перевірить файлову систему (chkdsk) і, якщо треба, виправить її під час перезавантаження.": "Debora will check the file system (chkdsk) and, if needed, repair it during a restart.",
+    "Помилки файлової системи на системному диску: {0} за {1} днів (остання {2})": "File system errors on the system drive: {0} in {1} days (last {2})"
   }
 }

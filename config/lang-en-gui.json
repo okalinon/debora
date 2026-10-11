@@ -389,6 +389,10 @@
     "Як виправити": "How to fix",
     "Оцінка: {0}/100. Автоматично виправляти нічого — решта порад у знахідках на «Огляді» (кнопка «Як виправити»).": "Score: {0}/100. Nothing to fix automatically — the remaining tips are in the findings on the Overview (the “How to fix” button).",
     ". Ще {0} порад потребують вашого рішення — вони лишаться у знахідках з кнопкою «Як виправити»": ". {0} more tips need your decision — they stay in the findings with a “How to fix” button",
-    "Лишилось порад: {0} — у знахідках на «Огляді».": "Tips left: {0} — see the findings on the Overview."
+    "Лишилось порад: {0} — у знахідках на «Огляді».": "Tips left: {0} — see the findings on the Overview.",
+    "Вибрано: {0} ({1})": "Selected: {0} ({1})",
+    "Зніміть галочки з того, що ще потрібне. Вибране буде перенесено в Кошик — звідти файл можна відновити.": "Untick anything you still need. The selected items will be moved to the Recycle Bin, where they can be restored.",
+    "У Кошик": "Move to Recycle Bin",
+    "у Кошик: {0}": "to the Recycle Bin: {0}"
   }
 }

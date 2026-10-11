@@ -110,3 +110,54 @@ function New-D9ResumeUpdatesCatalog {
         actions = @($names | ForEach-Object { [pscustomobject]@{ type = 'registry'; path = $key; name = $_; delete = $true } })
     }) }
 }
+
+# Старі журнали обслуговування (CBS): архіви CbsPersist_*.log / *.cab. Поточний CBS.log не чіпаємо.
+function Clear-D9CbsLogs {
+    $dir = Join-Path $env:SystemRoot 'Logs\CBS'
+    $files = @(Get-ChildItem $dir -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'CbsPersist_*' -or $_.Extension -eq '.cab' })
+    $size = [long](($files | Measure-Object Length -Sum).Sum)
+    $removed = 0
+    foreach ($f in $files) {
+        try { [IO.File]::Delete($f.FullName); $removed++ } catch { Write-D9Log ('  ' + (T-D9 'Зайнятий, пропущено: {0}' $f.Name)) Detail }
+    }
+    Write-D9Log (T-D9 'Видалено старих журналів CBS: {0} з {1} ({2}).' $removed $files.Count (Format-D9Size $size)) Ok
+    [pscustomobject]@{ Done = $true; RebootRecommended = $false; Removed = $removed }
+}
+
+# Windows.old і тимчасові файли встановлення — штатним «Очищенням диска» (cleanmgr /sagerun): воно саме
+# знімає захист цих папок. Після цього відкотити оновлення Windows уже не можна.
+function Remove-D9WindowsOld {
+    $root = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches'
+    $handlers = @('Previous Installations', 'Temporary Setup Files')
+    $flag = 'StateFlags0091'
+    $before = [long]((@("$env:SystemDrive\Windows.old", "$env:SystemDrive\`$WINDOWS.~BT") | ForEach-Object { Get-D9FolderSize $_ 4000 } | Measure-Object -Sum).Sum)
+    Write-D9Log (T-D9 'Видалення попередньої версії Windows через «Очищення диска» (кілька хвилин)...')
+    try {
+        foreach ($h in $handlers) { if (Test-Path -LiteralPath "$root\$h") { Set-ItemProperty -LiteralPath "$root\$h" -Name $flag -Value 2 -Type DWord } }
+        Start-Process cleanmgr.exe -ArgumentList '/sagerun:91' -Wait -WindowStyle Hidden
+    } finally {
+        foreach ($h in $handlers) { if (Test-Path -LiteralPath "$root\$h") { Remove-ItemProperty -LiteralPath "$root\$h" -Name $flag -ErrorAction SilentlyContinue } }
+    }
+    $left = Test-Path -LiteralPath "$env:SystemDrive\Windows.old"
+    if ($left) { Write-D9Log (T-D9 'Windows.old ще є — частину файлів Windows видалить після перезавантаження.') Warn }
+    else { Write-D9Log (T-D9 'Попередню версію Windows видалено, звільнено близько {0}.' (Format-D9Size $before)) Ok }
+    [pscustomobject]@{ Done = $true; RebootRecommended = $left }
+}
+
+# Файли — у Кошик (їх можна відновити). Повертає кількість перенесених.
+function Move-D9FilesToRecycleBin {
+    param([string[]]$Paths)
+    Add-Type -AssemblyName Microsoft.VisualBasic
+    $moved = 0
+    foreach ($p in @($Paths | Where-Object { $_ })) {
+        try {
+            if (Test-Path -LiteralPath $p -PathType Container) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }
+            elseif (Test-Path -LiteralPath $p) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }
+            else { continue }
+            $moved++
+            Write-D9Log ('  ' + (T-D9 'У Кошик: {0}' $p)) Detail
+        } catch { Write-D9Log ('  ' + (T-D9 'Не вдалося перенести в Кошик {0}: {1}' $p $_.Exception.Message)) Warn }
+    }
+    Write-D9Log (T-D9 'Перенесено в Кошик: {0}. Відновити можна з Кошика.' $moved) Ok
+    $moved
+}

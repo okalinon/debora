@@ -462,7 +462,7 @@ function Show-D9Gui {
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
-                   'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
+                   'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid', 'StartupSelText',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
                    'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnStyle', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage',
                    'UndoBar', 'UndoText', 'BtnUndoLast', 'BtnUndoClose', 'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
@@ -1505,12 +1505,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                          Note = $i.Where; Status = ($note -join '; '); Color = $color; Tag = $i }
         })
         Set-D9Items $ui.StartupGrid $state.StartupRows
+        if ($updateSelCounts) { & $updateSelCounts }
         $on = @($items | Where-Object Enabled).Count
         $rec = @($items | Where-Object { $_.Enabled -and ($_.Verdict -eq 'disable' -or $_.Missing) }).Count
         $ui.BtnStartupRecommended.IsEnabled = [bool]$rec
         $ui.BtnStartupRecommended.ToolTip = if ($rec) { T-D9 'Зняти галочки з програм, яким не потрібно стартувати разом із Windows (лаунчери ігор, «помічники», реклама виробника), і застосувати' } else { T-D9 'Нічого вимикати: програми, які радимо вимкнути, вже не запускаються' }
         $ui.BtnStartupRecommended.Content = if ($rec) { T-D9 'Вимкнути рекомендовані ({0})' $rec } else { T-D9 'Вимкнути рекомендовані' }
-        $ui.StartupSummary.Text = (T-D9 'Програм в автозавантаженні: {0}, запускаються: {1}' (@($items).Count) $on) + $(if ($rec) { T-D9 ', з них рекомендуємо вимкнути: {0}' $rec }) + (T-D9 '. Зніміть галочку з тих, яким не потрібно стартувати разом із Windows, і натисніть «Застосувати зміни» — або «Вимкнути рекомендовані». Програми не видаляються; усе відкочується в «Журналі змін».')
+        $ui.StartupSummary.Text = (T-D9 'Програм в автозавантаженні: {0}, запускаються: {1}' (@($items).Count) $on) + $(if ($rec) { T-D9 ', з них рекомендуємо вимкнути: {0}' $rec }) + (T-D9 '. Зніміть галочку з того, що не має стартувати з Windows. Програми не видаляються, усе відкочується.')
     }
     $loadStartup = { & $startJob (T-D9 'Читання автозавантаження') {
             @{ Items = @(Get-D9StartupItems)
@@ -1872,7 +1873,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $state.AppsLoaded = $true
             & $fillAppCategories; & $showApps; & $updateAppSelection
             $inst = @($state.AppRows | Where-Object { (& $appStatus $_) -ne 'none' }).Count
-            $ui.AppsSummary.Text = (T-D9 'У каталозі {0} програм, з них у вас встановлено {1}, мають оновлення {2} (усього на ПК). Клацніть по картці, щоб вибрати, або скористайтеся готовим набором.' (@($state.AppRows).Count) $inst (@($r.Up).Count))
+            $ui.AppsSummary.Text = (T-D9 'У каталозі {0} програм, у вас встановлено {1}, мають оновлення {2}.' (@($state.AppRows).Count) $inst (@($r.Up).Count))
         }
     }
     $ui.BtnAppsRefresh.Add_Click({ if ($hasWinget) { & $loadApps } else { & $noWinget } })
@@ -1964,6 +1965,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.UninstGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateUninstSel })
     # Лічильник «Вибрано N» у нижній смузі «Налаштувань» і «Деблоату»
     $updateSelCounts = {
+        $sOn = @($state.StartupRows | Where-Object Selected).Count
+        $sChanged = @($state.StartupRows | Where-Object { [bool]$_.Selected -ne [bool]$_.Tag.Enabled }).Count
+        $ui.StartupSelText.Text = (T-D9 'Запускатимуться: {0} з {1}' $sOn @($state.StartupRows).Count) + $(if ($sChanged) { ' · ' + (T-D9 'незбережених змін: {0}' $sChanged) } else { '' })
         $n = @($state.TweakRows | Where-Object Selected).Count
         $ui.TweaksSelText.Text = if ($n) { T-D9 'Вибрано: {0}' $n } else { T-D9 'Нічого не вибрано' }
         $d = @(@($ui.DebloatGrid.ItemsSource) | Where-Object { $_ -and $_.Selected }).Count
@@ -1971,7 +1975,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     }
     $ui.TweakGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateSelCounts })
     $ui.DebloatGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateSelCounts })
-    foreach ($b in 'BtnSelectPreset', 'BtnSelectNone', 'BtnDebloatRecommended', 'BtnDebloatNone') { $ui[$b].Add_Click({ & $updateSelCounts }) }
+    $ui.StartupGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateSelCounts })
+    foreach ($b in 'BtnSelectPreset', 'BtnSelectNone', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnStartupRecommended') { $ui[$b].Add_Click({ & $updateSelCounts }) }
     $ui.BtnUninstRefresh.Add_Click($loadUninst)
     $ui.BtnUninstall.Add_Click({
         $sel = @($state.UninstRows | Where-Object Selected)

@@ -1167,9 +1167,8 @@
       <!-- ================= Автозавантаження ================= -->
       <TabItem Uid="startup" Header="Автозавантаження" Tag="&#xE945;" Background="#FF9F0A">
         <Grid Margin="20,0,20,0">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <WrapPanel>
-            <Button x:Name="BtnStartupApply" Style="{StaticResource Primary}" Content="Застосувати зміни" Margin="0,0,8,6"/>
             <Button x:Name="BtnStartupRecommended" ToolTipService.ShowOnDisabled="True" Content="Вимкнути рекомендовані" Margin="0,0,8,6" ToolTip="Зняти галочки з програм, яким не потрібно стартувати разом із Windows (лаунчери ігор, «помічники», реклама виробника), і застосувати"/>
             <Button x:Name="BtnStartupRefresh" Content="Оновити список" Margin="0,0,8,6"/>
           </WrapPanel>
@@ -1198,6 +1197,10 @@
               </DataGrid.Columns>
             </DataGrid>
           </Border>
+          <DockPanel Grid.Row="3" Margin="0,0,0,10">
+            <Button x:Name="BtnStartupApply" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Застосувати зміни" Margin="0" MinWidth="220"/>
+            <TextBlock x:Name="StartupSelText" VerticalAlignment="Center" Foreground="#6E6E73" Margin="4,0,12,0" TextTrimming="CharacterEllipsis"/>
+          </DockPanel>
         </Grid>
       </TabItem>
 
@@ -1368,6 +1371,12 @@
                   <Button x:Name="BtnUsbRefresh" DockPanel.Dock="Right" Content="Оновити список" Margin="8,0,0,0"/>
                   <ComboBox x:Name="UsbBox"/>
                 </DockPanel>
+            <WrapPanel Margin="0,8,0,0">
+              <TextBlock Text="Немає флешки з Windows? Завантажте:" Foreground="#6E6E73" Margin="0,5,10,0"/>
+              <Button Style="{StaticResource LinkButton}" Content="Windows 11 (Microsoft)" Tag="https://www.microsoft.com/software-download/windows11"/>
+              <Button Style="{StaticResource LinkButton}" Content="Windows 10 (Microsoft)" Tag="https://www.microsoft.com/software-download/windows10"/>
+              <Button Style="{StaticResource LinkButton}" Content="Rufus" Tag="https://rufus.ie"/>
+            </WrapPanel>
                 <TextBlock x:Name="UsbInfo" Style="{StaticResource RowNote}" Margin="16,-4,16,10"/>
                 <Border Style="{StaticResource Sep}"/>
                 <DockPanel Style="{StaticResource Row}">

@@ -482,6 +482,10 @@
     "Папка даних": "Data folder",
     "Журнали": "Logs",
     "Звіти": "Reports",
-    "Утиліта перевірки, прибирання й налаштування Windows 10/11.": "A tool to check, clean up and tune Windows 10/11."
+    "Утиліта перевірки, прибирання й налаштування Windows 10/11.": "A tool to check, clean up and tune Windows 10/11.",
+    "Запускатимуться: {0} з {1}": "Will start: {0} of {1}",
+    "незбережених змін: {0}": "unsaved changes: {0}",
+    "У каталозі {0} програм, у вас встановлено {1}, мають оновлення {2}.": "The catalog has {0} apps; you have {1} installed, {2} have updates.",
+    ". Зніміть галочку з того, що не має стартувати з Windows. Програми не видаляються, усе відкочується.": ". Untick what shouldn't start with Windows. Programs aren't removed, and everything can be undone."
   }
 }

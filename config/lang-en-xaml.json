@@ -244,6 +244,7 @@
     "Зберегти план у файл…": "Save plan to file…",
     "Завантажити план з файлу…": "Load plan from file…",
     "Набори:": "Bundles:",
-    "Про програму": "About"
+    "Про програму": "About",
+    "Немає флешки з Windows? Завантажте:": "No Windows USB stick? Download:"
   }
 }

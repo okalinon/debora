@@ -1,6 +1,8 @@
 {
   "note": "English strings for src/ui/Gui.ps1 (T-D9 templates). Key = exact Ukrainian template; {0}, {1}… are placeholders.",
   "strings": {
+    "Windows не віддає даних батареї.": "Windows does not report battery data.",
+    "Ємність з {0} по {1} (шкала {2}–100%)": "Capacity from {0} to {1} (scale {2}–100%)",
     "Застосувати": "Apply",
     "Закрити": "Close",
     "Скасувати": "Cancel",

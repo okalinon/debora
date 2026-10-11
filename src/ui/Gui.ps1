@@ -218,7 +218,7 @@ function Show-D9Gui {
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
-                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage') {
+                   'BtnDisksRefresh', 'DisksState', 'DisksList', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
@@ -805,9 +805,27 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
 
     # ---------- кнопки: Обслуговування ----------
     $diskColors = @{ ok = '#248A3D'; warn = '#B25000'; bad = '#D70015'; unknown = '#6E6E73' }
+    $batteryColors = @{ ok = '#248A3D'; fair = '#B25000'; warn = '#B25000'; bad = '#D70015' }
+    $fillBattery = {
+        param($b)
+        if (-not $b) { $ui.BatteryDetail.Text = (T-D9 'Windows не віддає даних батареї.'); return }
+        $level = Get-D9BatteryLevel $b
+        $color = Get-D9UiColor $batteryColors[$level]
+        $ui.BatteryStatus.Text = Get-D9BatteryLevelText $level; $ui.BatteryStatus.Foreground = $color; $ui.BatteryDot.Fill = $color
+        $ui.BatteryDetail.Text = Format-D9BatteryDetails $b
+        $sparkMin = Get-D9SparkMin @($b.History)
+        $ui.BatterySpark.Data = Get-D9SparkGeometry @($b.History) 320 48 $sparkMin
+        $ui.BatterySparkNote.Text = if (@($b.History).Count -ge 2) { T-D9 'Ємність з {0} по {1} (шкала {2}–100%)' $b.History[0].Date.ToString('MM.yyyy') $b.History[-1].Date.ToString('MM.yyyy') $sparkMin } else { '' }
+        $advice = @(Get-D9BatteryAdvice $b $SystemInfo.Manufacturer)
+        $ui.BatteryAdvice.Text = $advice -join "`n"
+        $ui.BatteryAdvice.Visibility = if ($advice) { 'Visible' } else { 'Collapsed' }
+    }
+    if ($SystemInfo.HasBattery) { $ui.BatterySep.Visibility = 'Visible'; $ui.BatteryPanel.Visibility = 'Visible' }
     $loadDisks = {
-        & $startJob (T-D9 'Перевірка стану дисків') { @(Get-D9DiskHealth) } $null {
-            param($r)
+        & $startJob (T-D9 'Перевірка стану дисків') { param($a) @{ Disks = @(Get-D9DiskHealth); Battery = $(if ($a.Bat) { Get-D9BatteryHealth }) } } @{ Bat = [bool]$SystemInfo.HasBattery } {
+            param($res)
+            if ($SystemInfo.HasBattery) { & $fillBattery $res.Battery }
+            $r = $res.Disks
             $disks = @($r | Where-Object { $_ })
             $rows = foreach ($d in $disks) {
                 $v = Get-D9DiskVerdict $d

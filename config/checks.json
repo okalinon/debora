@@ -494,6 +494,7 @@
       "params": { "log": "System", "providers": ["Tcpip"], "ids": [4199], "days": 30, "min": 1, "severity": "warning",
         "title": {"uk": "Конфлікт IP-адрес у мережі: {count} разів за {days} днів", "en": "IP address conflict on the network {count} times in {days} days"}, "details": {"uk": "Інший пристрій має таку саму адресу — зв'язок обривається. Приберіть ручну (статичну) адресу або перезавантажте роутер.", "en": "Another device has the same address — the connection drops. Remove the manual (static) address or restart the router."} } },
 
-    { "id": "bat.wear", "category": "battery", "probe": "Test-D9BatteryWear", "name": { "uk": "Знос батареї", "en": "Battery wear" }, "thresholds": { "warningPercent": 60, "criticalPercent": 40 } }
+    { "id": "bat.wear", "category": "battery", "probe": "Test-D9BatteryWear", "name": { "uk": "Знос батареї", "en": "Battery wear" }, "thresholds": { "warningPercent": 60, "criticalPercent": 40 } },
+    { "id": "bat.charge-habits", "category": "battery", "probe": "Test-D9BatteryHabits", "name": { "uk": "Звички заряджання", "en": "Charging habits" }, "thresholds": { "acShare": 0.85, "wearPerYear": 5 } }
   ]
 }

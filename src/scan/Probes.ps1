@@ -523,41 +523,48 @@ function Test-D9SystemFiles {
 
 # ======================= Батарея =======================
 
-# Запасне джерело: powercfg /batteryreport (працює там, де класи root\wmi не відповідають)
-function Get-D9BatteryReport {
-    $xml = Join-Path ([IO.Path]::GetTempPath()) ("d9battery-" + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.xml')
-    try {
-        & powercfg.exe /batteryreport /xml /output $xml 2>&1 | Out-Null
-        if (-not (Test-Path -LiteralPath $xml)) { return $null }
-        $b = @(([xml](Get-Content -LiteralPath $xml -Raw)).BatteryReport.Batteries.Battery) | Select-Object -First 1
-        if (-not $b -or -not [double]$b.DesignCapacity) { return $null }
-        [pscustomobject]@{ Full = [double]$b.FullChargeCapacity; Design = [double]$b.DesignCapacity }
-    } catch { $null }
-    finally { [IO.File]::Delete($xml) }
+# Звіт powercfg (Get-D9BatteryHealth, працює без адміністратора); якщо його немає — класи root\wmi.
+# Один звіт на сканування: його використовують дві перевірки, а створення триває ~1 с.
+function Get-D9ScanBattery {
+    param($Ctx)
+    if ($Ctx -and $Ctx.PSObject.Properties['Battery'] -and $Ctx.Battery) { return $Ctx.Battery }
+    $b = Get-D9BatteryHealth
+    if (-not $b) {
+        try {
+            $full   = (Get-CimInstance -Namespace root\wmi -ClassName BatteryFullChargedCapacity -ErrorAction Stop | Select-Object -First 1).FullChargedCapacity
+            $design = (Get-CimInstance -Namespace root\wmi -ClassName BatteryStaticData -ErrorAction Stop | Select-Object -First 1).DesignedCapacity
+            $cycles = try { [int](Get-CimInstance -Namespace root\wmi -ClassName BatteryCycleCount -ErrorAction Stop | Select-Object -First 1).CycleCount } catch { 0 }
+            if ($full -and $design) { $b = [pscustomobject]@{ Design = [double]$design; Full = [double]$full; Health = [math]::Round($full * 100 / $design); Cycles = $(if ($cycles -gt 0) { $cycles }); History = @(); WearPerYear = $null; Forecast60 = $null; AcShare = $null; RuntimeNow = $null; RuntimeDesign = $null } }
+        } catch { }
+    }
+    if ($Ctx) { $Ctx | Add-Member -NotePropertyName Battery -NotePropertyValue $b -Force }
+    $b
 }
 
 function Test-D9BatteryWear {
     param($Check, $Ctx)
     if (-not $Ctx.System.HasBattery) { return New-D9Skip $Check (T-D9 'Батареї немає') }
-    $full = $null; $design = $null
-    try {
-        $full   = (Get-CimInstance -Namespace root\wmi -ClassName BatteryFullChargedCapacity -ErrorAction Stop | Select-Object -First 1).FullChargedCapacity
-        $design = (Get-CimInstance -Namespace root\wmi -ClassName BatteryStaticData -ErrorAction Stop | Select-Object -First 1).DesignedCapacity
-    } catch { }
-    if (-not $full -or -not $design) { $r = Get-D9BatteryReport; if ($r) { $full = $r.Full; $design = $r.Design } }
-    if (-not $full -or -not $design) {
+    $b = Get-D9ScanBattery $Ctx
+    if (-not $b) {
         return New-D9Skip $Check $(if ($Ctx.IsAdmin) { T-D9 'Батарея не повідомляє ємність (можливо, вийнята або несправна)' } else { T-D9 'Дані батареї недоступні (потрібні права адміністратора)' })
     }
-    $health = [math]::Round($full * 100 / $design)
     $t = $Check.thresholds
-    $title = T-D9 'Батарея зберігає {0}% початкової ємності' $health
-    $details = T-D9 'Час роботи від батареї помітно скоротився. Батарею можна замінити в сервісі.'
-    if ($health -lt $t.warningPercent) {
-        $cycles = try { [int](Get-CimInstance -Namespace root\wmi -ClassName BatteryCycleCount -ErrorAction Stop | Select-Object -First 1).CycleCount } catch { 0 }
-        if ($cycles -gt 0) {
-            $details += ' ' + $(if ($cycles -lt 300) { T-D9 'Циклів заряду: {0} — для такого зносу це мало: ймовірно, батарея старіє від нагріву або постійного заряду 100%. Якщо виробник ноутбука має режим «обмеження заряду» (80%), увімкніть його.' $cycles } else { T-D9 'Циклів заряду: {0}.' $cycles })
-        }
-    }
-    if ($health -lt $t.criticalPercent) { return New-D9Finding $Check critical $title $details @{ type = 'manual' } }
-    if ($health -lt $t.warningPercent) { return New-D9Finding $Check warning $title $details @{ type = 'manual' } }
+    $level = Get-D9BatteryLevel $b -WarningPercent $t.warningPercent -CriticalPercent $t.criticalPercent
+    if ($level -notin 'warn', 'bad') { return }
+    $title = T-D9 'Батарея зберігає {0}% початкової ємності' $b.Health
+    $details = (T-D9 'Час роботи від батареї помітно скоротився. Батарею можна замінити в сервісі.') + ' ' + (Format-D9BatteryDetails $b) + '.'
+    if ($b.Cycles -gt 0 -and $b.Cycles -lt 300) { $details += ' ' + (T-D9 'Циклів заряду: {0} — для такого зносу це мало: ймовірно, батарея старіє від нагріву або постійного заряду 100%. Якщо виробник ноутбука має режим «обмеження заряду» (80%), увімкніть його.' $b.Cycles) }
+    New-D9Finding $Check $(if ($level -eq 'bad') { 'critical' } else { 'warning' }) $title $details @{ type = 'manual' }
+}
+
+# Батарея ще не зношена, але старіє швидко, бо ноутбук майже весь час на зарядці
+function Test-D9BatteryHabits {
+    param($Check, $Ctx)
+    if (-not $Ctx.System.HasBattery) { return New-D9Skip $Check (T-D9 'Батареї немає') }
+    $b = Get-D9ScanBattery $Ctx
+    if (-not $b -or $null -eq $b.AcShare) { return New-D9Skip $Check (T-D9 'Історії використання батареї ще немає') }
+    if (-not (Test-D9BatteryAlwaysPlugged $b -MinAcShare $Check.thresholds.acShare -MinWearPerYear $Check.thresholds.wearPerYear)) { return }
+    $title = T-D9 'Батарея старіє швидко: ноутбук {0}% часу на зарядці' ([int]($b.AcShare * 100))
+    $details = (T-D9 'Постійний заряд 100% — головна причина зносу батареї. Обмежте заряд до 80%:') + ' ' + (Get-D9ChargeLimitTip $Ctx.System.Manufacturer) + ' ' + (Format-D9BatteryDetails $b) + '.'
+    New-D9Finding $Check suggestion $title $details @{ type = 'manual' }
 }

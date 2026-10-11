@@ -1,6 +1,9 @@
 {
   "note": "English strings for the scanner, checklist and HTML report (src/scan/*.ps1). Keys are the exact Ukrainian T-D9 templates.",
   "strings": {
+    "Батарея старіє швидко: ноутбук {0}% часу на зарядці": "The battery is ageing fast: the laptop is plugged in {0}% of the time",
+    "Історії використання батареї ще немає": "No battery usage history yet",
+    "Постійний заряд 100% — головна причина зносу батареї. Обмежте заряд до 80%:": "Constant 100% charge is the main cause of battery wear. Limit charging to 80%:",
     "{0:N1} ГБ": "{0:N1} GB",
     "{0:N0} МБ": "{0:N0} MB",
     "{0:N0} КБ": "{0:N0} KB",

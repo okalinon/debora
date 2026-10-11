@@ -63,6 +63,7 @@ function New-D9DiagnosticsBundle {
             (T-D9 'Схема живлення: {0}' $plan)
         }
         Add-D9DiagSection $work 'disks.txt' { Format-D9DiskHealthReport }
+        if ($SystemInfo.HasBattery) { Add-D9DiagSection $work 'battery.txt' { Format-D9BatteryReport -Manufacturer $SystemInfo.Manufacturer } }
         Add-D9DiagSection $work 'devices.txt' {
             (T-D9 '=== Пристрої з помилками (ConfigManagerErrorCode ≠ 0) ===')
             Get-CimInstance Win32_PnPEntity | Where-Object { $_.ConfigManagerErrorCode -ne 0 } |

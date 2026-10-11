@@ -971,6 +971,24 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                 </StackPanel>
+                <!-- Стан батареї: показується лише на ноутбуках (Gui.ps1 вмикає Visibility) -->
+                <Border x:Name="BatterySep" Style="{StaticResource Sep}" Visibility="Collapsed"/>
+                <StackPanel x:Name="BatteryPanel" Margin="16,12,14,12" Visibility="Collapsed">
+                  <DockPanel>
+                    <TextBlock x:Name="BatteryStatus" DockPanel.Dock="Right" FontWeight="SemiBold" VerticalAlignment="Top" Margin="12,0,0,0"/>
+                    <Ellipse x:Name="BatteryDot" DockPanel.Dock="Left" Width="11" Height="11" Fill="#6E6E73" VerticalAlignment="Top" Margin="2,6,14,0"/>
+                    <StackPanel>
+                      <TextBlock Style="{StaticResource RowTitle}" Text="Стан батареї"/>
+                      <TextBlock x:Name="BatteryDetail" Style="{StaticResource RowNote}" Text="Ємність, історія зносу й час роботи від батареї."/>
+                    </StackPanel>
+                  </DockPanel>
+                  <Grid Margin="27,10,0,0" HorizontalAlignment="Left">
+                    <Border Width="320" Height="48" BorderBrush="#E5E5EA" BorderThickness="0,0,0,1"/>
+                    <Path x:Name="BatterySpark" Stroke="#30B0C7" StrokeThickness="2" StrokeLineJoin="Round" Width="320" Height="48"/>
+                  </Grid>
+                  <TextBlock x:Name="BatterySparkNote" Style="{StaticResource RowNote}" Margin="27,2,0,0"/>
+                  <TextBlock x:Name="BatteryAdvice" Style="{StaticResource RowNote}" Foreground="#B25000" Margin="27,8,0,0" Visibility="Collapsed"/>
+                </StackPanel>
                 <Border Style="{StaticResource Sep}"/>
                 <DockPanel Style="{StaticResource Row}">
                   <Button x:Name="BtnRestorePoint" DockPanel.Dock="Right" Content="Створити" VerticalAlignment="Center" Margin="0"/>

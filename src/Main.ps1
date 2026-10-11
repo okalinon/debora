@@ -54,6 +54,8 @@
 .EXAMPLE
     .\Debora.ps1 -Disks                       # стан дисків: температура, знос, помилки (SMART)
 .EXAMPLE
+    .\Debora.ps1 -Battery                     # стан батареї: знос, історія ємності, прогноз, поради
+.EXAMPLE
     .\Debora.ps1 -Diagnostics                 # зібрати zip для розбору проблеми (у папку «Звіти»)
 #>
 [CmdletBinding(DefaultParameterSetName = 'Info')]
@@ -146,6 +148,9 @@ param(
     [Parameter(ParameterSetName = 'Disks', Mandatory)]
     [switch]$Disks,
 
+    [Parameter(ParameterSetName = 'Battery', Mandatory)]
+    [switch]$Battery,
+
     # Куди покласти zip діагностики (типово — папка «Звіти» поруч із програмою)
     [Parameter(ParameterSetName = 'Diagnostics')]
     [string]$OutDir,
@@ -232,7 +237,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.23.4-dev'
+$script:D9Version  = '0.24.0-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 Initialize-D9Console
@@ -393,6 +398,7 @@ switch ($PSCmdlet.ParameterSetName) {
             Write-Host (T-D9 '  9. Зібрати діагностику (zip для розбору проблеми)')
             Write-Host (T-D9 ' 10. Оновити всі програми (winget)')
             Write-Host (T-D9 ' 12. Стан дисків (температура, знос, помилки)')
+            if ($sys.HasBattery) { Write-Host (T-D9 ' 13. Стан батареї (знос, прогноз, поради)') }
             Write-Host (T-D9 '  0. Вихід')
             $choice = Read-Host (T-D9 'Ваш вибір')
             switch ($choice) {
@@ -445,6 +451,7 @@ switch ($PSCmdlet.ParameterSetName) {
                 '10' { & $runSelf @('-UpgradeApps') }
                 '11' { & $runSelf @('-DriverUpdate') }
                 '12' { & $runSelf @('-Disks') }
+                '13' { & $runSelf @('-Battery') }
                 '0' { exit $ExitCodes.Ok }
                 default { Write-Host (T-D9 'Введіть номер пункту.') -ForegroundColor Yellow }
             }
@@ -602,6 +609,19 @@ switch ($PSCmdlet.ParameterSetName) {
         exit $ExitCodes.Ok
     }
 
+    'Battery' {
+        Write-Host ""
+        Write-Host (T-D9 'Стан батареї: {0} {1}' $sys.Manufacturer $sys.Model) -ForegroundColor Cyan
+        $b = Get-D9BatteryHealth
+        if (-not $b) { Write-D9Log (T-D9 'Батареї немає або Windows не віддає її даних.') Warn; exit $ExitCodes.Ok }
+        $level = Get-D9BatteryLevel $b
+        $color = @{ ok = 'Green'; fair = 'Yellow'; warn = 'Yellow'; bad = 'Red' }[$level]
+        $lines = @(Format-D9BatteryReport $b $sys.Manufacturer)
+        Write-Host "  $($lines[0])" -ForegroundColor $color
+        foreach ($l in ($lines | Select-Object -Skip 1)) { Write-Host "  $l" -ForegroundColor Gray }
+        exit $(if ($level -eq 'bad') { $ExitCodes.Partial } else { $ExitCodes.Ok })
+    }
+
     'Diagnostics' {
         $target = if ($OutDir) { $OutDir } else { Join-Path (Split-Path $PSCommandPath) 'Звіти' }
         if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Без прав адміністратора частина журналів і відомостей про драйвери буде неповною.') Warn }
@@ -752,6 +772,7 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host (T-D9 '  -Scan                           перевірити стан Windows і отримати чекліст')
         Write-Host (T-D9 '  -Diagnostics                    зібрати zip для розбору проблеми')
         Write-Host (T-D9 '  -Disks                          стан дисків: температура, знос, помилки (SMART)')
+        if ($sys.HasBattery) { Write-Host (T-D9 '  -Battery                        стан батареї: знос, прогноз, поради') }
         Write-Host (T-D9 '  -Apps / -InstallApp / -UpgradeApps   програми через winget')
         Write-Host (T-D9 '  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити')
         Write-Host (T-D9 '  -PrepareUsb E: -UserName Ім''я   флешка для перевстановлення Windows без запитань і з драйверами')

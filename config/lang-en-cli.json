@@ -1,6 +1,9 @@
 {
   "note": "English strings for the CLI, text menu, core engine and actions (src/Main.ps1, src/core, src/actions). Keys are the exact Ukrainian T-D9 templates.",
   "strings": {
+    "  -Battery                        стан батареї: знос, прогноз, поради": "  -Battery                        battery health: wear, forecast, advice",
+    " 13. Стан батареї (знос, прогноз, поради)": " 13. Battery health (wear, forecast, advice)",
+    "Стан батареї: {0} {1}": "Battery health: {0} {1}",
     "не визначено": "unknown",
     "  Система   {0} {1} ({2})": "  System    {0} {1} ({2})",
     "  ПК        {0} {1}": "  PC        {0} {1}",

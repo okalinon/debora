@@ -1,6 +1,8 @@
 {
   "note": "English for the window markup (src/ui/MainWindow.xaml). Keys are the Ukrainian attribute values exactly as in the XAML.",
   "strings": {
+    "Стан батареї": "Battery health",
+    "Ємність, історія зносу й час роботи від батареї.": "Capacity, wear history and runtime on battery.",
     "Готово": "Ready",
     "Огляд": "Overview",
     "зі 100": "of 100",

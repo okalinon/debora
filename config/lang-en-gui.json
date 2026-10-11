@@ -1,6 +1,17 @@
 {
   "note": "English strings for src/ui/Gui.ps1 (T-D9 templates). Key = exact Ukrainian template; {0}, {1}… are placeholders.",
   "strings": {
+    "Буде видалено застосунків: {0}, застосовано налаштувань: {1}. Спершу створюється точка відновлення; усе можна повернути на вкладці «Журнал змін» (видалені застосунки — також з Microsoft Store).": "Apps to remove: {0}, settings to apply: {1}. A restore point is created first; everything can be undone on the Change history tab (removed apps can also be reinstalled from Microsoft Store).",
+    "видалити": "remove",
+    "Видалити: {0}": "Remove: {0}",
+    "Деблоат Windows": "Windows debloat",
+    "Деблоат виконано. Змін: {0}, помилок: {1}.": "Debloat finished. Changes: {0}, errors: {1}.",
+    "Деблоат-налаштувань: {0}, уже застосовано: {1}. Перед змінами створюється точка відновлення; усе повертається на вкладці «Журнал змін».": "Debloat settings: {0}, already applied: {1}. A restore point is created before changes; everything can be undone on the Change history tab.",
+    "за бажанням": "optional",
+    "Застосунків зі списку на цьому ПК: {0}, з них рекомендовано видалити: {1} (відмічені). Xbox і корисні застосунки не відмічені — позначте самі, якщо не потрібні.": "Apps from the list on this PC: {0}, recommended to remove: {1} (checked). Xbox and useful apps are not checked — check them yourself if you don\u0027t need them.",
+    "Нав\u0027язаних вбудованих застосунків на цьому ПК не знайдено.": "No pushed built-in apps were found on this PC.",
+    "Перевірка вбудованих застосунків": "Checking built-in apps",
+    "Позначте застосунки або налаштування галочками.": "Check the apps or settings you want.",
     "{0}: {1} зі 100": "{0}: {1} of 100",
     "Що знайдено": "What was found",
     "Як рахується оцінка: кожна категорія починає зі 100 балів; критична проблема знімає 30, попередження — 10, порада — 3 (число праворуч від знахідки). Загальна оцінка — середнє категорій з урахуванням їхньої ваги; будь-яка критична проблема обмежує її 59 балами. Натисніть на категорію вгорі, щоб побачити лише її знахідки.": "How the score works: each category starts at 100; a critical problem takes 30 points, a warning 10, a tip 3 (the number to the right of a finding). The overall score is the weighted average of the categories; any critical problem caps it at 59. Click a category above to see only its findings.",

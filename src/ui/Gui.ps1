@@ -210,6 +210,7 @@ function Show-D9Gui {
                    'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnReboot', 'ChecklistSummary', 'ChecklistList',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
+                   'DebloatSummary', 'DebloatAppsGrid', 'DebloatFeaturesGrid', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
                    'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
@@ -226,7 +227,7 @@ function Show-D9Gui {
     $actionButtons = @('BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
                        'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
                        'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'BtnUninstRefresh', 'BtnUninstall',
-                       'BtnDisksRefresh', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset')
+                       'BtnDisksRefresh', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnDebloatRun', 'BtnDebloatRefresh')
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -437,6 +438,60 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             New-D9Row @{ Id = $_.Id; Title = $when; Detail = $_.Selection; Number = [int]$_.Changed; Status = $status }
         })
     }
+    # ---------- Деблоат ----------
+    # Застосунки — поштучно (рекомендовані відмічені, Xbox і «корисні» — ні), налаштування — з каталогу твіків
+    $fillDebloat = {
+        param($r)
+        $state.DebloatLoaded = $true
+        $apps = @($r.Apps | Sort-Object GroupOrder, Name)
+        Set-D9Items $ui.DebloatAppsGrid @(foreach ($a in $apps) {
+            New-D9Row @{ Id = $a.Package; Title = $a.Name; Group = $a.GroupName; Detail = ($a.Found -join ', '); Selected = $a.Recommended; Tag = $a
+                         Kind = $(if ($a.Recommended) { T-D9 'видалити' } else { T-D9 'за бажанням' }); Color = $(if ($a.Recommended) { '#D70015' } else { '#6E6E73' }) }
+        })
+        $features = @($r.Features)
+        Set-D9Items $ui.DebloatFeaturesGrid @(foreach ($f in $features) {
+            $applicable = $f.State -ne 'notApplicable'; $done = $f.State -eq 'applied'
+            New-D9Row @{ Id = $f.Id; Title = $f.Name; Detail = $f.Description; Tag = $f; Enabled = ($applicable -and -not $done); Selected = ($f.Recommended -and $applicable -and -not $done)
+                         Kind = $riskUi[$f.Risk][0]; Color = $riskUi[$f.Risk][1]; Status = $stateNames[[string]$f.State] + $(if ($f.Reason) { " ($($f.Reason))" }) }
+        })
+        $rec = @($apps | Where-Object Recommended).Count
+        $ui.DebloatSummary.Text = $(if ($apps) { T-D9 'Застосунків зі списку на цьому ПК: {0}, з них рекомендовано видалити: {1} (відмічені). Xbox і корисні застосунки не відмічені — позначте самі, якщо не потрібні.' $apps.Count $rec } else { T-D9 'Нав''язаних вбудованих застосунків на цьому ПК не знайдено.' }) +
+            ' ' + (T-D9 'Деблоат-налаштувань: {0}, уже застосовано: {1}. Перед змінами створюється точка відновлення; усе повертається на вкладці «Журнал змін».' $features.Count @($features | Where-Object State -eq 'applied').Count)
+        foreach ($b in 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone') { $ui[$b].IsEnabled = $true }
+    }
+    $loadDebloat = {
+        & $startJob (T-D9 'Перевірка вбудованих застосунків') { param($a) @{ Apps = @(Get-D9DebloatApps); Features = @(Get-D9DebloatFeatures $a.Catalog $a.Sys) } } @{ Catalog = $Catalog; Sys = $SystemInfo } { param($r) & $fillDebloat $r }
+    }
+    $ui.BtnDebloatRefresh.Add_Click($loadDebloat)
+    $ui.BtnDebloatRecommended.Add_Click({
+        foreach ($row in @($ui.DebloatAppsGrid.ItemsSource)) { $row.Selected = [bool]$row.Tag.Recommended }
+        foreach ($row in @($ui.DebloatFeaturesGrid.ItemsSource)) { $row.Selected = $row.Enabled -and [bool]$row.Tag.Recommended }
+    })
+    $ui.BtnDebloatNone.Add_Click({
+        foreach ($row in @($ui.DebloatAppsGrid.ItemsSource) + @($ui.DebloatFeaturesGrid.ItemsSource)) { if ($row) { $row.Selected = $false } }
+    })
+    $ui.BtnDebloatRun.Add_Click({
+        $apps = @($ui.DebloatAppsGrid.ItemsSource | Where-Object Selected)
+        $feats = @($ui.DebloatFeaturesGrid.ItemsSource | Where-Object Selected)
+        if (-not $apps -and -not $feats) { [void][Windows.MessageBox]::Show($win, (T-D9 'Позначте застосунки або налаштування галочками.'), 'Debora'); return }
+        if (-not (& $needAdmin)) { return }
+        $text = (@($apps | ForEach-Object { (T-D9 'Видалити: {0}' $_.Title) }) + @($feats | ForEach-Object { $_.Title })) -join "`r`n"
+        if (-not (Show-D9TextDialog $win (T-D9 'Деблоат Windows') (T-D9 'Буде видалено застосунків: {0}, застосовано налаштувань: {1}. Спершу створюється точка відновлення; усе можна повернути на вкладці «Журнал змін» (видалені застосунки — також з Microsoft Store).' $apps.Count $feats.Count) $text (T-D9 'Виконати'))) { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob (T-D9 'Деблоат Windows') { param($a) Invoke-D9Debloat -Catalog $a.Catalog -SystemInfo $a.Sys -Packages $a.Packages -TweakIds $a.TweakIds } @{
+            Catalog = $Catalog; Sys = $SystemInfo; Packages = [string[]]@($apps | ForEach-Object Id); TweakIds = [string[]]@($feats | ForEach-Object Id)
+        } {
+            param($session)
+            & $fillSessions
+            $ok = @($session.entries | Where-Object result -eq 'ok').Count
+            $err = @($session.entries | Where-Object result -eq 'error')
+            $msg = (T-D9 'Деблоат виконано. Змін: {0}, помилок: {1}.' $ok $err.Count)
+            if ($err) { $msg += "`n" + (($err | Select-Object -First 6 | ForEach-Object { "• $($_.message)" }) -join "`n") }
+            [void][Windows.MessageBox]::Show($win, $msg, 'Debora', 'OK', $(if ($err) { 'Warning' } else { 'Information' }))
+            & $loadDebloat
+        }
+    })
+
     # Перелік усіх пристроїв: фільтр (ComboBox Tag), пошук, однакові пристрої — одним рядком «×N»
     $deviceColors = @{ ok = '#248A3D'; disabled = '#6E6E73'; nodriver = '#D70015'; problem = '#D70015' }
     $fillDevices = {
@@ -1393,6 +1448,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($ui.Tabs.SelectedItem.Uid -eq 'uninstall' -and $null -eq $state.UninstRows -and -not $state.Job) { & $loadUninst }
         if ($ui.Tabs.SelectedItem.Uid -eq 'reinstall' -and $null -eq $state.UsbMedia) { & $fillUsb }
         if ($ui.Tabs.SelectedItem.Uid -eq 'maintenance' -and -not $state.DisksLoaded -and -not $state.Job) { & $loadDisks }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'debloat' -and -not $state.DebloatLoaded -and -not $state.Job) { & $loadDebloat }
         if ($ui.Tabs.SelectedItem.Uid -eq 'drivers' -and $null -eq $state.Devices -and -not $state.Job) { & $driverReport }
     })
     $win.Add_Closing({ param($sender, $e)

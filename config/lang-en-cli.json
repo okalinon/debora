@@ -1,6 +1,13 @@
 {
   "note": "English strings for the CLI, text menu, core engine and actions (src/Main.ps1, src/core, src/actions). Keys are the exact Ukrainian T-D9 templates.",
   "strings": {
+    "  [x] — буде зроблено, [=] — уже зроблено, [ ] — за бажанням (у вікні на вкладці «Деблоат»).": "  [x] — will be done, [=] — already done, [ ] — optional (in the window, Debloat tab).",
+    "  -Debloat [-WhatIf]              деблоат: нав\u0027язані застосунки, реклама, Copilot, телеметрія": "  -Debloat [-WhatIf]              debloat: pushed apps, ads, Copilot, telemetry",
+    " 14. Деблоат Windows (нав\u0027язані застосунки, реклама, Copilot)": " 14. Windows debloat (pushed apps, ads, Copilot)",
+    "Виконати деблоат ({0} застосунків, {1} налаштувань)?": "Run the debloat ({0} apps, {1} settings)?",
+    "Деблоат Windows: {0} {1}": "Windows debloat: {0} {1}",
+    "Деблоат виконано. Змін: {0}, помилок: {1}. Відкат: -Undo {2}": "Debloat finished. Changes: {0}, errors: {1}. Undo: -Undo {2}",
+    "Рекомендований деблоат уже виконано — робити нічого.": "The recommended debloat is already done — nothing to do.",
     "Перелік пристроїв збережено: {0}": "Device list saved: {0}",
     "Повний перелік пристроїв: -Drivers -DeviceView hardware (або all, thirdparty, old, problems); у файл: -Drivers -Csv \u003cшлях\u003e.csv": "Full device list: -Drivers -DeviceView hardware (or all, thirdparty, old, problems); to a file: -Drivers -Csv \u003cpath\u003e.csv",
     "  -Battery                        стан батареї: знос, прогноз, поради": "  -Battery                        battery health: wear, forecast, advice",

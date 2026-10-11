@@ -726,6 +726,64 @@
         </Grid>
       </TabItem>
 
+      <!-- ================= Деблоат ================= -->
+      <TabItem Uid="debloat" Header="Деблоат" Tag="&#xEA99;" Background="#FF2D55">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="20,0,20,20">
+            <WrapPanel>
+              <Button x:Name="BtnDebloatRun" Style="{StaticResource Primary}" Content="Виконати деблоат вибраного" IsEnabled="False" Margin="0,0,8,6"/>
+              <Button x:Name="BtnDebloatRecommended" Content="Вибрати рекомендоване" IsEnabled="False" Margin="0,0,8,6"/>
+              <Button x:Name="BtnDebloatNone" Content="Зняти все" IsEnabled="False" Margin="0,0,8,6"/>
+              <Button x:Name="BtnDebloatRefresh" Content="Оновити" Margin="0,0,8,6"/>
+            </WrapPanel>
+            <TextBlock x:Name="DebloatSummary" Style="{StaticResource Intro}" Margin="4,6,0,0"
+                       Text="Прибирання Windows від нав'язаних застосунків, реклами, Copilot і стеження. Перед змінами створюється точка відновлення; кожну зміну можна повернути на вкладці «Журнал змін»."/>
+
+            <TextBlock Style="{StaticResource Section}" Text="Вбудовані застосунки"/>
+            <Border Style="{StaticResource Panel}">
+              <DataGrid x:Name="DebloatAppsGrid" MinHeight="44" MaxHeight="460">
+                <DataGrid.Columns>
+                  <DataGridTemplateColumn Header="" Width="54">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="Застосунок" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTextColumn Header="Група" Binding="{Binding Group}" Width="1.6*" MinWidth="180" IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTemplateColumn Header="Порада" Width="130">
+                    <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                </DataGrid.Columns>
+              </DataGrid>
+            </Border>
+
+            <TextBlock Style="{StaticResource Section}" Text="Функції та реклама Windows"/>
+            <Border Style="{StaticResource Panel}">
+              <DataGrid x:Name="DebloatFeaturesGrid" MinHeight="44" MaxHeight="520">
+                <DataGrid.Columns>
+                  <DataGridTemplateColumn Header="" Width="54">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="Що зробити" Binding="{Binding Title}" Width="3*" MinWidth="280" IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTemplateColumn Header="Ризик" Width="*" MinWidth="90">
+                    <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="1.2*" MinWidth="140" IsReadOnly="True"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
+                </DataGrid.Columns>
+              </DataGrid>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <!-- ================= Драйвери ================= -->
       <TabItem Uid="drivers" Header="Драйвери" Tag="&#xE772;" Background="#FF9500">
         <ScrollViewer VerticalScrollBarVisibility="Auto">

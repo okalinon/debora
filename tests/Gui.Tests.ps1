@@ -125,7 +125,7 @@ Describe 'Вікно' {
             & $refreshMaintenance
             @{ Tabs = $ui.Tabs.Items.Count; Rows = $state.StartupRows; Pause = $ui.PauseState.Text; Drivers = $ui.WuDriversState.Text }
         }
-        $r.Tabs | Should -Be 10
+        $r.Tabs | Should -Be 11
         $r.Rows[0].Selected | Should -BeTrue
         $r.Rows[0].Status | Should -Match 'файл відсутній'
         $r.Pause | Should -Not -BeNullOrEmpty

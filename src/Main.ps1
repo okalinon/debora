@@ -56,7 +56,9 @@
 .EXAMPLE
     .\Debora.ps1 -Disks                       # стан дисків: температура, знос, помилки (SMART)
 .EXAMPLE
-    .\Debora.ps1 -Battery                     # стан батареї: знос, історія ємності, прогноз, поради
+    .\Debora.ps1 -Debloat -WhatIf             # що прибере рекомендований деблоат (без змін); без -WhatIf — виконати
+.EXAMPLE
+    .\Debora.ps1 -Battery                    # стан батареї: знос, історія ємності, прогноз, поради
 .EXAMPLE
     .\Debora.ps1 -Diagnostics                 # зібрати zip для розбору проблеми (у папку «Звіти»)
 #>
@@ -162,6 +164,10 @@ param(
     [Parameter(ParameterSetName = 'Battery', Mandatory)]
     [switch]$Battery,
 
+    # Рекомендований деблоат: нав'язані вбудовані застосунки + реклама, Copilot, Recall, телеметрія
+    [Parameter(ParameterSetName = 'Debloat', Mandatory)]
+    [switch]$Debloat,
+
     # Куди покласти zip діагностики (типово — папка «Звіти» поруч із програмою)
     [Parameter(ParameterSetName = 'Diagnostics')]
     [string]$OutDir,
@@ -198,6 +204,7 @@ param(
 
     [Parameter(ParameterSetName = 'Apply')]
     [Parameter(ParameterSetName = 'DriverUpdate')]
+    [Parameter(ParameterSetName = 'Debloat')]
     [switch]$WhatIf,
 
     [Parameter(ParameterSetName = 'Apply')]
@@ -225,6 +232,7 @@ param(
     [Parameter(ParameterSetName = 'UpgradeApps')]
     [Parameter(ParameterSetName = 'DriverUpdate')]
     [Parameter(ParameterSetName = 'Uninstall')]
+    [Parameter(ParameterSetName = 'Debloat')]
     [switch]$Yes,
 
     [ValidateSet('auto', 'uk', 'en')]
@@ -248,7 +256,7 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 
-$script:D9Version  = '0.24.2-dev'
+$script:D9Version  = '0.25.0-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен
@@ -411,6 +419,7 @@ switch ($PSCmdlet.ParameterSetName) {
             Write-Host (T-D9 ' 10. Оновити всі програми (winget)')
             Write-Host (T-D9 ' 12. Стан дисків (температура, знос, помилки)')
             if ($sys.HasBattery) { Write-Host (T-D9 ' 13. Стан батареї (знос, прогноз, поради)') }
+            Write-Host (T-D9 ' 14. Деблоат Windows (нав''язані застосунки, реклама, Copilot)')
             Write-Host (T-D9 '  0. Вихід')
             $choice = Read-Host (T-D9 'Ваш вибір')
             switch ($choice) {
@@ -464,6 +473,7 @@ switch ($PSCmdlet.ParameterSetName) {
                 '11' { & $runSelf @('-DriverUpdate') }
                 '12' { & $runSelf @('-Disks') }
                 '13' { & $runSelf @('-Battery') }
+                '14' { & $runSelf @('-Debloat') }
                 '0' { exit $ExitCodes.Ok }
                 default { Write-Host (T-D9 'Введіть номер пункту.') -ForegroundColor Yellow }
             }
@@ -619,6 +629,31 @@ switch ($PSCmdlet.ParameterSetName) {
         $worst = @($all | Where-Object { -not $_.Removable } | ForEach-Object { (Get-D9DiskVerdict $_).Level })
         if ($worst -contains 'bad') { Write-D9Log (T-D9 'Є несправний диск: негайно скопіюйте важливі файли й замініть диск.') Error; exit $ExitCodes.Partial }
         exit $ExitCodes.Ok
+    }
+
+    'Debloat' {
+        Write-Host ""
+        Write-Host (T-D9 'Деблоат Windows: {0} {1}' $sys.OsName $sys.DisplayVersion) -ForegroundColor Cyan
+        $dbApps = @(Get-D9DebloatApps)
+        $dbFeatures = @(Get-D9DebloatFeatures $catalog $sys)
+        $rec = Get-D9DebloatRecommended $catalog $sys $dbApps $dbFeatures
+        foreach ($a in ($dbApps | Sort-Object GroupOrder, Name)) {
+            $mark = if ($rec.Packages -contains $a.Package) { '[x]' } else { '[ ]' }
+            Write-Host ("  {0} {1}  ({2})" -f $mark, $a.Name, $a.GroupName) -ForegroundColor $(if ($mark -eq '[x]') { 'White' } else { 'DarkGray' })
+        }
+        foreach ($f in $dbFeatures) {
+            $mark = if ($rec.TweakIds -contains $f.Id) { '[x]' } elseif ($f.State -eq 'applied') { '[=]' } else { '[ ]' }
+            Write-Host ("  {0} {1}" -f $mark, $f.Name) -ForegroundColor $(if ($mark -eq '[x]') { 'White' } else { 'DarkGray' })
+        }
+        Write-Host (T-D9 '  [x] — буде зроблено, [=] — уже зроблено, [ ] — за бажанням (у вікні на вкладці «Деблоат»).') -ForegroundColor DarkGray
+        if (-not $rec.Packages -and -not $rec.TweakIds) { Write-D9Log (T-D9 'Рекомендований деблоат уже виконано — робити нічого.') Ok; exit $ExitCodes.Ok }
+        if ($WhatIf) { exit $ExitCodes.Ok }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
+        if (-not (Confirm-D9 (T-D9 'Виконати деблоат ({0} застосунків, {1} налаштувань)?' $rec.Packages.Count $rec.TweakIds.Count))) { exit $ExitCodes.Cancelled }
+        $session = Invoke-D9Debloat -Catalog $catalog -SystemInfo $sys -Packages $rec.Packages -TweakIds $rec.TweakIds
+        $errors = @($session.entries | Where-Object result -eq 'error')
+        Write-D9Log (T-D9 'Деблоат виконано. Змін: {0}, помилок: {1}. Відкат: -Undo {2}' @($session.entries | Where-Object result -eq 'ok').Count $errors.Count $session.id) $(if ($errors) { 'Warn' } else { 'Ok' })
+        exit $(if ($errors) { $ExitCodes.Partial } else { $ExitCodes.Ok })
     }
 
     'Battery' {
@@ -796,6 +831,7 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host (T-D9 '  -Diagnostics                    зібрати zip для розбору проблеми')
         Write-Host (T-D9 '  -Disks                          стан дисків: температура, знос, помилки (SMART)')
         if ($sys.HasBattery) { Write-Host (T-D9 '  -Battery                        стан батареї: знос, прогноз, поради') }
+        Write-Host (T-D9 '  -Debloat [-WhatIf]              деблоат: нав''язані застосунки, реклама, Copilot, телеметрія')
         Write-Host (T-D9 '  -Apps / -InstallApp / -UpgradeApps   програми через winget')
         Write-Host (T-D9 '  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити')
         Write-Host (T-D9 '  -PrepareUsb E: -UserName Ім''я   флешка для перевстановлення Windows без запитань і з драйверами')

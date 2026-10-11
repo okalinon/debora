@@ -1,6 +1,16 @@
 {
   "note": "English for the window markup (src/ui/MainWindow.xaml). Keys are the Ukrainian attribute values exactly as in the XAML.",
   "strings": {
+    "Вбудовані застосунки": "Built-in apps",
+    "Вибрати рекомендоване": "Select recommended",
+    "Виконати деблоат вибраного": "Debloat selected",
+    "Група": "Group",
+    "Деблоат": "Debloat",
+    "Застосунок": "App",
+    "Порада": "Advice",
+    "Функції та реклама Windows": "Windows features and ads",
+    "Що зробити": "What to do",
+    "Прибирання Windows від нав\u0027язаних застосунків, реклами, Copilot і стеження. Перед змінами створюється точка відновлення; кожну зміну можна повернути на вкладці «Журнал змін».": "Clean Windows of pushed apps, ads, Copilot and tracking. A restore point is created before changes; every change can be undone on the Change history tab.",
     "Натисніть на категорію, щоб побачити, що вплинуло на її оцінку": "Click a category to see what affected its score",
     "Показати всі знахідки": "Show all findings",
     "Усі пристрої й драйвери": "All devices and drivers",

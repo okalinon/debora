@@ -1,6 +1,8 @@
 {
   "note": "English strings for maintenance (src/maintenance) and drivers (src/drivers). Key = exact Ukrainian template passed to T-D9; {0}, {1}... are placeholders.",
   "strings": {
+    "Видалити застосунок «{0}»": "Remove the “{0}” app",
+    "деблоат Windows": "Windows debloat",
     "вбудований": "built-in",
     "Виробник": "Manufacturer",
     "Віртуальний": "Virtual",

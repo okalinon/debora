@@ -14,6 +14,8 @@ $script:D9ActionTypes = [ordered]@{
     powercfg      = 'PowerCfg'
     command       = 'Command'
     driver        = 'Driver'
+    feature       = 'Feature'
+    capability    = 'Capability'
 }
 
 function Get-D9ConfigText {
@@ -63,6 +65,14 @@ function Test-D9Catalog {
                 }
                 'powercfg' {
                     if (-not $a.scheme -and $null -eq $a.hibernate) { $errors.Add((T-D9 '{0}: powercfg потребує scheme або hibernate' $where)) }
+                }
+                'feature' {
+                    if (-not $a.name) { $errors.Add((T-D9 '{0}: feature без name' $where)) }
+                    if (@('Disabled', 'Enabled') -notcontains $a.state) { $errors.Add((T-D9 '{0}: state має бути Disabled або Enabled' $where)) }
+                }
+                'capability' {
+                    if (-not $a.name) { $errors.Add((T-D9 '{0}: capability без name' $where)) }
+                    if (@('NotPresent', 'Installed') -notcontains $a.state) { $errors.Add((T-D9 '{0}: state має бути NotPresent або Installed' $where)) }
                 }
                 'command' {
                     if (-not $a.run) { $errors.Add((T-D9 '{0}: command без run' $where)) }

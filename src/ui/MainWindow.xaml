@@ -745,16 +745,16 @@
                     <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Що прибрати" Binding="{Binding Title}" Width="2.2*" MinWidth="240" IsReadOnly="True">
+                <DataGridTextColumn Header="Що прибрати" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True">
                   <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="Група" Binding="{Binding Group}" Width="1.5*" MinWidth="170" IsReadOnly="True">
+                <DataGridTextColumn Header="Пояснення" Binding="{Binding Group}" Width="3*" MinWidth="240" IsReadOnly="True">
                   <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTemplateColumn Header="Порада" Width="130">
+                <DataGridTemplateColumn Header="Порада" Width="132">
                   <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="*" MinWidth="130" IsReadOnly="True">
+                <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="135" IsReadOnly="True">
                   <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
               </DataGrid.Columns>

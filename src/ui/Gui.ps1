@@ -444,15 +444,15 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($r)
         $state.DebloatLoaded = $true
         $apps = @($r.Apps | Sort-Object GroupOrder, Name)
-        $features = @($r.Features)
-        $secApps = T-D9 'Вбудовані застосунки'; $secFeat = T-D9 'Функції та реклама Windows'
+        $features = @($r.Features | Sort-Object SectionOrder)
+        $secApps = (Get-D9DebloatSection 'apps').Name
         $rows = @(foreach ($a in $apps) {
             New-D9Row @{ Id = "app:$($a.Package)"; Badge = $secApps; Title = $a.Name; Group = $a.GroupName; Detail = ($a.Found -join ', '); Selected = $a.Recommended; Tag = $a
                          Kind = $(if ($a.Recommended) { T-D9 'видалити' } else { T-D9 'за бажанням' }); Color = $(if ($a.Recommended) { '#D70015' } else { '#6E6E73' }); Status = (T-D9 'встановлено') }
         }) + @(foreach ($f in $features) {
-            $applicable = $f.State -ne 'notApplicable'; $done = $f.State -eq 'applied'
-            New-D9Row @{ Id = "tweak:$($f.Id)"; Badge = $secFeat; Title = $f.Name; Detail = $f.Description; Tag = $f; Enabled = ($applicable -and -not $done); Selected = ($f.Recommended -and $applicable -and -not $done)
-                         Group = (T-D9 'Налаштування Windows'); Kind = $riskUi[$f.Risk][0]; Color = $riskUi[$f.Risk][1]; Status = $stateNames[[string]$f.State] + $(if ($f.Reason) { " ($($f.Reason))" }) }
+            $applicable = $f.State -notin 'notApplicable', 'needsAdmin'; $done = $f.State -eq 'applied'
+            New-D9Row @{ Id = "tweak:$($f.Id)"; Badge = $f.SectionName; Title = $f.Name; Detail = $f.Description; Tag = $f; Enabled = ($applicable -and -not $done); Selected = ($f.Recommended -and $applicable -and -not $done)
+                         Group = $f.Description; Kind = $riskUi[$f.Risk][0]; Color = $riskUi[$f.Risk][1]; Status = $(if ($f.State -eq 'needsAdmin') { T-D9 'потрібні права адміністратора' } else { $stateNames[[string]$f.State] }) + $(if ($f.Reason) { " ($($f.Reason))" }) }
         })
         Set-D9Items $ui.DebloatGrid $rows
         $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.DebloatGrid.ItemsSource)
@@ -483,15 +483,21 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $startJob (T-D9 'Деблоат Windows') { param($a) Invoke-D9Debloat -Catalog $a.Catalog -SystemInfo $a.Sys -Packages $a.Packages -TweakIds $a.TweakIds } @{
             Catalog = $Catalog; Sys = $SystemInfo; Packages = [string[]]@($apps | ForEach-Object { $_.Id.Substring(4) }); TweakIds = [string[]]@($feats | ForEach-Object { $_.Id.Substring(6) })
         } {
-            param($session)
+            param($session, $c)
             & $fillSessions
             $ok = @($session.entries | Where-Object result -eq 'ok').Count
             $err = @($session.entries | Where-Object result -eq 'error')
             $msg = (T-D9 'Деблоат виконано. Змін: {0}, помилок: {1}.' $ok $err.Count)
             if ($err) { $msg += "`n" + (($err | Select-Object -First 6 | ForEach-Object { "• $($_.message)" }) -join "`n") }
-            [void][Windows.MessageBox]::Show($win, $msg, 'Debora', 'OK', $(if ($err) { 'Warning' } else { 'Information' }))
+            # Контекстне меню, панель завдань і Провідник змінюються лише після перезапуску Провідника
+            if ($c.Explorer -and $ok) {
+                $msg += "`n`n" + (T-D9 'Щоб зміни меню, панелі завдань і Провідника з''явились, Провідник треба перезапустити (вікна папок закриються, файли не зачіпаються). Перезапустити зараз?')
+                if ([Windows.MessageBox]::Show($win, $msg, 'Debora', 'YesNo', 'Question') -eq 'Yes') { Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue }
+            } else {
+                [void][Windows.MessageBox]::Show($win, $msg, 'Debora', 'OK', $(if ($err) { 'Warning' } else { 'Information' }))
+            }
             & $loadDebloat
-        }
+        } @{ Explorer = [bool]@($feats | Where-Object { $_.Tag.Section -in 'context', 'shell', 'ads' }).Count }
     })
 
     # Перелік усіх пристроїв: фільтр (ComboBox Tag), пошук, однакові пристрої — одним рядком «×N»

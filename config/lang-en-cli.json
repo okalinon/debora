@@ -1,6 +1,9 @@
 {
   "note": "English strings for the CLI, text menu, core engine and actions (src/Main.ps1, src/core, src/actions). Keys are the exact Ukrainian T-D9 templates.",
   "strings": {
+    "{0}: capability без name": "{0}: capability without name",
+    "{0}: feature без name": "{0}: feature without name",
+    "{0}: state має бути NotPresent або Installed": "{0}: state must be NotPresent or Installed",
     "  [x] — буде зроблено, [=] — уже зроблено, [ ] — за бажанням (у вікні на вкладці «Деблоат»).": "  [x] — will be done, [=] — already done, [ ] — optional (in the window, Debloat tab).",
     "  -Debloat [-WhatIf]              деблоат: нав\u0027язані застосунки, реклама, Copilot, телеметрія": "  -Debloat [-WhatIf]              debloat: pushed apps, ads, Copilot, telemetry",
     " 14. Деблоат Windows (нав\u0027язані застосунки, реклама, Copilot)": " 14. Windows debloat (pushed apps, ads, Copilot)",

@@ -1,6 +1,11 @@
 {
   "note": "English strings for maintenance (src/maintenance) and drivers (src/drivers). Key = exact Ukrainian template passed to T-D9; {0}, {1}... are placeholders.",
   "strings": {
+    "Компонент Windows {0}: {1} -\u003e {2}": "Windows feature {0}: {1} -\u003e {2}",
+    "Можливість Windows {0}: {1} -\u003e {2}": "Windows capability {0}: {1} -\u003e {2}",
+    "Не вдалося повернути {0} (потрібен інтернет): Параметри → Система → Додаткові компоненти → Додати компонент.": "Couldn\u0027t restore {0} (internet needed): Settings → System → Optional features → Add a feature.",
+    "невідомо без прав адміністратора": "unknown without administrator rights",
+    "немає в системі": "not present",
     "Видалити застосунок «{0}»": "Remove the “{0}” app",
     "деблоат Windows": "Windows debloat",
     "вбудований": "built-in",

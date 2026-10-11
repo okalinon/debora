@@ -129,7 +129,7 @@ function Invoke-D9Plan {
                 $test = Invoke-D9ActionVerb Test $a
                 if ($test -eq $true) {
                     $entry.result = 'alreadyApplied'
-                } elseif (($a.type -in 'service', 'scheduledTask' -and -not $entry.before.exists) -or
+                } elseif (($a.type -in 'service', 'scheduledTask', 'feature', 'capability' -and -not $entry.before.exists) -or
                           ($a.type -eq 'registry' -and $a.ifKeyExists -and -not $entry.before.keyExists)) {
                     $entry.result = 'notPresent'
                 } else {

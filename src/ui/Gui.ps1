@@ -1283,10 +1283,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                     & $onScanned $r2
                     & $loadTweakStates
                     $left = @($r2.Checklist.items | Where-Object { $_.status -ne 'done' -and $_.action.action -ne 'reboot' }).Count
-                    $msg = (T-D9 'Оцінка: {0} → {1}/100.' $c2.Before $r2.Scan.score.overall) + $(if ($left) { "`n" + (T-D9 'Лишилось порад: {0} — у знахідках на «Огляді».' $left) }) + "`n`n" + (T-D9 'Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?')
+                    # Підсумок: оцінка до/після, скільки кроків виконано, що лишилось, примітки кроків
+                    $msg = (T-D9 'Оцінка: {0} → {1}/100.' $c2.Before $r2.Scan.score.overall) + "`n" + (T-D9 'Виконано кроків: {0} з {1}.' $c2.Ran $c2.Asked) +
+                        $(if ($c2.Notes) { "`n" + (($c2.Notes | Select-Object -First 6 | ForEach-Object { '• ' + $_ }) -join "`n") }) +
+                        $(if ($left) { "`n" + (T-D9 'Лишилось порад: {0} — у знахідках на «Огляді».' $left) }) + "`n" + (T-D9 'Усі зміни — у «Журналі змін», там же й відкат.') + "`n`n" + (T-D9 'Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?')
                     if ([Windows.MessageBox]::Show($win, $msg, 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
-                } @{ Before = $c.Before }
-            } @{ Before = $before }
+                } @{ Before = $c.Before; Ran = @($list.items | Where-Object { $_.executedAt -and @($c.Ids) -contains $_.id }).Count; Asked = @($c.Ids).Count; Notes = @($list.items | Where-Object { $_.note -and $_.note -notmatch '^(сесія|session) \S+$' -and @($c.Ids) -contains $_.id } | ForEach-Object { "$($_.title): $($_.note)" }) }
+            } @{ Before = $before; Ids = $ids }
         }
     })
 

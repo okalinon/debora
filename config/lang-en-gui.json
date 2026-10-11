@@ -473,6 +473,8 @@
     "Зміни відкочено.": "Changes undone.",
     "минулого разу {0} ({1})": "last time {0} ({1})",
     "Перевірено {0}": "Checked {0}",
-    "сповільнює запуск Windows ≈ на {0} с": "slows Windows startup by ≈ {0} s"
+    "сповільнює запуск Windows ≈ на {0} с": "slows Windows startup by ≈ {0} s",
+    "Виконано кроків: {0} з {1}.": "Steps done: {0} of {1}.",
+    "Усі зміни — у «Журналі змін», там же й відкат.": "All changes are in Change history, where you can also undo them."
   }
 }

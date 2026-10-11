@@ -1024,17 +1024,20 @@
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <StackPanel>
             <Grid>
-              <TextBox x:Name="AppSearch" Style="{StaticResource Search}" VerticalAlignment="Stretch"/>
+              <TextBox x:Name="AppSearch" Style="{StaticResource Search}" VerticalAlignment="Stretch" Height="40" FontSize="14"/>
               <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="16" Foreground="#6E6E73" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-              <TextBlock x:Name="AppSearchHint" Text="Пошук: назва програми або для чого вона (наприклад «pdf», «відео», «vpn»)" Foreground="#8E8E93" FontSize="16" Margin="39,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBlock x:Name="AppSearchHint" Text="Пошук: назва програми або для чого вона (наприклад «pdf», «відео», «vpn»)" Foreground="#8E8E93" FontSize="14" Margin="39,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
             </Grid>
-            <TextBlock Style="{StaticResource Section}" Margin="4,14,0,7" Text="Готові набори"/>
-            <WrapPanel x:Name="AppBundles"/>
-            <TextBlock x:Name="AppsSummary" Style="{StaticResource Intro}" Margin="4,4,0,0"
+            <!-- Компактно: набори одним рядком дрібними «пігулками», більше місця каталогу -->
+            <DockPanel Margin="0,8,0,0">
+              <TextBlock DockPanel.Dock="Left" Text="Набори:" Foreground="#6E6E73" FontSize="13" Margin="4,5,8,0" VerticalAlignment="Top"/>
+              <WrapPanel x:Name="AppBundles"/>
+            </DockPanel>
+            <TextBlock x:Name="AppsSummary" Style="{StaticResource Intro}" FontSize="13" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="4,2,0,0"
                        Text="Позначте програми — клацніть по картці — і натисніть «Встановити». Встановлення через winget: офіційні інсталятори, без реклами й «довантажувачів»."/>
             <Button x:Name="BtnWingetStore" Style="{StaticResource LinkButton}" Content="Встановити winget («Інсталятор застосунків») з Microsoft Store" Visibility="Collapsed" HorizontalAlignment="Left" Margin="4,6,0,0"/>
           </StackPanel>
-          <Grid Grid.Row="1" Margin="0,14,0,0">
+          <Grid Grid.Row="1" Margin="0,8,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Style="{StaticResource Panel}" Margin="0,0,14,10">
               <ListBox x:Name="AppCategoryList" ScrollViewer.HorizontalScrollBarVisibility="Disabled">

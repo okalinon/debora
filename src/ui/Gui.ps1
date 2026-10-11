@@ -1814,7 +1814,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.AppCards.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateAppSelection })
     foreach ($b in @($appCatalog.bundles)) {
         $btn = New-Object Windows.Controls.Button
-        $btn.Style = $win.FindResource('Chip')
+        $btn.Style = $win.FindResource('Chip'); $btn.Padding = '11,3'; $btn.FontSize = 12.5; $btn.Margin = '0,0,6,6'
         $btn.Content = Get-D9Text $b.name; $btn.ToolTip = Get-D9Text $b.description; $btn.Tag = @($b.apps)
         $btn.Add_Click({
             param($sender, $e)

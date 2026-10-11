@@ -242,6 +242,7 @@
     "План": "Plan",
     "Назва плану": "Plan name",
     "Зберегти план у файл…": "Save plan to file…",
-    "Завантажити план з файлу…": "Load plan from file…"
+    "Завантажити план з файлу…": "Load plan from file…",
+    "Набори:": "Bundles:"
   }
 }

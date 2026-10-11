@@ -371,6 +371,24 @@
     "Збереження драйверів": "Saving drivers",
     "Збережено драйверів: {0} ({1})": "Drivers saved: {0} ({1})",
     "(результат попереднього сканування — натисніть «Сканувати», щоб оновити)": "(results of the previous scan — click “Scan only” to refresh)",
-    "Зараз виконується операція. Закрити програму все одно?": "An operation is in progress. Close Debora anyway?"
+    "Зараз виконується операція. Закрити програму все одно?": "An operation is in progress. Close Debora anyway?",
+    "Деблоат (застосунки, реклама, телеметрія, служби) — на вкладці «Деблоат», очищення диска — в «Обслуговуванні».": "Debloat (apps, ads, telemetry, services) is on the Debloat tab, disk cleanup is under Maintenance.",
+    "Debora виправить це сама: спершу покаже, що саме зміниться": "Debora will fix this itself, after showing exactly what will change",
+    "Виконано, але перевірка ще бачить проблему: {0}. Подробиці — у журналі виконання внизу.": "Done, but the check still sees the problem: {0}. Details are in the activity log below.",
+    "Виправити": "Fix",
+    "Виправлення: {0}": "Fixing: {0}",
+    "Виправлено: {0}": "Fixed: {0}",
+    "Зачекайте, поки завершиться поточна операція.": "Please wait until the current operation finishes.",
+    "Зміни можна скасувати на вкладці «Журнал змін».": "Changes can be undone on the Change history tab.",
+    "Не вдалося виправити: {0}. Подробиці — у журналі виконання внизу.": "Couldn't fix: {0}. Details are in the activity log below.",
+    "Перед змінами Debora створить точку відновлення.": "Debora will create a restore point before making changes.",
+    "Покрокова інструкція: що і де зробити": "Step-by-step instructions: what to do and where",
+    "Точку відновлення в цьому сеансі вже створено.": "A restore point has already been created in this session.",
+    "Що буде зроблено: {0}": "What will be done: {0}",
+    "Щоб зміни запрацювали повністю, потрібне перезавантаження. Перезавантажити зараз?": "A restart is needed for the changes to take full effect. Restart now?",
+    "Як виправити": "How to fix",
+    "Оцінка: {0}/100. Автоматично виправляти нічого — решта порад у знахідках на «Огляді» (кнопка «Як виправити»).": "Score: {0}/100. Nothing to fix automatically — the remaining tips are in the findings on the Overview (the “How to fix” button).",
+    ". Ще {0} порад потребують вашого рішення — вони лишаться у знахідках з кнопкою «Як виправити»": ". {0} more tips need your decision — they stay in the findings with a “How to fix” button",
+    "Лишилось порад: {0} — у знахідках на «Огляді».": "Tips left: {0} — see the findings on the Overview."
   }
 }

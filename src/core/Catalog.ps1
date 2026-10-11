@@ -100,7 +100,10 @@ function Test-D9Catalog {
 
 function Get-D9Tweak {
     param([Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)][string]$Id)
-    $Catalog.Tweaks | Where-Object id -eq $Id | Select-Object -First 1
+    $t = $Catalog.Tweaks | Where-Object id -eq $Id | Select-Object -First 1
+    # Пункти вкладки «Деблоат» (debloat.<id>) — єдине джерело; на них посилаються й правила сканера
+    if (-not $t -and $Id -like 'debloat.*' -and (Get-Command Get-D9DebloatItemTweak -ErrorAction SilentlyContinue)) { $t = Get-D9DebloatItemTweak $Id }
+    $t
 }
 
 function Get-D9Preset {

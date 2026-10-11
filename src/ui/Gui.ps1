@@ -39,6 +39,10 @@ public class D9Row : INotifyPropertyChanged {
     public object Tag { get; set; }
     public object Items { get; set; }   // вкладений перелік (файли й папки знахідки)
     public string Hint { get; set; }
+    // Кнопка дії в рядку знахідки («Виправити» / «Як виправити»); null — кнопки немає
+    string fixLabel; string fixTip;
+    public string FixLabel { get { return fixLabel; } set { fixLabel = value; On("FixLabel"); } }
+    public string FixTip { get { return fixTip; } set { fixTip = value; On("FixTip"); } }
 }
 '@
 }
@@ -125,6 +129,53 @@ function Show-D9TextDialog {
     }
     $w.Content = $dock
     return [bool]$w.ShowDialog()
+}
+
+# «Як виправити»: опис знахідки, нумеровані кроки й посилання-кнопки (ms-settings:, .exe, сайти)
+function Show-D9GuideDialog {
+    param($Owner, [string]$Title, [string]$Details, [string[]]$Steps, [object[]]$Links)
+    [void](New-D9GuideWindow $Owner $Title $Details $Steps $Links).ShowDialog()
+}
+
+function New-D9GuideWindow {
+    param($Owner, [string]$Title, [string]$Details, [string[]]$Steps, [object[]]$Links)
+    $w = New-Object Windows.Window
+    $w.Title = T-D9 'Як виправити'; $w.Width = 680; $w.SizeToContent = 'Height'; $w.MaxHeight = 720
+    if ($Owner -and $Owner.IsLoaded) { $w.Owner = $Owner }
+    $w.WindowStartupLocation = 'CenterOwner'; $w.FontFamily = 'Segoe UI Variable Text, Segoe UI'; $w.FontSize = 14
+    if ($Owner) { $w.Resources = $Owner.Resources; $w.Background = $Owner.Background; $w.Foreground = $Owner.Foreground }
+    $dock = New-Object Windows.Controls.DockPanel; $dock.Margin = '20'
+    $h = New-Object Windows.Controls.TextBlock; $h.Text = $Title; $h.TextWrapping = 'Wrap'; $h.FontSize = 18; $h.FontWeight = 'SemiBold'; $h.Margin = '0,0,0,8'
+    [Windows.Controls.DockPanel]::SetDock($h, 'Top'); [void]$dock.Children.Add($h)
+    $buttons = New-Object Windows.Controls.StackPanel; $buttons.Orientation = 'Horizontal'; $buttons.HorizontalAlignment = 'Right'; $buttons.Margin = '0,14,0,0'
+    [Windows.Controls.DockPanel]::SetDock($buttons, 'Bottom'); [void]$dock.Children.Add($buttons)
+    $body = New-Object Windows.Controls.StackPanel
+    if ($Details) { $d = New-Object Windows.Controls.TextBlock; $d.Text = $Details; $d.TextWrapping = 'Wrap'; $d.Opacity = 0.75; $d.Margin = '0,0,0,10'; [void]$body.Children.Add($d) }
+    $n = 0
+    foreach ($s in @($Steps | Where-Object { $_ })) {
+        $n++
+        $row = New-Object Windows.Controls.DockPanel; $row.Margin = '0,4,0,4'
+        $num = New-Object Windows.Controls.TextBlock; $num.Text = "$n."; $num.Width = 26; $num.FontWeight = 'SemiBold'
+        [Windows.Controls.DockPanel]::SetDock($num, 'Left'); [void]$row.Children.Add($num)
+        $tx = New-Object Windows.Controls.TextBlock; $tx.Text = $s; $tx.TextWrapping = 'Wrap'; [void]$row.Children.Add($tx)
+        [void]$body.Children.Add($row)
+    }
+    $wrap = New-Object Windows.Controls.WrapPanel; $wrap.Margin = '0,10,0,0'
+    foreach ($l in @($Links | Where-Object { $_ -and $_.url })) {
+        $b = New-Object Windows.Controls.Button; $b.Content = "$($l.label)"; $b.Tag = "$($l.url)"; $b.ToolTip = "$($l.url)"; $b.Margin = '0,0,8,8'
+        if ($Owner) { $b.Style = $Owner.FindResource('Chip') }
+        $b.Add_Click({ param($s) try { Start-Process $s.Tag } catch { } })
+        [void]$wrap.Children.Add($b)
+    }
+    if ($wrap.Children.Count) { [void]$body.Children.Add($wrap) }
+    $sv = New-Object Windows.Controls.ScrollViewer; $sv.VerticalScrollBarVisibility = 'Auto'; $sv.Content = $body
+    [void]$dock.Children.Add($sv)
+    $ok = New-Object Windows.Controls.Button; $ok.Content = (T-D9 'Закрити'); $ok.Margin = '0'; $ok.IsDefault = $true; $ok.IsCancel = $true
+    if ($Owner) { $ok.Style = $Owner.FindResource('Primary') }
+    $ok.Add_Click({ $w.DialogResult = $true })
+    [void]$buttons.Children.Add($ok)
+    $w.Content = $dock
+    $w
 }
 
 # ---------- Тема ----------
@@ -222,7 +273,6 @@ function Show-D9Gui {
     $ui = @{}
     foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
                    'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'FindingsTitle', 'ScoreExplain',
-                   'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnReboot', 'ChecklistSummary', 'ChecklistList',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DebloatSummary', 'DebloatGrid', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
@@ -240,7 +290,7 @@ function Show-D9Gui {
     }
     $isAdmin = Test-D9IsAdmin
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
-    $actionButtons = @('BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnRunAuto', 'BtnMarkDone', 'BtnRecheck', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
+    $actionButtons = @('BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
                        'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
                        'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'BtnUninstRefresh', 'BtnUninstall',
                        'BtnDisksRefresh', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnDebloatRun', 'BtnDebloatRefresh')
@@ -381,12 +431,17 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param([string]$categoryId)
         $scan = $state.Scan
         if (-not $scan) { return }
+        $state.FindingsCategory = $categoryId
+        if (-not $state.ChecksConfig) { $state.ChecksConfig = ConvertFrom-Json (Get-D9ConfigText 'checks.json') }
         $list = @($scan.findings | Where-Object { -not $categoryId -or $_.category -eq $categoryId })
         Set-D9Items $ui.FindingsList @(foreach ($f in $list) {
             $st = $script:D9SevUi[[string]$f.severity]
             $pen = Get-D9FindingPenalty $f
             $items = ConvertTo-D9UiItems $(if ($f.data) { $f.data.items } else { $null })
-            New-D9Row @{ Badge = $st.Badge; Color = $st.Color; Title = $f.title; Detail = $f.details; Links = (ConvertTo-D9UiLinks $f.links)
+            $fixKind = Get-D9FindingFixKind $f -Config $state.ChecksConfig
+            New-D9Row @{ Badge = $st.Badge; Color = $st.Color; Title = $f.title; Detail = $f.details; Links = (ConvertTo-D9UiLinks $f.links); Tag = $f
+                         FixLabel = $(switch ($fixKind) { 'fix' { T-D9 'Виправити' } 'guide' { T-D9 'Як виправити' } default { $null } })
+                         FixTip = $(switch ($fixKind) { 'fix' { T-D9 'Debora виправить це сама: спершу покаже, що саме зміниться' } 'guide' { T-D9 'Покрокова інструкція: що і де зробити' } default { $null } })
                          Items = $items; Hint = $(if ($items) { T-D9 '{0} файлів і папок — натисніть, щоб побачити перелік' $items.Count } else { '' })
                          Kind = $(if ($pen) { "−$pen" } else { '' }); Note = $(if ($categoryId) { T-D9 ($script:D9SevUi[[string]$f.severity].Name) } else { "$($state.CategoryNames[[string]$f.category]) · $(T-D9 ($script:D9SevUi[[string]$f.severity].Name))" }) }
         })
@@ -408,31 +463,64 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $showFindings $(if ($row) { [string]$row.Id } else { $null })
     })
     $ui.BtnAllFindings.Add_Click({ & $showFindings $null })
-    $fillChecklist = {
-        param($list)
-        $state.Checklist = $list
-        $items = @($list.items)
-        if (-not $items) { $ui.ChecklistSummary.Text = (T-D9 'Чекліст порожній — нічого робити не потрібно.'); $ui.ChecklistList.ItemsSource = $null; return }
-        $done = @($items | Where-Object status -eq 'done').Count
-        $autoLeft = @($items | Where-Object { $_.auto -and $_.status -ne 'done' }).Count
-        $ui.ChecklistSummary.Text = (T-D9 'Виконано {0} з {1}. Автоматичних кроків залишилось: {2}. Ручні кроки описані з посиланнями; виконавши такий крок, позначте його або натисніть «Перевірити ще раз».' $done $items.Count $autoLeft)
-        Set-D9Items $ui.ChecklistList @(foreach ($i in $items) {
-            $deps = @($i.dependsOn | ForEach-Object { $id = $_; ($items | Where-Object id -eq $id).number } | Where-Object { $_ } | Sort-Object)
-            $detail = "$($i.why)"
-            if ($deps -and $i.status -ne 'done') { $detail += (T-D9 '  (після кроку {0})' ($deps -join ', ')) }
-            $kind = if ($i.status -eq 'done') { T-D9 'виконано' } elseif ($i.auto) { T-D9 'автоматично' } else { T-D9 'вручну' }
-            New-D9Row @{ Selected = ($i.status -eq 'done'); Title = "$($i.number). $($i.title)"; Detail = $detail; Kind = $kind
-                         Color = $(if ($i.status -eq 'done') { '#248A3D' } elseif ($i.auto) { '#007AFF' } else { '#B25000' })
-                         Note = $(if ($i.note) { "$($i.note)" } else { '' }); Links = (ConvertTo-D9UiLinks $i.links); Tag = $i }
-        })
-    }
+
+    # Кнопка в рядку знахідки: «Виправити» — лише ця знахідка (діалог «що зміниться» → виконання → повторна
+    # перевірка лише її), «Як виправити» — покрокова інструкція з checks.json (guide) і посилання
+    $ui.FindingsList.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{
+        param($sender, $e)
+        $b = $e.OriginalSource
+        if (-not ($b -is [Windows.Controls.Button]) -or $b.Name -ne 'BtnFindingFix') { return }
+        $e.Handled = $true
+        $f = $b.Tag.Tag
+        if (-not $f) { return }
+        if ((Get-D9FindingFixKind $f -Config $state.ChecksConfig) -ne 'fix') {
+            Show-D9GuideDialog $win $f.title $f.details @(Get-D9FindingGuide $f $state.ChecksConfig) @($f.links)
+            return
+        }
+        if ($state.Job) { [void][Windows.MessageBox]::Show($win, (T-D9 'Зачекайте, поки завершиться поточна операція.'), 'Debora'); return }
+        if ((Test-D9FindingFixNeedsAdmin $f $Catalog) -and -not (& $needAdmin)) { return }
+        $ctx = New-D9ScanContext -Catalog $Catalog -SystemInfo $SystemInfo -ScanConfig ([pscustomobject]@{ Checks = $state.ChecksConfig })
+        $preview = try { Get-D9FindingFixPreview -Finding $f -Context $ctx } catch { '' }
+        $rp = if ($state.FixRestorePoint) { T-D9 'Точку відновлення в цьому сеансі вже створено.' } else { T-D9 'Перед змінами Debora створить точку відновлення.' }
+        if (-not (Show-D9TextDialog $win (T-D9 'Виправити') ((T-D9 'Що буде зроблено: {0}' $f.title) + "`n" + $rp + ' ' + (T-D9 'Зміни можна скасувати на вкладці «Журнал змін».')) $preview (T-D9 'Виправити'))) { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob (T-D9 'Виправлення: {0}' $f.title) {
+            param($a)
+            $ctx = New-D9ScanContext -Catalog $a.Catalog -SystemInfo $a.Sys
+            Invoke-D9FindingFix -Finding $a.Finding -Context $ctx -NoRestorePoint:$a.NoRp
+        } @{ Catalog = $Catalog; Sys = $SystemInfo; Finding = $f; NoRp = [bool]$state.FixRestorePoint } {
+            param($r, $c)
+            $state.FixRestorePoint = $true
+            if ($state.Scan) {
+                $cat = $state.FindingsCategory
+                [void](Update-D9ScanFindings -Scan $state.Scan -Categories $state.Categories -CheckIds @($c.Finding.checkId) -Fresh @($r.Fresh))
+                try { [void](Save-D9Scan $state.Scan) } catch { }
+                & $fillOverview $state.Scan $state.Categories
+                if ($cat -and $state.Scan.score.categories.$cat -ne $null) { & $showFindings $cat }
+            }
+            & $fillSessions
+            $state.DebloatLoaded = $false   # «Деблоат» перечитає стан при наступному відкритті
+            & $loadTweakStates
+            $msg = if ($r.Fixed) { T-D9 'Виправлено: {0}' $c.Finding.title }
+                   elseif ($r.Done) { T-D9 'Виконано, але перевірка ще бачить проблему: {0}. Подробиці — у журналі виконання внизу.' $c.Finding.title }
+                   else { T-D9 'Не вдалося виправити: {0}. Подробиці — у журналі виконання внизу.' $c.Finding.title }
+            if ($r.Reboot) {
+                if ([Windows.MessageBox]::Show($win, "$msg`n`n" + (T-D9 'Щоб зміни запрацювали повністю, потрібне перезавантаження. Перезавантажити зараз?'), 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
+            } else { [void][Windows.MessageBox]::Show($win, $msg, 'Debora') }
+        } @{ Finding = $f }
+    })
+    # Чекліст — внутрішній план для «Сканувати й виправити все» (і CLI); окремої вкладки немає:
+    # кожна знахідка на «Огляді» має власну кнопку «Виправити» / «Як виправити»
+    $fillChecklist = { param($list) $state.Checklist = $list }
     $catNames = @{ privacy = (T-D9 'Конфіденційність'); apps = (T-D9 'Застосунки'); ui = (T-D9 'Інтерфейс'); performance = (T-D9 'Швидкодія'); gaming = (T-D9 'Ігри'); cleanup = (T-D9 'Очищення'); updates = (T-D9 'Оновлення'); safety = (T-D9 'Безпека') }
     $riskUi = @{ safe = @((T-D9 'безпечно'), '#248A3D'); moderate = @((T-D9 'помірно'), '#B25000'); expert = @((T-D9 'експертний'), '#D70015') }
     $stateNames = @{ applied = (T-D9 'застосовано'); partial = (T-D9 'частково'); notApplied = (T-D9 'ні'); notApplicable = (T-D9 'не підходить'); unknown = '—' }
     $fillTweaks = {
         param($states)
         $preset = Get-D9Preset $Catalog $Recommendation.Preset
-        $rows = foreach ($t in $Catalog.Tweaks) {
+        # Лише «свої» налаштування: деблоат і очищення мають власні вкладки
+        $own = @(Get-D9SettingsTweaks $Catalog)
+        $rows = foreach ($t in $own) {
             $st = $states | Where-Object Id -eq $t.id | Select-Object -First 1
             $applicable = $st.State -ne 'notApplicable'
             $note = @()
@@ -446,8 +534,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
         $state.TweakRows = @($rows)
         Set-D9Items $ui.TweakGrid $state.TweakRows
-        $applied = @($states | Where-Object State -eq 'applied').Count
-        $ui.TweaksSummary.Text = (T-D9 'Налаштувань: {0}, застосовано: {1}. Галочками відмічено незастосоване з профілю «{2}». Наведіть мишку на назву, щоб побачити пояснення.' (@($Catalog.Tweaks).Count) $applied (Get-D9Text $preset.name))
+        $applied = @($states | Where-Object { $_.State -eq 'applied' -and @($own.id) -contains $_.Id }).Count
+        $ui.TweaksSummary.Text = (T-D9 'Налаштувань: {0}, застосовано: {1}. Галочками відмічено незастосоване з профілю «{2}». Наведіть мишку на назву, щоб побачити пояснення.' $own.Count $applied (Get-D9Text $preset.name)) + ' ' + (T-D9 'Деблоат (застосунки, реклама, телеметрія, служби) — на вкладці «Деблоат», очищення диска — в «Обслуговуванні».')
     }
     $loadTweakStates = {
         & $startJob (T-D9 'Перевірка стану налаштувань') {
@@ -631,7 +719,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.BtnDeepScan.Add_Click({ & $startJob (T-D9 'Глибоке сканування') $scanWork @{ Catalog = $Catalog; Sys = $SystemInfo; Deep = $true; ReportDir = $ReportDir } $onScanned })
     $ui.BtnOpenReport.Add_Click({ if ($state.ReportPath) { Start-Process $state.ReportPath } })
 
-    # ---------- кнопки: Чекліст ----------
+    # ---------- «Сканувати й виправити все» ----------
     # Одна кнопка для всього: сканування → список автоматичних кроків → виконання → повторне сканування
     $runChecklistWork = {
         param($a)
@@ -654,10 +742,10 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             & $onScanned $r
             $before = $r.Scan.score.overall
             $todo = @($r.Checklist.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' })
-            if (-not $todo) { [void][Windows.MessageBox]::Show($win, (T-D9 'Оцінка: {0}/100. Автоматично виправляти нічого — решта порад на вкладці «Чекліст».' $before), 'Debora'); return }
+            if (-not $todo) { [void][Windows.MessageBox]::Show($win, (T-D9 'Оцінка: {0}/100. Автоматично виправляти нічого — решта порад у знахідках на «Огляді» (кнопка «Як виправити»).' $before), 'Debora'); return }
             $text = ($todo | ForEach-Object { "$($_.number). $($_.title)" }) -join "`r`n"
             $manual = @($r.Checklist.items | Where-Object { -not $_.auto -and $_.status -ne 'done' }).Count
-            if (-not (Show-D9TextDialog $win (T-D9 'Виправити все') ((T-D9 'Оцінка зараз: {0}/100. Debora виконає {1} кроків сама (спершу — точка відновлення; усе відкочується в «Журналі змін»)' $before $todo.Count) + $(if ($manual) { T-D9 '. Ще {0} порад потребують вашого рішення — вони лишаться на вкладці «Чекліст»' $manual }) + '.') $text (T-D9 'Виконати'))) { return }
+            if (-not (Show-D9TextDialog $win (T-D9 'Виправити все') ((T-D9 'Оцінка зараз: {0}/100. Debora виконає {1} кроків сама (спершу — точка відновлення; усе відкочується в «Журналі змін»)' $before $todo.Count) + $(if ($manual) { T-D9 '. Ще {0} порад потребують вашого рішення — вони лишаться у знахідках з кнопкою «Як виправити»' $manual }) + '.') $text (T-D9 'Виконати'))) { return }
             & $startJob (T-D9 'Виправлення') $runChecklistWork @{ Catalog = $Catalog; Sys = $SystemInfo } {
                 param($list, $c)
                 & $fillChecklist $list
@@ -669,60 +757,11 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                     & $onScanned $r2
                     & $loadTweakStates
                     $left = @($r2.Checklist.items | Where-Object { $_.status -ne 'done' -and $_.action.action -ne 'reboot' }).Count
-                    $msg = (T-D9 'Оцінка: {0} → {1}/100.' $c2.Before $r2.Scan.score.overall) + $(if ($left) { "`n" + (T-D9 'Лишилось порад: {0} — вкладка «Чекліст».' $left) }) + "`n`n" + (T-D9 'Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?')
+                    $msg = (T-D9 'Оцінка: {0} → {1}/100.' $c2.Before $r2.Scan.score.overall) + $(if ($left) { "`n" + (T-D9 'Лишилось порад: {0} — у знахідках на «Огляді».' $left) }) + "`n`n" + (T-D9 'Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?')
                     if ([Windows.MessageBox]::Show($win, $msg, 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
                 } @{ Before = $c.Before }
             } @{ Before = $before }
         }
-    })
-    $ui.BtnRunAuto.Add_Click({
-        if (-not $state.Checklist) { [void][Windows.MessageBox]::Show($win, (T-D9 'Спочатку проскануйте комп''ютер.'), 'Debora'); return }
-        if (-not (& $needAdmin)) { return }
-        $todo = @($state.Checklist.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' })
-        if (-not $todo) { [void][Windows.MessageBox]::Show($win, (T-D9 'Автоматичних кроків не залишилось.'), 'Debora'); return }
-        $text = ($todo | ForEach-Object { "$($_.number). $($_.title)" }) -join "`r`n"
-        if (-not (Show-D9TextDialog $win (T-D9 'Автоматичні кроки') (T-D9 'Буде виконано {0} кроків. Перед змінами створюється точка відновлення; усе можна відкотити на вкладці «Журнал змін».' $todo.Count) $text (T-D9 'Виконати'))) { return }
-        & $startJob (T-D9 'Виконання кроків чекліста') {
-            param($a)
-            $list = Get-D9Checklist
-            $ctx = New-D9ScanContext -Catalog $a.Catalog -SystemInfo $a.Sys
-            foreach ($item in @($list.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' } | Sort-Object number)) {
-                if (-not (Test-D9ChecklistReady $list $item)) { Write-D9Log (T-D9 'Крок {0} пропущено: спершу виконайте попередні' $item.number) Warn; continue }
-                try { [void](Invoke-D9ChecklistStep -Checklist $list -Item $item -Context $ctx) } catch { Write-D9Log (T-D9 '  Помилка: {0}' $_.Exception.Message) Error }
-            }
-            Write-D9Log (T-D9 'Перевірка результату...')
-            $list = Update-D9ChecklistStatus -Checklist $list -Context $ctx
-            Save-D9Checklist $list
-            $list
-        } @{ Catalog = $Catalog; Sys = $SystemInfo } {
-            param($list)
-            & $fillChecklist $list
-            & $fillSessions
-            & $loadTweakStates
-            $answer = [Windows.MessageBox]::Show($win, (T-D9 'Готово. Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?'), 'Debora', 'YesNo', 'Question')
-            if ($answer -eq 'Yes') { Restart-Computer -Force }
-        }
-    })
-    $ui.BtnMarkDone.Add_Click({
-        $row = $ui.ChecklistList.SelectedItem
-        if (-not $row) { [void][Windows.MessageBox]::Show($win, (T-D9 'Виберіть крок у списку.'), 'Debora'); return }
-        $item = $state.Checklist.items | Where-Object id -eq $row.Tag.id | Select-Object -First 1
-        $item.status = 'done'; $item.doneAt = (Get-Date).ToString('s'); $item.note = (T-D9 'позначено вручну')
-        Save-D9Checklist $state.Checklist
-        & $fillChecklist $state.Checklist
-    })
-    $ui.BtnRecheck.Add_Click({
-        if (-not $state.Checklist) { return }
-        & $startJob (T-D9 'Перевірка виконаних кроків') {
-            param($a)
-            $ctx = New-D9ScanContext -Catalog $a.Catalog -SystemInfo $a.Sys
-            $list = Update-D9ChecklistStatus -Checklist (Get-D9Checklist) -Context $ctx
-            Save-D9Checklist $list
-            $list
-        } @{ Catalog = $Catalog; Sys = $SystemInfo } { param($list) & $fillChecklist $list }
-    })
-    $ui.BtnReboot.Add_Click({
-        if ([Windows.MessageBox]::Show($win, (T-D9 'Перезавантажити комп''ютер зараз? Збережіть відкриті документи.'), 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force }
     })
 
     # ---------- кнопки: Налаштування ----------

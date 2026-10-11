@@ -460,13 +460,6 @@
         },
         {
           "type": "registry",
-          "path": "HKCU:\\SOFTWARE\\Microsoft\\Siuf\\Rules",
-          "name": "NumberOfSIUFInPeriod",
-          "value": 0,
-          "kind": "DWord"
-        },
-        {
-          "type": "registry",
           "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Privacy",
           "name": "TailoredExperiencesWithDiagnosticDataEnabled",
           "value": 0,
@@ -1140,8 +1133,8 @@
         "en": "Explorer: file extensions, This PC"
       },
       "description": {
-        "uk": "Видно розширення файлів (.exe, .pdf…), Провідник відкривається на «Цей ПК», без кнопки «Подання завдань».",
-        "en": "Shows file extensions, opens Explorer to This PC, hides the Task View button."
+        "uk": "Видно розширення файлів (.exe, .pdf…), Провідник відкривається на «Цей ПК».",
+        "en": "Shows file extensions and opens Explorer to This PC."
       },
       "actions": [
         {
@@ -1156,13 +1149,6 @@
           "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
           "name": "LaunchTo",
           "value": 1,
-          "kind": "DWord"
-        },
-        {
-          "type": "registry",
-          "path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-          "name": "ShowTaskViewButton",
-          "value": 0,
           "kind": "DWord"
         },
         {
@@ -1599,12 +1585,12 @@
       "category": "performance",
       "risk": "moderate",
       "name": {
-        "uk": "Вимкнути зайві служби",
-        "en": "Disable unneeded services"
+        "uk": "Вимкнути служби діагностики й звітів про помилки",
+        "en": "Disable diagnostics and error reporting services"
       },
       "description": {
-        "uk": "Звіти про помилки, діагностика, офлайн-карти, факс, демо-режим, віддалений реєстр, мережевий доступ Media Player.",
-        "en": "Error reporting, diagnostics, offline maps, fax, retail demo, remote registry, Media Player network sharing."
+        "uk": "Звіти про помилки (WerSvc) і служби діагностики (DPS, WDI) — для слабкого ПК. Інші зайві служби (факс, карти, демо-режим, віддалений реєстр) — на вкладці «Деблоат».",
+        "en": "Error reporting (WerSvc) and diagnostics services (DPS, WDI) — for a weak PC. Other unneeded services (fax, maps, retail demo, remote registry) are on the Debloat tab."
       },
       "actions": [
         {
@@ -1628,36 +1614,6 @@
         {
           "type": "service",
           "name": "WdiSystemHost",
-          "startup": "Disabled",
-          "stop": true
-        },
-        {
-          "type": "service",
-          "name": "MapsBroker",
-          "startup": "Disabled",
-          "stop": true
-        },
-        {
-          "type": "service",
-          "name": "Fax",
-          "startup": "Disabled",
-          "stop": true
-        },
-        {
-          "type": "service",
-          "name": "RetailDemo",
-          "startup": "Disabled",
-          "stop": true
-        },
-        {
-          "type": "service",
-          "name": "RemoteRegistry",
-          "startup": "Disabled",
-          "stop": true
-        },
-        {
-          "type": "service",
-          "name": "WMPNetworkSvc",
           "startup": "Disabled",
           "stop": true
         }

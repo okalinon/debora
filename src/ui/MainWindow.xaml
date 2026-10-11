@@ -547,9 +547,9 @@
               <StackPanel VerticalAlignment="Center">
                 <TextBlock x:Name="VerdictText" Text="Ще не скановано" FontFamily="{StaticResource Display}" FontSize="28" FontWeight="SemiBold"/>
                 <TextBlock x:Name="CountsText" Style="{StaticResource Intro}" Margin="0,4,0,14"
-                           Text="Перевірка займає від 10 секунд до 3 хвилин. «Сканувати й виправити все» одразу виконає безпечні кроки: точку відновлення, виправлення, очищення, оновлення й драйвери."/>
+                           Text="Перевірка займає від 10 секунд до 3 хвилин. «Сканувати й виправити все» одразу виконає безпечні кроки: точку відновлення, виправлення, очищення, оновлення й драйвери. Кожну знахідку можна виправити й окремо — кнопкою в її рядку."/>
                 <WrapPanel>
-                  <Button x:Name="BtnFixAll" Style="{StaticResource Primary}" Content="Сканувати й виправити все" Margin="0,0,8,6" ToolTip="Перевірити ПК і виконати всі автоматичні кроки чекліста: точка відновлення, виправлення, очищення, оновлення, драйвери"/>
+                  <Button x:Name="BtnFixAll" Style="{StaticResource Primary}" Content="Сканувати й виправити все" Margin="0,0,8,6" ToolTip="Перевірити ПК і виконати все, що Debora виправляє сама: точка відновлення, виправлення, очищення, оновлення, драйвери"/>
                   <Button x:Name="BtnScan" Content="Лише сканувати" Margin="0,0,8,6"/>
                   <Button x:Name="BtnDeepScan" Content="Глибоке сканування" Margin="0,0,8,6"/>
                   <Button x:Name="BtnOpenReport" Content="Відкрити звіт" IsEnabled="False" Margin="0,0,8,6"/>
@@ -606,6 +606,15 @@
                       </Border>
                       <!-- Скільки балів знахідка зняла з оцінки категорії -->
                       <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" VerticalAlignment="Top" Margin="12,2,4,0"/>
+                      <!-- Дія знахідки: «Виправити» (Debora зробить сама) або «Як виправити» (покрокова інструкція) -->
+                      <Button x:Name="BtnFindingFix" DockPanel.Dock="Right" Content="{Binding FixLabel}" Tag="{Binding}" ToolTip="{Binding FixTip}"
+                              Padding="13,5" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Top">
+                        <Button.Style>
+                          <Style TargetType="Button" BasedOn="{StaticResource Chip}">
+                            <Style.Triggers><DataTrigger Binding="{Binding FixLabel}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding FixLabel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                          </Style>
+                        </Button.Style>
+                      </Button>
                       <StackPanel>
                         <TextBlock Text="{Binding Title}" Style="{StaticResource RowTitle}"/>
                         <TextBlock Text="{Binding Note}" Foreground="#6E6E73" FontSize="13" Margin="0,2,0,0"/>
@@ -669,44 +678,6 @@
         </ScrollViewer>
       </TabItem>
 
-      <!-- ================= Чекліст ================= -->
-      <TabItem Uid="checklist" Header="Чекліст" Tag="&#xE9D5;" Background="#34C759">
-        <Grid Margin="20,0,20,0">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-          <WrapPanel>
-            <Button x:Name="BtnRunAuto" Style="{StaticResource Primary}" Content="Виконати автоматичні кроки" Margin="0,0,8,6"/>
-            <Button x:Name="BtnMarkDone" Content="Позначити вибраний виконаним" Margin="0,0,8,6"/>
-            <Button x:Name="BtnRecheck" Content="Перевірити ще раз" Margin="0,0,8,6"/>
-            <Button x:Name="BtnReboot" Content="Перезавантажити ПК" Margin="0,0,8,6"/>
-          </WrapPanel>
-          <TextBlock x:Name="ChecklistSummary" Grid.Row="1" Style="{StaticResource Intro}" Margin="4,8,0,12" Text="Чекліст з'явиться після сканування."/>
-          <Border Grid.Row="2" Style="{StaticResource Panel}" Margin="0,0,0,12">
-            <ListBox x:Name="ChecklistList" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
-              <ListBox.ItemTemplate>
-                <DataTemplate>
-                  <DockPanel>
-                    <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Selected, Mode=OneWay}" IsHitTestVisible="False" Focusable="False" Margin="0,1,12,0" VerticalAlignment="Top"/>
-                    <StackPanel>
-                      <DockPanel>
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Foreground="{Binding Color}" FontSize="14" FontWeight="SemiBold" Margin="14,0,0,0"/>
-                        <TextBlock Text="{Binding Title}" Style="{StaticResource RowTitle}"/>
-                      </DockPanel>
-                      <TextBlock Text="{Binding Detail}" Style="{StaticResource Optional}" Foreground="#6E6E73" FontSize="14" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                      <TextBlock Text="{Binding Note}" Style="{StaticResource Optional}" Foreground="#B25000" FontSize="14" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                      <ItemsControl ItemsSource="{Binding Links}">
-                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate><Button Style="{StaticResource LinkButton}" Content="{Binding Label}" Tag="{Binding Url}" ToolTip="{Binding Url}"/></DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </StackPanel>
-                  </DockPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-          </Border>
-        </Grid>
-      </TabItem>
 
       <!-- ================= Налаштування (твіки) ================= -->
       <TabItem Uid="settings" Header="Налаштування" Tag="&#xE713;" Background="#8E8E93">
@@ -808,7 +779,7 @@
                 <CheckBox x:Name="ChkSuDebloat" Content="Деблоат Windows: нав'язані застосунки, реклама, Copilot, телеметрія (рекомендоване)" Margin="0,3"/>
                 <DockPanel Margin="0,3">
                   <ComboBox x:Name="SuPresetBox" DockPanel.Dock="Right" Width="360" Margin="12,0,0,0"/>
-                  <CheckBox x:Name="ChkSuTweaks" Content="Профіль налаштувань: приватність, швидкодія, Провідник" VerticalAlignment="Center"/>
+                  <CheckBox x:Name="ChkSuTweaks" Content="Профіль налаштувань: швидкодія, Провідник, захист" VerticalAlignment="Center"/>
                 </DockPanel>
                 <CheckBox x:Name="ChkSuApps" Content="Програми (набори й окремі — нижче)" Margin="0,3"/>
                 <CheckBox x:Name="ChkSuWindows" Content="Оновлення Windows (може тривати довго)" Margin="0,3"/>

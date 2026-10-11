@@ -446,6 +446,9 @@
     "Звіт створено Debora {0}. Звіт зберігається лише на цьому комп'ютері.": "Report created by Debora {0}. The report is stored only on this computer.",
     "Debora: сканування": "Debora: scanning",
     "лише в глибокому скануванні": "deep scan only",
-    "Паралельне сканування недоступне ({0}) — виконую послідовно.": "Parallel scanning unavailable ({0}) — running sequentially."
+    "Паралельне сканування недоступне ({0}) — виконую послідовно.": "Parallel scanning unavailable ({0}) — running sequentially.",
+    "Видалити програми: {0}. Залишки (папки й записи реєстру) — у Кошик і резервну копію .reg.": "Uninstall programs: {0}. Leftovers (folders and registry entries) go to the Recycle Bin and a .reg backup.",
+    "Оновити через winget: {0}": "Update with winget: {0}",
+    "Це потрібно зробити вручну.": "This has to be done manually."
   }
 }

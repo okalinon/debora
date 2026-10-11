@@ -251,7 +251,7 @@ function Test-D9ChecklistReady {
 
 # Виконує автоматичний крок. Повертає $true, якщо виконано.
 function Invoke-D9ChecklistStep {
-    param([Parameter(Mandatory)]$Checklist, [Parameter(Mandatory)]$Item, [Parameter(Mandatory)]$Context, [switch]$AllowReboot)
+    param([Parameter(Mandatory)]$Checklist, [Parameter(Mandatory)]$Item, [Parameter(Mandatory)]$Context, [switch]$AllowReboot, [switch]$NoSave)
     Write-D9Log (T-D9 'Крок {0}. {1}' $Item.number $Item.title)
     switch ($Item.action.type) {
         'manual' { Write-D9Log (T-D9 '  Це ручний крок: {0}' $Item.why) Warn; return $false }
@@ -295,7 +295,7 @@ function Invoke-D9ChecklistStep {
         'maintenance' {
             if ($Item.action.action -eq 'reboot') {
                 if (-not $AllowReboot) { Write-D9Log (T-D9 '  Перезавантажте комп''ютер вручну або запустіть з -AllowReboot') Warn; return $false }
-                $Item.executedAt = (Get-Date).ToString('s'); Save-D9Checklist $Checklist
+                $Item.executedAt = (Get-Date).ToString('s'); if (-not $NoSave) { Save-D9Checklist $Checklist }
                 Restart-Computer -Force
                 return $true
             }
@@ -306,6 +306,118 @@ function Invoke-D9ChecklistStep {
         }
     }
     $Item.executedAt = (Get-Date).ToString('s')
-    Save-D9Checklist $Checklist
+    if (-not $NoSave) { Save-D9Checklist $Checklist }
     return $true
+}
+
+# ---------- Дія в одній знахідці («Огляд» → «Виправити» / «Як виправити») ----------
+
+# Крок лише для цієї знахідки: виконує тільки її виправлення, а не весь груповий крок чекліста
+# (наприклад, з «Очистити диск» — лише цю очистку). $null — Debora не виправляє це сама (manual, drivers).
+function New-D9ChecklistItemForFinding {
+    param([Parameter(Mandatory)]$Finding)
+    $f = $Finding; $fix = $f.fix
+    $action = switch ([string]$fix.type) {
+        'tweaks'      { if (@($fix.ids).Count) { @{ type = 'tweaks'; ids = @($fix.ids) } } }
+        'actions'     { if (@($fix.actions).Count) { @{ type = 'actions'; fixes = @([pscustomobject]@{ key = $f.key; title = $f.title; actions = @($fix.actions) }); reboot = [bool]$fix.reboot } } }
+        'maintenance' {
+            if ($fix.action -eq 'restorePoint') { @{ type = 'restorePoint' } }
+            elseif ($fix.action -and $fix.action -ne 'reboot' -and $script:D9MaintenanceActions.Contains([string]$fix.action)) { @{ type = 'maintenance'; action = [string]$fix.action } }
+        }
+        'apps'        { if (@($fix.ids).Count) { @{ type = 'apps'; ids = @($fix.ids) } } }
+        'uninstall'   { if (@($fix.names).Count) { @{ type = 'uninstall'; names = @($fix.names) } } }
+    }
+    # Пристрій без драйвера: Debora шукає драйвери в інтернеті сама (як крок 29 чекліста)
+    if (-not $action -and $f.checkId -eq 'upd.problem-devices') { $action = @{ type = 'maintenance'; action = 'driverUpdate' } }
+    if (-not $action) { return $null }
+    $item = New-D9ChecklistItem 0 $f.key $f.title $f.details $f.links $action @{ type = 'check'; checkId = $f.checkId; key = $f.key }
+    $item.number = 1
+    $item
+}
+
+# Що зробить «Виправити» (текст для підтвердження): зміни твіків і дій — як «Що зміниться» в «Налаштуваннях»
+function Get-D9FindingFixPreview {
+    param([Parameter(Mandatory)]$Finding, [Parameter(Mandatory)]$Context)
+    $item = New-D9ChecklistItemForFinding $Finding
+    if (-not $item) { return '' }
+    $a = $item.action
+    switch ($a.type) {
+        'tweaks' {
+            $plan = New-D9Plan -Catalog $Context.Catalog -TweakIds @($a.ids) -SystemInfo $Context.System
+            $lines = foreach ($p in @(Get-D9Preview -Plan $plan -SystemInfo $Context.System)) { "• $($p.Tweak): $($p.Change)" }
+            $names = @($a.ids | ForEach-Object { Get-D9Tweak $Context.Catalog $_ } | Where-Object { $_ } | ForEach-Object { Get-D9Text $_.name })
+            return (@($names) + '' + @($lines)) -join "`r`n"
+        }
+        'actions' {
+            $tw = [pscustomobject]@{ id = "fix:$($Finding.key)"; name = [pscustomobject]@{ uk = $Finding.title }; actions = @($Finding.fix.actions) }
+            $plan = New-D9Plan -Catalog ([pscustomobject]@{ Tweaks = @($tw); Presets = @() }) -TweakIds @($tw.id) -SystemInfo $Context.System
+            return (@(Get-D9Preview -Plan $plan -SystemInfo $Context.System) | ForEach-Object { "• $($_.Change)" }) -join "`r`n"
+        }
+        'maintenance'  { return (Get-D9MaintenanceTitle $a.action) }
+        'restorePoint' { return (T-D9 'Створити точку відновлення') }
+        'apps'         { return (T-D9 'Оновити через winget: {0}' (@($a.ids) -join ', ')) }
+        'uninstall'    { return (T-D9 'Видалити програми: {0}. Залишки (папки й записи реєстру) — у Кошик і резервну копію .reg.' (@($a.names) -join ', ')) }
+    }
+}
+
+# Чи потрібні права адміністратора: не потрібні лише для змін у реєстрі поточного користувача (HKCU)
+function Test-D9FindingFixNeedsAdmin {
+    param([Parameter(Mandatory)]$Finding, $Catalog)
+    $item = New-D9ChecklistItemForFinding $Finding
+    if (-not $item) { return $false }
+    $actions = switch ($item.action.type) {
+        'actions' { @($Finding.fix.actions) }
+        'tweaks'  { if ($Catalog) { @($item.action.ids | ForEach-Object { Get-D9Tweak $Catalog $_ } | Where-Object { $_ } | ForEach-Object { $_.actions }) } }
+    }
+    if (-not $actions) { return $true }
+    [bool]@($actions | Where-Object { $_.type -ne 'registry' -or "$($_.path)" -notlike 'HKCU:*' }).Count
+}
+
+# Виконує виправлення однієї знахідки й повторно запускає лише її перевірку.
+# Точка відновлення: перед твіками й діями її робить рушій, перед іншим — ця функція; -NoRestorePoint — уже є.
+# Повертає { Done; Fixed; Fresh (нові знахідки цієї перевірки); Reboot; Note }
+function Invoke-D9FindingFix {
+    param([Parameter(Mandatory)]$Finding, [Parameter(Mandatory)]$Context, [switch]$NoRestorePoint)
+    $item = New-D9ChecklistItemForFinding $Finding
+    if (-not $item) { return [pscustomobject]@{ Done = $false; Fixed = $false; Fresh = @($Finding); Reboot = $false; Note = (T-D9 'Це потрібно зробити вручну.') } }
+    $list = [pscustomobject]@{ items = @($item) }
+    $type = $item.action.type
+    if (-not $NoRestorePoint -and $type -in 'maintenance', 'apps', 'uninstall') {
+        if (-not (New-D9RestorePoint)) { Write-D9Log (T-D9 '  Не вдалося створити точку відновлення (захист системи вимкнено?)') Warn }
+        $NoRestorePoint = $true
+    }
+    if ($NoRestorePoint -and $type -in 'tweaks', 'actions') {
+        # Позначка «точку вже створено» для Invoke-D9ChecklistStep
+        $list.items = @($item, [pscustomobject]@{ action = @{ type = 'restorePoint' }; status = 'done' })
+    }
+    $done = $false
+    try { $done = Invoke-D9ChecklistStep -Checklist $list -Item $item -Context $Context -NoSave }
+    catch { Write-D9Log (T-D9 '  Помилка: {0}' $_.Exception.Message) Error; $item.note = $_.Exception.Message }
+    $fresh = @((Invoke-D9Scan -Context $Context -OnlyChecks @($Finding.checkId)).findings)
+    $still = @($fresh | Where-Object key -eq $Finding.key)
+    $reboot = [bool]$item.action.reboot -or ("$($item.note)" -eq (T-D9 'потрібне перезавантаження')) -or
+        [bool](@($item.action.ids | Where-Object { $_ } | ForEach-Object { Get-D9Tweak $Context.Catalog $_ } | Where-Object rebootRequired).Count -and $type -eq 'tweaks')
+    [pscustomobject]@{ Done = [bool]$done; Fixed = -not $still; Fresh = $fresh; Reboot = $reboot; Note = "$($item.note)" }
+}
+
+# «Як виправити»: нумеровані кроки з checks.json (поле guide { uk: [...], en: [...] }) для перевірки знахідки.
+# Без гайда — порожньо (тоді показуємо details і посилання знахідки).
+function Get-D9FindingGuide {
+    param([Parameter(Mandatory)]$Finding, $Config)
+    if (-not $Config) { $Config = ConvertFrom-Json (Get-D9ConfigText 'checks.json') }
+    $check = @($Config.checks) | Where-Object id -eq $Finding.checkId | Select-Object -First 1
+    if (-not $check -or -not $check.guide) { return @() }
+    $steps = $check.guide.$script:D9Language
+    if (-not $steps) { $steps = $check.guide.en }
+    if (-not $steps) { $steps = $check.guide.uk }
+    @($steps | ForEach-Object { [string]$_ })
+}
+
+# Кнопка в рядку знахідки: fix — «Виправити» (Debora зробить сама), guide — «Як виправити» (ручне),
+# $null — без кнопки (відомості, для яких немає ні виправлення, ні інструкції)
+function Get-D9FindingFixKind {
+    param([Parameter(Mandatory)]$Finding, $Config)
+    if (New-D9ChecklistItemForFinding $Finding) { return 'fix' }
+    if ($Finding.severity -eq 'info' -and -not @(Get-D9FindingGuide $Finding $Config).Count) { return $null }
+    'guide'
 }

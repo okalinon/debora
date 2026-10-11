@@ -63,6 +63,24 @@ function Get-D9DebloatItemTweak {
     if ($item) { ConvertTo-D9DebloatTweak $item }
 }
 
+# Кожну функцію показує одна вкладка. Твіки каталогу, які показує «Деблоат» (features і набори bundles, розкладені там
+# поштучно) чи «Обслуговування» (очищення диска, драйвери з Windows Update), на вкладці «Налаштування» не дублюються.
+$script:D9MaintenanceTweakIds = @('cleanup.temp', 'cleanup.update-cache', 'cleanup.leftovers', 'cleanup.do-cache', 'updates.no-wu-drivers')
+
+function Get-D9TweakOwner {
+    param([Parameter(Mandatory)][string]$Id)
+    $cfg = Get-D9DebloatConfig
+    if ($Id -like 'debloat.*' -or @($cfg.features.id) -contains $Id -or @($cfg.bundles.ids) -contains $Id) { return 'debloat' }
+    if ($script:D9MaintenanceTweakIds -contains $Id) { return 'maintenance' }
+    'settings'
+}
+
+# Твіки для вкладки «Налаштування» (без тих, що мають власну вкладку)
+function Get-D9SettingsTweaks {
+    param([Parameter(Mandatory)]$Catalog)
+    @($Catalog.Tweaks | Where-Object { (Get-D9TweakOwner $_.id) -eq 'settings' })
+}
+
 # Деблоат-налаштування: твіки з каталогу (features) і точкові пункти (items), з розділом і станом
 # (applied | partial | notApplied | notApplicable | needsAdmin). Пунктів, яких на ПК немає (служба, завдання,
 # компонент відсутні — стан unknown), не показуємо; компоненти без прав адміністратора — needsAdmin.
@@ -111,7 +129,7 @@ function New-D9DebloatCatalog {
             actions = @([pscustomobject]@{ type = 'appx'; package = $p })
         }
     })
-    $tweaks += @($TweakIds | Where-Object { $_ } | ForEach-Object { $x = Get-D9Tweak $Catalog $_; if (-not $x) { $x = Get-D9DebloatItemTweak $_ }; $x } | Where-Object { $_ })
+    $tweaks += @($TweakIds | Where-Object { $_ } | ForEach-Object { Get-D9Tweak $Catalog $_ } | Where-Object { $_ })
     [pscustomobject]@{ Tweaks = $tweaks; Presets = @() }
 }
 # Рекомендований деблоат: рекомендовані застосунки, що є на ПК, і рекомендовані ще не застосовані налаштування

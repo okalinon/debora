@@ -189,6 +189,17 @@ function Invoke-D9Scan {
     }
 }
 
+# Результат сканування після повторної перевірки окремих перевірок («Виправити» на «Огляді»):
+# знахідки цих перевірок замінюються свіжими, оцінка перераховується
+function Update-D9ScanFindings {
+    param([Parameter(Mandatory)]$Scan, [Parameter(Mandatory)]$Categories, [Parameter(Mandatory)][string[]]$CheckIds, [object[]]$Fresh)
+    $Scan.findings = @(@($Scan.findings | Where-Object { $CheckIds -notcontains $_.checkId }) + @($Fresh | Where-Object { $_ }))
+    $sc = $Scan.score.categories
+    $checked = if ($sc -is [Collections.IDictionary]) { @($sc.Keys) } else { @($sc.PSObject.Properties.Name) }
+    $Scan.score = Get-D9ScanScore -Categories $Categories -Findings $Scan.findings -CheckedCategories $checked
+    $Scan
+}
+
 function Get-D9ScanDir {
     $dir = Join-Path (Get-D9DataRoot) 'scans'
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }

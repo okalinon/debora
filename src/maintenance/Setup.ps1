@@ -6,7 +6,7 @@
 $script:D9SetupSteps = [ordered]@{
     drivers       = 'Драйвери з інтернету (каталог Microsoft і Windows Update)'
     debloat       = 'Деблоат Windows: нав''язані застосунки, реклама, Copilot, телеметрія'
-    tweaks        = 'Профіль налаштувань: приватність, швидкодія, Провідник'
+    tweaks        = 'Профіль налаштувань: швидкодія, Провідник, захист'
     apps          = 'Програми: набори й окремі з каталогу'
     windowsUpdate = 'Оновлення Windows'
     scanFix       = 'Сканування й автоматичне виправлення знайденого'
@@ -96,6 +96,15 @@ function Resolve-D9SetupPreset {
     $preset
 }
 
+# Твіки кроку «Профіль налаштувань». Якщо в майстрі є крок «Деблоат», те, що належить вкладці «Деблоат»
+# (застосунки, реклама, телеметрія…), робить саме він — профіль цього не дублює.
+function Get-D9SetupTweakIds {
+    param([Parameter(Mandatory)]$Profile, [Parameter(Mandatory)]$Preset)
+    $ids = @($Preset.tweaks)
+    if (@($Profile.steps) -contains 'debloat') { $ids = @($ids | Where-Object { (Get-D9TweakOwner $_) -ne 'debloat' }) }
+    $ids
+}
+
 # Що буде зроблено (для підтвердження й -WhatIf): рядок на кожен крок
 function Get-D9SetupPlan {
     param([Parameter(Mandatory)]$Profile, [Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo, [switch]$Quick)
@@ -107,7 +116,7 @@ function Get-D9SetupPlan {
                 if ($Quick) { T-D9 'рекомендовані застосунки й налаштування з вкладки «Деблоат»' }
                 else { $rec = Get-D9DebloatRecommended $Catalog $SystemInfo; T-D9 'застосунків: {0}, налаштувань: {1}' $rec.Packages.Count $rec.TweakIds.Count }
             }
-            'tweaks'        { $p = Resolve-D9SetupPreset $Profile $Catalog $SystemInfo; T-D9 '«{0}»: {1} твіків' (Get-D9Text $p.name) @($p.tweaks).Count }
+            'tweaks'        { $p = Resolve-D9SetupPreset $Profile $Catalog $SystemInfo; T-D9 '«{0}»: {1} твіків' (Get-D9Text $p.name) @(Get-D9SetupTweakIds $Profile $p).Count }
             'apps'          {
                 $r = Resolve-D9SetupApps $Profile
                 $names = @($r.Apps | ForEach-Object { $_.name })
@@ -140,7 +149,7 @@ function Invoke-D9SetupStep {
         }
         'tweaks' {
             $preset = Resolve-D9SetupPreset $Profile $Catalog $SystemInfo
-            $plan = New-D9Plan -Catalog $Catalog -TweakIds @($preset.tweaks) -SystemInfo $SystemInfo
+            $plan = New-D9Plan -Catalog $Catalog -TweakIds @(Get-D9SetupTweakIds $Profile $preset) -SystemInfo $SystemInfo
             $session = Invoke-D9Plan -Plan $plan -SystemInfo $SystemInfo -Selection (T-D9 'майстер: профіль «{0}»' (Get-D9Text $preset.name)) -NoRestorePoint
             $ok = @($session.entries | Where-Object result -eq 'ok').Count; $err = @($session.entries | Where-Object result -eq 'error').Count
             return (T-D9 '«{0}»: змін {1}, помилок {2}' (Get-D9Text $preset.name) $ok $err)

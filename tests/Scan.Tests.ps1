@@ -455,3 +455,87 @@ Describe 'Сканування реальної системи' {
         ConvertTo-D9ScanHtml -Scan $result -Checklist $list -Categories $categories | Should -Match '</html>'
     }
 }
+
+Describe 'Дія в знахідці («Виправити» / «Як виправити»)' {
+    BeforeAll {
+        $script:fClean = New-TestFinding 'clean.temp' 'cleanliness' 'warning' @{ type = 'tweaks'; ids = @('cleanup.temp') } -Data ([pscustomobject]@{ bytes = 3GB })
+        $script:fReg = New-TestFinding 'sec.remote-assistance' 'security' 'suggestion' @{ type = 'actions'; actions = @([pscustomobject]@{ type = 'registry'; path = 'HKCU:\Software\D9Test'; name = 'X'; value = 1; kind = 'DWord' }) }
+        $script:fSvc = New-TestFinding 'perf.print-spooler' 'performance' 'suggestion' @{ type = 'actions'; actions = @([pscustomobject]@{ type = 'service'; name = 'Spooler'; startup = 'Manual' }) }
+        $script:fMaint = New-TestFinding 'upd.failures' 'updates' 'warning' @{ type = 'maintenance'; action = 'wuReset' }
+        $script:fReboot = New-TestFinding 'upd.pending-reboot' 'updates' 'warning' @{ type = 'maintenance'; action = 'reboot' }
+        $script:fDev = New-TestFinding 'upd.problem-devices' 'updates' 'warning' @{ type = 'drivers' } 'dev:wifi' ([pscustomobject]@{ name = 'Wi-Fi'; class = 'Net'; hwid = 'PCI\VEN_1' })
+        $script:fManual = New-TestFinding 'sec.tpm' 'security' 'warning' @{ type = 'manual' }
+        $script:fInfo = New-TestFinding 'perf.uptime' 'performance' 'info' @{ type = 'manual' }
+    }
+    It 'крок лише для цієї знахідки: її твіки, її дії, її обслуговування' {
+        (New-D9ChecklistItemForFinding $fClean).action.ids | Should -Be @('cleanup.temp')
+        $i = New-D9ChecklistItemForFinding $fReg
+        $i.action.type | Should -Be 'actions'
+        @($i.action.fixes).Count | Should -Be 1
+        $i.action.fixes[0].key | Should -Be 'sec.remote-assistance'
+        $i.verify.key | Should -Be 'sec.remote-assistance'
+        (New-D9ChecklistItemForFinding $fMaint).action.action | Should -Be 'wuReset'
+        (New-D9ChecklistItemForFinding $fDev).action.action | Should -Be 'driverUpdate'
+        New-D9ChecklistItemForFinding $fReboot | Should -BeNullOrEmpty
+        New-D9ChecklistItemForFinding $fManual | Should -BeNullOrEmpty
+    }
+    It 'підпис кнопки: fix / guide; відомості без інструкції — без кнопки' {
+        Get-D9FindingFixKind $fClean | Should -Be 'fix'
+        Get-D9FindingFixKind $fManual | Should -Be 'guide'
+        Get-D9FindingFixKind $fInfo | Should -BeNullOrEmpty
+    }
+    It 'права адміністратора не потрібні лише для змін у HKCU' {
+        Test-D9FindingFixNeedsAdmin $fReg | Should -BeFalse
+        Test-D9FindingFixNeedsAdmin $fSvc | Should -BeTrue
+        Test-D9FindingFixNeedsAdmin $fMaint | Should -BeTrue
+        Test-D9FindingFixNeedsAdmin $fClean $catalog | Should -BeTrue
+    }
+    It 'інструкції: є для ручних перевірок, uk і en однакової довжини, перевірки існують' {
+        $cfg = $scanConfig.Checks
+        $ids = @($cfg.checks.id)
+        $with = @($cfg.checks | Where-Object guide)
+        $with.Count | Should -BeGreaterOrEqual 20
+        foreach ($c in $with) {
+            @($c.guide.uk).Count | Should -BeGreaterOrEqual 2 -Because $c.id
+            @($c.guide.en).Count | Should -Be @($c.guide.uk).Count -Because $c.id
+            foreach ($s in $c.guide.en) { $s | Should -Not -Match '[А-Яа-яІіЇїЄєҐґ]' -Because "$($c.id): $s" }
+        }
+        $steps = @(Get-D9FindingGuide $fManual $cfg)
+        $steps.Count | Should -BeGreaterOrEqual 3
+        $steps[0] | Should -Match 'TPM'
+    }
+    It 'Виправити: виконує лише крок знахідки без запису чекліста, точка відновлення — одна, потім перевіряє лише її' {
+        $script:calls = @()
+        Mock Invoke-D9ChecklistStep { $script:calls += [pscustomobject]@{ Item = $Item; List = $Checklist; NoSave = [bool]$NoSave }; $true }
+        Mock New-D9RestorePoint { 'rp' }
+        Mock Invoke-D9Scan { [pscustomobject]@{ findings = @() } }
+        $ctx = [pscustomobject]@{ Catalog = $catalog; System = (New-TestSystemInfo); Config = $scanConfig.Checks }
+        # Обслуговування: точку робить сама функція
+        $r = Invoke-D9FindingFix -Finding $fMaint -Context $ctx
+        $r.Fixed | Should -BeTrue
+        $r.Done | Should -BeTrue
+        Should -Invoke New-D9RestorePoint -Times 1 -Exactly
+        Should -Invoke Invoke-D9Scan -Times 1 -Exactly -ParameterFilter { @($OnlyChecks) -join ',' -eq 'upd.failures' }
+        $calls[0].NoSave | Should -BeTrue
+        $calls[0].Item.action.action | Should -Be 'wuReset'
+        # Дії з -NoRestorePoint: рушію передається позначка «точку вже створено»
+        $r = Invoke-D9FindingFix -Finding $fReg -Context $ctx -NoRestorePoint
+        Should -Invoke New-D9RestorePoint -Times 1 -Exactly
+        @($calls[1].List.items | Where-Object { $_.action.type -eq 'restorePoint' -and $_.status -eq 'done' }).Count | Should -Be 1
+        # Проблема лишилась — Fixed = false, свіжа знахідка повертається
+        Mock Invoke-D9Scan { [pscustomobject]@{ findings = @($fReg) } }
+        $r = Invoke-D9FindingFix -Finding $fReg -Context $ctx -NoRestorePoint
+        $r.Fixed | Should -BeFalse
+        @($r.Fresh).Count | Should -Be 1
+        # Ручна знахідка нічого не виконує
+        $r = Invoke-D9FindingFix -Finding $fManual -Context $ctx
+        $r.Done | Should -BeFalse
+    }
+    It 'оцінка перераховується після повторної перевірки однієї знахідки' {
+        $scan = New-TestScan @($fMaint, $fClean)
+        $before = $scan.score.overall
+        [void](Update-D9ScanFindings -Scan $scan -Categories $categories -CheckIds @('upd.failures') -Fresh @())
+        @($scan.findings.checkId) | Should -Be @('clean.temp')
+        $scan.score.overall | Should -BeGreaterThan $before
+    }
+}

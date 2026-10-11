@@ -24,7 +24,7 @@ Describe 'Стилі вікна' {
             & $fillOverview ([pscustomobject]@{ score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('performance')); findings = $f; checks = @(1); durationSec = 1; time = (Get-Date).ToString('s') }) $cats
             @{ Tabs = $ui.Tabs.Items.Count; Score = $ui.ScoreText.Text; StyleBtn = [string]$ui.BtnStyle.Content; Ring = [string]$ui.ScoreRing.Visibility }
         }
-        $r.Tabs | Should -Be 12
+        $r.Tabs | Should -Be 11
         $r.Score | Should -Be '90'
         $r.Ring | Should -Be 'Collapsed'
         $r.StyleBtn | Should -Match $(if ($style -eq 'focus') { 'Фокус' } else { 'Швейцарський' })
@@ -102,15 +102,20 @@ Describe 'Вікно' {
         $r = Invoke-InGui {
             $check = [pscustomobject]@{ id = 'perf.memory'; category = 'performance' }
             $items = @([pscustomobject]@{ path = 'C:\x\a.exe'; bytes = 5MB; date = '2026-01-01T00:00:00'; kind = 'file' }, [pscustomobject]@{ path = 'C:\x\y'; bytes = 2MB; date = '2026-01-01T00:00:00'; kind = 'folder' })
-            $f = @((New-D9Finding $check warning 'Багато пам''яті' 'деталі' @{ type = 'manual' } @((New-D9Link 'Сайт' 'https://example.com')) -Data ([pscustomobject]@{ bytes = 7MB; items = $items })))
+            $f = @((New-D9Finding $check warning 'Багато пам''яті' 'деталі' @{ type = 'manual' } @((New-D9Link 'Сайт' 'https://example.com')) -Data ([pscustomobject]@{ bytes = 7MB; items = $items }))
+                   (New-D9Finding ([pscustomobject]@{ id = 'clean.temp'; category = 'cleanliness' }) suggestion 'Тимчасові файли' '' @{ type = 'tweaks'; ids = @('cleanup.temp') }))
             $cats = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
-            $scan = [pscustomobject]@{ score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('performance', 'security')); findings = $f; checks = @(1, 2); durationSec = 5; time = (Get-Date).ToString('s') }
+            $scan = [pscustomobject]@{ score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('performance', 'security', 'cleanliness')); findings = $f; checks = @(1, 2); durationSec = 5; time = (Get-Date).ToString('s') }
             & $fillOverview $scan $cats
             @{ Score = $ui.ScoreText.Text; Verdict = $ui.VerdictText.Text; Cats = @($ui.CategoryList.ItemsSource).Count; Findings = @($ui.FindingsList.ItemsSource); }
         }
         [int]$r.Score | Should -BeGreaterThan 80
-        $r.Cats | Should -Be 2
-        $r.Findings.Count | Should -Be 1
+        $r.Cats | Should -Be 3
+        $r.Findings.Count | Should -Be 2
+        # Кнопка дії: ручна знахідка — «Як виправити», з твіком — «Виправити»; знахідка — у Tag
+        $r.Findings[0].FixLabel | Should -Be 'Як виправити'
+        $r.Findings[1].FixLabel | Should -Be 'Виправити'
+        $r.Findings[1].Tag.checkId | Should -Be 'clean.temp'
         $r.Findings[0].Links[0].Url | Should -Be 'https://example.com'
         $r.Findings[0].Items.Count | Should -Be 2
         $r.Findings[0].Items[0].Title | Should -Be 'a.exe'
@@ -119,34 +124,23 @@ Describe 'Вікно' {
         $r.Findings[0].Hint | Should -Match '^2 '
     }
 
-    It 'вкладка «Чекліст» показує кроки й позначки виконання' {
-        $r = Invoke-InGui {
-            $item = New-D9ChecklistItem 50 'c' 'Очистити диск' 'бо мало місця' @() @{ type = 'tweaks'; ids = @('cleanup.temp') } @{ type = 'executed' }
-            $item.number = 1
-            $done = New-D9ChecklistItem 10 'b' 'Резервна копія' '' @() @{ type = 'manual' } $null
-            $done.number = 2; $done.status = 'done'
-            & $fillChecklist ([pscustomobject]@{ items = @($item, $done) })
-            @{ Rows = @($ui.ChecklistList.ItemsSource); Summary = $ui.ChecklistSummary.Text }
-        }
-        $r.Rows.Count | Should -Be 2
-        $r.Rows[0].Kind | Should -Be 'автоматично'
-        $r.Rows[1].Selected | Should -BeTrue
-        $r.Summary | Should -Match 'Виконано 1 з 2'
-    }
-
     It 'вкладка «Налаштування»: галочки за профілем, непридатні вимкнено' {
         $r = Invoke-InGui {
             $states = foreach ($t in $catalog.Tweaks) { [pscustomobject]@{ Id = $t.id; State = $(if ($t.id -eq 'perf.disable-sysmain') { 'notApplicable' } else { 'notApplied' }); Reason = $null } }
             & $fillTweaks @($states)
             @{ Rows = $state.TweakRows }
         }
-        $r.Rows.Count | Should -Be @($catalog.Tweaks).Count
-        ($r.Rows | Where-Object Id -eq 'privacy.telemetry').Selected | Should -BeTrue
+        $r.Rows.Count | Should -Be @(Get-D9SettingsTweaks $catalog).Count
+        # Деблоат і очищення мають власні вкладки — тут їх немає
+        @($r.Rows.Id) | Should -Not -Contain 'privacy.telemetry'
+        @($r.Rows.Id) | Should -Not -Contain 'apps.remove-bloat'
+        @($r.Rows.Id) | Should -Not -Contain 'cleanup.temp'
+        ($r.Rows | Where-Object Id -eq 'safety.disable-autorun').Selected | Should -BeTrue
         ($r.Rows | Where-Object Id -eq 'perf.disable-sysmain').Enabled | Should -BeFalse
         ($r.Rows | Where-Object Id -eq 'perf.disable-memory-integrity').Selected | Should -BeFalse
     }
 
-    It 'сканування з вікна: фон → вкладки «Огляд» і «Чекліст» → HTML-звіт' {
+    It 'сканування з вікна: фон → «Огляд», внутрішній чекліст → HTML-звіт' {
         $script:sys = Get-D9SystemInfo
         $r = Invoke-InGui {
             & $startJob 'Сканування' $scanWork @{ Catalog = $catalog; Sys = $SystemInfo; Deep = $false; ReportDir = $ReportDir } $onScanned
@@ -156,11 +150,12 @@ Describe 'Вікно' {
             $job.PS.Dispose(); $job.RS.Dispose(); $state.Job = $null
             if ($out.ok) { & $onScanned $out.result }
             @{ Ok = $out.ok; Error = $out.error; Score = $ui.ScoreText.Text; Findings = @($ui.FindingsList.ItemsSource).Count
-               Steps = @($ui.ChecklistList.ItemsSource).Count; Report = $state.ReportPath; Progress = $sync.Progress }
+               Steps = @($state.Checklist.items).Count; Fixable = @(@($ui.FindingsList.ItemsSource) | Where-Object { $_.FixLabel }).Count; Report = $state.ReportPath; Progress = $sync.Progress }
         }
         $r.Ok | Should -BeTrue -Because $r.Error
         [int]$r.Score | Should -BeGreaterThan 0
         $r.Steps | Should -BeGreaterThan 0
+        if ($r.Findings) { $r.Fixable | Should -BeGreaterThan 0 }
         Test-Path $r.Report | Should -BeTrue
         $r.Progress[1] | Should -BeGreaterOrEqual 100   # прогрес приходив із фону
     }
@@ -172,7 +167,7 @@ Describe 'Вікно' {
             & $refreshMaintenance
             @{ Tabs = $ui.Tabs.Items.Count; Rows = $state.StartupRows; Pause = $ui.PauseState.Text; Drivers = $ui.WuDriversState.Text }
         }
-        $r.Tabs | Should -Be 12
+        $r.Tabs | Should -Be 11
         $r.Rows[0].Selected | Should -BeTrue
         $r.Rows[0].Status | Should -Match 'файл відсутній'
         $r.Pause | Should -Not -BeNullOrEmpty
@@ -224,7 +219,7 @@ Describe 'Вікно' {
             # Loaded запускає фонову перевірку стану й таймер — зупиняємо, щоб вони не перезаповнили таблицю й не тримали Close()
             $timer.Stop()
             if ($state.Job) { try { $state.Job.PS.Stop() } catch { }; $state.Job.PS.Dispose(); $state.Job.RS.Dispose(); $state.Job = $null }
-            $ui.Tabs.SelectedIndex = 2; Pump
+            $ui.Tabs.SelectedItem = @($ui.Tabs.Items | Where-Object Uid -eq 'settings')[0]; Pump
             & $fillTweaks @($Catalog.Tweaks | ForEach-Object { [pscustomobject]@{ Id = $_.id; State = 'notApplied'; Reason = $null } }); Pump
             $before = @(Get-Boxes $ui.TweakGrid | Where-Object IsChecked).Count
             $ui.BtnSelectNone.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent))); Pump

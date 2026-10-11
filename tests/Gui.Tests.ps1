@@ -100,6 +100,7 @@ Describe 'Вікно' {
 
     It 'вкладка «Огляд» показує оцінку, категорії й знахідки' {
         $r = Invoke-InGui {
+            $state.ShowAllFindings = $true   # усі знахідки, а не лише важливе
             $check = [pscustomobject]@{ id = 'perf.memory'; category = 'performance' }
             $items = @([pscustomobject]@{ path = 'C:\x\a.exe'; bytes = 5MB; date = '2026-01-01T00:00:00'; kind = 'file' }, [pscustomobject]@{ path = 'C:\x\y'; bytes = 2MB; date = '2026-01-01T00:00:00'; kind = 'folder' })
             $f = @((New-D9Finding $check warning 'Багато пам''яті' 'деталі' @{ type = 'manual' } @((New-D9Link 'Сайт' 'https://example.com')) -Data ([pscustomobject]@{ bytes = 7MB; items = $items }))
@@ -117,6 +118,15 @@ Describe 'Вікно' {
         $r.Findings[0].GuideLabel | Should -Be 'Як виправити'
         $r.Findings[1].FixLabel | Should -Be 'Виправити'
         $r.Findings[1].Tag.checkId | Should -Be 'clean.temp'
+        # Типово — лише важливе; поради й відомості за кнопкою
+        $r2 = Invoke-InGui {
+            $cats = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
+            $f = @((New-D9Finding ([pscustomobject]@{ id = 'sec.tpm'; category = 'security' }) warning 'a' '' @{ type = 'manual' }), (New-D9Finding ([pscustomobject]@{ id = 'perf.uptime'; category = 'performance' }) suggestion 'b' '' @{ type = 'manual' }))
+            & $fillOverview ([pscustomobject]@{ score = (Get-D9ScanScore -Categories $cats -Findings $f -CheckedCategories @('security', 'performance')); findings = $f; checks = @(1); durationSec = 1; time = (Get-Date).ToString('s') }) $cats
+            @{ N = @($ui.FindingsList.ItemsSource).Count; More = [string]$ui.BtnMoreFindings.Content }
+        }
+        $r2.N | Should -Be 1
+        $r2.More | Should -Match '1'
         $r.Findings[0].Links[0].Url | Should -Be 'https://example.com'
         $r.Findings[0].Items.Count | Should -Be 2
         $r.Findings[0].Items[0].Title | Should -Be 'a.exe'

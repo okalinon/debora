@@ -445,6 +445,14 @@
     "Перед змінами Debora створює точку відновлення, а кожну зміну можна відкотити на вкладці «Журнал змін».": "Debora creates a restore point before changes, and every change can be undone on the Change history tab.",
     "Щойно встановили Windows? Вкладка «З нуля» зробить драйвери, деблоат, налаштування й програми за один прохід.": "Just installed Windows? The “From scratch” tab does drivers, debloat, settings and apps in one go.",
     "З чого почати": "Getting started",
-    "Debora перевіряє, прибирає й налаштовує Windows. Кілька порад на початок:": "Debora checks, cleans up and tunes Windows. A few tips to start with:"
+    "Debora перевіряє, прибирає й налаштовує Windows. Кілька порад на початок:": "Debora checks, cleans up and tunes Windows. A few tips to start with:",
+    "Лише важливе": "Important only",
+    "Ще поради й відомості: {0}": "More tips and info: {0}",
+    "Ноутбук на платформі {0}: драйвери й фірмову утиліту шукайте на сайті підтримки виробника вашого ноутбука для вашої моделі; решту Debora знайде в каталозі Microsoft («Знайти нові драйвери»).": "Laptop on the {0} platform: get drivers and the vendor utility from your laptop maker's support page for your model; Debora finds the rest in the Microsoft catalog (“Find new drivers”).",
+    "Пристроїв без драйвера або з помилкою: {0} — див. нижче.": "Devices without a driver or with an error: {0} — see below.",
+    "Усі пристрої мають драйвери.": "All devices have drivers.",
+    "рекомендовано": "recommended",
+    "уже зроблено": "already done",
+    "ще ні": "not yet"
   }
 }

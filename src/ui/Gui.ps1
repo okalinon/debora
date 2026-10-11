@@ -350,7 +350,7 @@ function Show-D9Gui {
     if ($wa.Height -lt $win.Height -or $wa.Width -lt $win.Width) { $win.Width = [math]::Min($win.Width, $wa.Width); $win.Height = [math]::Min($win.Height, $wa.Height); $win.WindowState = 'Maximized' }
     $ui = @{}
     foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
-                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'StaleBanner', 'StaleText', 'BtnStaleRescan', 'FindingsTitle', 'ScoreExplain',
+                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'BtnMoreFindings', 'BtnScoreHelp', 'StaleBanner', 'StaleText', 'BtnStaleRescan', 'FindingsTitle', 'ScoreExplain',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DebloatSummary', 'DebloatGrid', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
@@ -656,6 +656,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $updateHiddenLink
         if (-not $state.ChecksConfig) { $state.ChecksConfig = ConvertFrom-Json (Get-D9ConfigText 'checks.json') }
         $list = @($scan.findings | Where-Object { -not $categoryId -or $_.category -eq $categoryId })
+        $ui.BtnMoreFindings.Visibility = 'Collapsed'
+        if (-not $categoryId) {
+            $important = @($list | Where-Object { $_.severity -in 'critical', 'warning' })
+            $rest = $list.Count - $important.Count
+            if ($important.Count -and $rest) {
+                $ui.BtnMoreFindings.Visibility = 'Visible'
+                if ($state.ShowAllFindings) { $ui.BtnMoreFindings.Content = T-D9 'Лише важливе' }
+                else { $ui.BtnMoreFindings.Content = T-D9 'Ще поради й відомості: {0}' $rest; $list = $important }
+            }
+        }
         Set-D9Items $ui.FindingsList @(foreach ($f in $list) {
             $st = $script:D9SevUi[[string]$f.severity]
             $pen = Get-D9FindingPenalty $f
@@ -677,7 +687,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $ui.BtnAllFindings.Visibility = 'Visible'
         } else {
             $ui.FindingsTitle.Text = (T-D9 'Що знайдено')
-            $ui.ScoreExplain.Text = (T-D9 'Як рахується оцінка: кожна категорія починає зі 100 балів; критична проблема знімає 30, попередження — 10, порада — 3 (число праворуч від знахідки). Загальна оцінка — середнє категорій з урахуванням їхньої ваги; будь-яка критична проблема обмежує її 59 балами. Натисніть на категорію вгорі, щоб побачити лише її знахідки.')
+            $ui.ScoreExplain.Visibility = 'Collapsed'   # пояснення — кнопкою «Як рахується оцінка?»
             $ui.BtnAllFindings.Visibility = 'Collapsed'
             if ($ui.CategoryList.SelectedItem) { $state.CategoryReset = $true; $ui.CategoryList.SelectedItem = $null; $state.CategoryReset = $false }
         }
@@ -688,6 +698,10 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $showFindings $(if ($row) { [string]$row.Id } else { $null })
     })
     $ui.BtnAllFindings.Add_Click({ & $showFindings $null })
+    $ui.BtnMoreFindings.Add_Click({ $state.ShowAllFindings = -not $state.ShowAllFindings; & $showFindings $null })
+    $ui.BtnScoreHelp.Add_Click({
+        [void][Windows.MessageBox]::Show($win, (T-D9 'Як рахується оцінка: кожна категорія починає зі 100 балів; критична проблема знімає 30, попередження — 10, порада — 3 (число праворуч від знахідки). Загальна оцінка — середнє категорій з урахуванням їхньої ваги; будь-яка критична проблема обмежує її 59 балами. Натисніть на категорію вгорі, щоб побачити лише її знахідки.'), 'Debora')
+    })
 
     # Банер «результат застарів»: після сканування застосовано зміни (сесії журналу) або минуло понад добу
     $updateStale = {
@@ -884,12 +898,18 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $features = @($r.Features | Sort-Object SectionOrder)
         $secApps = (Get-D9DebloatSection 'apps').Name
         $rows = @(foreach ($a in $apps) {
-            New-D9Row @{ Id = "app:$($a.Package)"; Badge = $secApps; Title = $a.Name; Group = $a.GroupName; Detail = ($a.Found -join ', '); Selected = $a.Recommended; Tag = $a
+            New-D9Row @{ Id = "app:$($a.Package)"; Badge = $secApps; Title = $a.Name; Group = ($a.Found -join ', '); Detail = $a.GroupName; Selected = $a.Recommended; Tag = $a
                          Kind = $(if ($a.Recommended) { T-D9 'видалити' } else { T-D9 'за бажанням' }); Color = $(if ($a.Recommended) { '#D70015' } else { '#6E6E73' }); Status = (T-D9 'встановлено') }
         }) + @(foreach ($f in $features) {
             $applicable = $f.State -notin 'notApplicable', 'needsAdmin'; $done = $f.State -eq 'applied'
-            New-D9Row @{ Id = "tweak:$($f.Id)"; Badge = $f.SectionName; Title = $f.Name; Detail = $f.Description; Tag = $f; Enabled = ($applicable -and -not $done); Selected = ($f.Recommended -and $applicable -and -not $done)
-                         Group = $f.Description; Kind = $riskUi[$f.Risk][0]; Color = $riskUi[$f.Risk][1]; Status = $(if ($f.State -eq 'needsAdmin') { T-D9 'потрібні права адміністратора' } else { $stateNames[[string]$f.State] }) + $(if ($f.Reason) { " ($($f.Reason))" }) }
+            # Опис без технічного префікса «Політика X = 0:» — його видно в підказці (Group)
+            $plain = [regex]::Replace([string]$f.Description, '^(Політика|Офіційні політики|Policy|Official [A-Za-z ]*policies)[^:]{0,80}:\s*', '')
+            if ($plain) { $plain = $plain.Substring(0, 1).ToUpper() + $plain.Substring(1) }
+            $kind = if ($f.Recommended) { T-D9 'рекомендовано' } else { T-D9 'за бажанням' }
+            if ($f.Risk -and $f.Risk -ne 'safe') { $kind += ' · ' + $riskUi[$f.Risk][0] }
+            $status = switch ([string]$f.State) { 'applied' { T-D9 'уже зроблено' } 'notApplied' { T-D9 'ще ні' } 'partial' { T-D9 'частково' } 'needsAdmin' { T-D9 'потрібні права адміністратора' } default { $stateNames[[string]$f.State] } }
+            New-D9Row @{ Id = "tweak:$($f.Id)"; Badge = $f.SectionName; Title = $f.Name; Detail = $plain; Tag = $f; Enabled = ($applicable -and -not $done); Selected = ($f.Recommended -and $applicable -and -not $done)
+                         Group = $f.Description; Kind = $kind; Color = $(if ($f.Risk -in 'moderate', 'expert') { $riskUi[$f.Risk][1] } elseif ($f.Recommended) { '#248A3D' } else { '#6E6E73' }); Status = $status + $(if ($f.Reason) { " ($($f.Reason))" }) }
         })
         Set-D9Items $ui.DebloatGrid $rows
         $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.DebloatGrid.ItemsSource)
@@ -980,8 +1000,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $ui.BtnOemPage.Content = (T-D9 'Сторінка драйверів {0} для цієї моделі' $rep.Oem.Name)
             $ui.OemText.Text = (T-D9 'Найкраще джерело драйверів — сайт виробника ПК: {0}' $rep.Oem.Url) + $(if ($rep.Oem.Note) { "`n$($rep.Oem.Note)" } else { '' }) + $(if ($rep.Oem.Serial) { "`n" + (T-D9 'Серійний номер: {0}' $rep.Oem.Serial) } else { '' })
         } else {
-            $ui.OemText.Text = (T-D9 'Виробника ПК не знайдено в базі — користуйтеся посиланнями біля пристроїв (сайт виробника чипа, каталог Microsoft).')
+            # Платформа (Uniwill, Clevo) відома за ID пристроїв, навіть коли бренду немає в базі
+            $plat = try { Get-D9LaptopPlatform } catch { $null }
+            $ui.OemText.Text = if ($plat) { T-D9 'Ноутбук на платформі {0}: драйвери й фірмову утиліту шукайте на сайті підтримки виробника вашого ноутбука для вашої моделі; решту Debora знайде в каталозі Microsoft («Знайти нові драйвери»).' $(switch ($plat.id) { 'uniwill' { 'Uniwill' } 'clevo' { 'Clevo' } default { $plat.id } }) }
+                               else { T-D9 'Виробника ПК не знайдено в базі — користуйтеся посиланнями біля пристроїв (сайт виробника чипа, каталог Microsoft).' }
         }
+        # Короткий стан нагорі: чи є пристрої без драйвера
+        $nProb = @($rep.Problems).Count
+        $ui.OemText.Text = $(if ($nProb) { T-D9 'Пристроїв без драйвера або з помилкою: {0} — див. нижче.' $nProb } else { T-D9 'Усі пристрої мають драйвери.' }) + "`n" + $ui.OemText.Text
         $problems = @($rep.Problems | Sort-Object { if ($_.Class -eq 'Net') { 0 } else { 1 } } | ForEach-Object {
             $detail = "$($_.Reason). ID: $($_.Info.HardwareId)"
             if ($_.Windows -and $_.Windows -ne $_.Name) { $detail += (T-D9 '. Windows називає: {0}' $_.Windows) }

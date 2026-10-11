@@ -220,6 +220,9 @@
     "Вище": "Up",
     "Приховані": "Hidden",
     "Знахідки, які ви прийняли й приховали: вони не показуються й не знижують оцінку": "Findings you acknowledged and hid: they are not shown and don't lower the score",
-    "Сканувати знову": "Scan again"
+    "Сканувати знову": "Scan again",
+    "Як рахується оцінка?": "How is the score calculated?",
+    "Поради": "Tips",
+    "Рекомендація": "Recommendation"
   }
 }

@@ -582,6 +582,7 @@
                 <DataTemplate>
                   <StackPanel Margin="0,3,0,3">
                     <DockPanel>
+                      <TextBlock DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource Icons}" FontSize="9" Foreground="#8E8E93" VerticalAlignment="Center" Margin="6,0,0,0"/>
                       <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" FontWeight="SemiBold" Foreground="{Binding Color}"/>
                       <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
@@ -600,6 +601,8 @@
               </DockPanel>
             </Border>
             <DockPanel>
+              <Button x:Name="BtnScoreHelp" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Як рахується оцінка?" VerticalAlignment="Bottom" Margin="16,0,4,7"/>
+              <Button x:Name="BtnMoreFindings" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Поради" VerticalAlignment="Bottom" Margin="16,0,4,7" Visibility="Collapsed"/>
               <Button x:Name="BtnHiddenFindings" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Приховані" VerticalAlignment="Bottom" Margin="16,0,4,7" Visibility="Collapsed" ToolTip="Знахідки, які ви прийняли й приховали: вони не показуються й не знижують оцінку"/>
               <Button x:Name="BtnAllFindings" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Показати всі знахідки" VerticalAlignment="Bottom" Margin="0,0,4,7" Visibility="Collapsed"/>
               <TextBlock x:Name="FindingsTitle" Style="{StaticResource Section}" Text="Що знайдено"/>
@@ -794,17 +797,21 @@
                     <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Що прибрати" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True">
-                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="Пояснення" Binding="{Binding Group}" Width="3*" MinWidth="240" IsReadOnly="True">
-                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTemplateColumn Header="Порада" Width="132">
+                <DataGridTemplateColumn Header="Що прибрати" Width="*" MinWidth="420">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="0,4,8,4" ToolTip="{Binding Group}">
+                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="#6E6E73" FontSize="13" Margin="0,2,0,0"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Рекомендація" Width="170">
                   <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="135" IsReadOnly="True">
-                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="170" IsReadOnly="True">
+                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="VerticalAlignment" Value="Center"/></Style></DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
               </DataGrid.Columns>
             </DataGrid>
@@ -886,7 +893,45 @@
             </WrapPanel>
             <TextBlock x:Name="OemText" Style="{StaticResource Intro}" Margin="4,6,0,0"/>
 
-            <TextBlock Style="{StaticResource Section}" Text="Усі пристрої й драйвери"/>
+            <TextBlock Style="{StaticResource Section}" Text="Пристрої без драйвера або з помилкою"/>
+            <Border Style="{StaticResource Panel}">
+              <ListBox x:Name="DriverProblemsList" ItemTemplate="{StaticResource ItemTemplate}" MinHeight="44" MaxHeight="320"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"/>
+            </Border>
+
+            <TextBlock Style="{StaticResource Section}" Text="Нові драйвери з інтернету"/>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource Intro}" Margin="0,0,0,10"
+                           Text="Debora шукає драйвери для пристроїв без драйвера і новіші версії для решти в офіційному каталозі Microsoft (там драйвери від Intel, AMD, NVIDIA, Realtek та інших) і серед рекомендацій Windows Update. Завантаження перевіряються за контрольною сумою, попередні драйвери зберігаються для відкату."/>
+                <WrapPanel>
+                  <Button x:Name="BtnDriverOnline" Style="{StaticResource Primary}" Content="Знайти нові драйвери" Margin="0,0,8,6"/>
+                  <Button x:Name="BtnDriverOnlineInstall" Content="Завантажити й встановити вибрані" IsEnabled="False" Margin="0,0,8,6"/>
+                </WrapPanel>
+                <DataGrid x:Name="DriverOnlineGrid" Margin="-6,6,-6,0" MinHeight="40" MaxHeight="320">
+                  <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="" Width="54">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center"/></DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="200" IsReadOnly="True">
+                      <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Id}"/></Style></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTemplateColumn Header="Що робити" Width="150">
+                      <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Зараз → нова версія" Binding="{Binding Detail}" Width="2*" MinWidth="200" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Розмір і джерело" Binding="{Binding Note}" Width="190" IsReadOnly="True">
+                      <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                  </DataGrid.Columns>
+                </DataGrid>
+              </StackPanel>
+            </Border>
+
+            <Expander x:Name="DevicesExpander" Header="Усі пристрої й драйвери" Margin="0,18,0,0" FontWeight="SemiBold">
+              <ContentControl FontWeight="Normal">
             <Border Style="{StaticResource Card}">
               <StackPanel>
                 <DockPanel>
@@ -929,43 +974,8 @@
               </StackPanel>
             </Border>
 
-            <TextBlock Style="{StaticResource Section}" Text="Нові драйвери з інтернету"/>
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <TextBlock Style="{StaticResource Intro}" Margin="0,0,0,10"
-                           Text="Debora шукає драйвери для пристроїв без драйвера і новіші версії для решти в офіційному каталозі Microsoft (там драйвери від Intel, AMD, NVIDIA, Realtek та інших) і серед рекомендацій Windows Update. Завантаження перевіряються за контрольною сумою, попередні драйвери зберігаються для відкату."/>
-                <WrapPanel>
-                  <Button x:Name="BtnDriverOnline" Style="{StaticResource Primary}" Content="Знайти нові драйвери" Margin="0,0,8,6"/>
-                  <Button x:Name="BtnDriverOnlineInstall" Content="Завантажити й встановити вибрані" IsEnabled="False" Margin="0,0,8,6"/>
-                </WrapPanel>
-                <DataGrid x:Name="DriverOnlineGrid" Margin="-6,6,-6,0" MinHeight="40" MaxHeight="320">
-                  <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="" Width="54">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate><CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Enabled}" HorizontalAlignment="Center"/></DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="200" IsReadOnly="True">
-                      <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Id}"/></Style></DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTemplateColumn Header="Що робити" Width="150">
-                      <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Зараз → нова версія" Binding="{Binding Detail}" Width="2*" MinWidth="200" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Розмір і джерело" Binding="{Binding Note}" Width="190" IsReadOnly="True">
-                      <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                  </DataGrid.Columns>
-                </DataGrid>
-              </StackPanel>
-            </Border>
-
-            <TextBlock Style="{StaticResource Section}" Text="Пристрої без драйвера або з помилкою"/>
-            <Border Style="{StaticResource Panel}">
-              <ListBox x:Name="DriverProblemsList" ItemTemplate="{StaticResource ItemTemplate}" MinHeight="44" MaxHeight="320"
-                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"/>
-            </Border>
-
+              </ContentControl>
+            </Expander>
             <TextBlock Style="{StaticResource Section}" Text="Драйвери з папки"/>
             <Border Style="{StaticResource Card}">
               <StackPanel>

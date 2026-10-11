@@ -1310,5 +1310,17 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     $win.Add_Closed({ $timer.Stop() })
     if ($TestAction) { return (. $TestAction) }
-    [void]$win.ShowDialog()
+    # Необроблена помилка в обробнику закривала вікно без сліду (ні в журналі, ні в подіях Windows) —
+    # тепер її записуємо з місцем у коді, показуємо й продовжуємо роботу
+    $win.Dispatcher.Add_UnhandledException({
+        param($s, $e)
+        $e.Handled = $true
+        $ex = $e.Exception; while ($ex.InnerException) { $ex = $ex.InnerException }
+        $where = if ($ex.ErrorRecord) { $ex.ErrorRecord.InvocationInfo.PositionMessage } else { $ex.StackTrace }
+        Write-D9Log (T-D9 'Збій інтерфейсу: {0}' "$($ex.GetType().Name): $($ex.Message)`r`n$where") Error
+        try { & $setBusy $false $null } catch { }
+        [void][Windows.MessageBox]::Show($win, (T-D9 'Сталася помилка інтерфейсу: {0}. Подробиці — у журналі; програма продовжує роботу.' $ex.Message), 'Debora', 'OK', 'Error')
+    })
+    try { [void]$win.ShowDialog() }
+    catch { Write-D9Log (T-D9 'Збій інтерфейсу: {0}' "$($_.Exception.Message)`r`n$($_.ScriptStackTrace)") Error; throw }
 }

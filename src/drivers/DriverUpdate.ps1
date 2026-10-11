@@ -160,15 +160,26 @@ function Test-D9DriverNewer {
 
 # Рекомендовані Windows Update драйвери для цього ПК (Windows сама зіставила їх із пристроями). Повертає
 # Title, Version, Date, HardwareId. Помилки (немає служби, мережі) — порожньо.
+# Пошук іде в окремому процесі з обмеженням часу: після скидання Windows Update (або при зламаній службі)
+# перший пошук перебудовує базу 5–15 хвилин, і без обмеження вікно виглядало зависшим.
 function Get-D9WuaDriverUpdates {
-    try {
+    param([int]$TimeoutSec = 180)
+    $job = Start-Job {
         $session = New-Object -ComObject Microsoft.Update.Session
         $session.ClientApplicationID = 'Debora'
         $r = $session.CreateUpdateSearcher().Search("IsInstalled=0 and Type='Driver'")
-        foreach ($u in $r.Updates) {
-            [pscustomobject]@{ Title = $u.Title; Version = $(if ($u.Title -match '\(([\d.]+)\)\s*$') { $Matches[1] }); Date = $u.DriverVerDate; HardwareId = [string]$u.DriverHardwareID }
+        foreach ($u in $r.Updates) { [pscustomobject]@{ Title = [string]$u.Title; Date = $u.DriverVerDate; HardwareId = [string]$u.DriverHardwareID } }
+    }
+    try {
+        if (-not (Wait-Job $job -Timeout $TimeoutSec)) {
+            Write-D9Log ('  ' + (T-D9 'Windows Update не відповів за {0} хв — шукаю лише в каталозі Microsoft.' ([int]($TimeoutSec / 60)))) Detail
+            return
+        }
+        foreach ($u in @(Receive-Job $job -ErrorAction Stop)) {
+            [pscustomobject]@{ Title = $u.Title; Version = $(if ($u.Title -match '\(([\d.]+)\)\s*$') { $Matches[1] }); Date = $u.Date; HardwareId = $u.HardwareId }
         }
     } catch { Write-D9Log ('  ' + (T-D9 'Windows Update недоступний для пошуку драйверів: {0}' $_.Exception.Message)) Detail }
+    finally { Stop-Job $job -ErrorAction SilentlyContinue; Remove-Job $job -Force -ErrorAction SilentlyContinue }
 }
 
 # Головний пошук: для кожного пристрою — найновіший підходящий запис каталогу, якщо він новіший за встановлений.
@@ -181,7 +192,7 @@ function Find-D9DriverUpdates {
     $wua = if ($IncludeWindowsUpdate) { Write-D9Log ('  ' + (T-D9 'Запит до Windows Update (до хвилини)...')) Detail; @(Get-D9WuaDriverUpdates) } else { @() }
     $queries = @($devices | ForEach-Object { $_.Queries } | Sort-Object -Unique) + @($wua | ForEach-Object { $_.Title })
     $found = Search-D9DriverCatalog -Queries $queries
-    foreach ($d in $devices) {
+    $result = @(foreach ($d in $devices) {
         $rows = @($d.Queries | ForEach-Object { $found[$_] } | Where-Object { $_ })
         # Рекомендація WUA для цього пристрою — шукаємо її запис у каталогі за назвою
         $hint = $wua | Where-Object { $h = $_.HardwareId; $h -and @($d.HardwareIds | Where-Object { $_ -like "$h*" }).Count } | Select-Object -First 1
@@ -202,7 +213,10 @@ function Find-D9DriverUpdates {
             Device = $d; Row = $newer[0]; Alternatives = $alts
             Status = $(if ($d.Problem) { 'missing' } else { 'newer' }); Recommended = [bool]$hint; Optional = $optional
         }
-    }
+    })
+    # Підсумок — у журнал: у вікні пошук без нього не лишав жодного сліду
+    Write-D9Log ('  ' + (T-D9 'Знайдено новіших драйверів: {0} (з них необов''язкових: {1}), запитів до каталогу: {2}.' $result.Count @($result | Where-Object Optional).Count $queries.Count)) Detail
+    $result
 }
 
 # ---------- Завантаження ----------

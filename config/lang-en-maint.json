@@ -192,6 +192,8 @@
     "Розпаковую {0}...": "Extracting {0}...",
     "Не вдалося розпакувати {0}: {1}": "Could not extract {0}: {1}",
     "Каталог не відповів на «{0}»: {1}": "The catalog did not respond to \"{0}\": {1}",
+    "Знайдено новіших драйверів: {0} (з них необов'язкових: {1}), запитів до каталогу: {2}.": "Newer drivers found: {0} (optional: {1}), catalog queries: {2}.",
+    "Windows Update не відповів за {0} хв — шукаю лише в каталозі Microsoft.": "Windows Update did not respond within {0} min — searching the Microsoft catalog only.",
     "Windows Update недоступний для пошуку драйверів: {0}": "Windows Update is not available for the driver search: {0}",
     "Пошук новіших драйверів у Microsoft Update Catalog...": "Searching for newer drivers in the Microsoft Update Catalog...",
     "Пристроїв для перевірки: {0}": "Devices to check: {0}",

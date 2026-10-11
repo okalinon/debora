@@ -14,6 +14,8 @@
     "ПОМИЛКА: {0}": "ERROR: {0}",
     "Не вдалося виконати: {0}": "Couldn’t complete the operation: {0}",
     "ПОМИЛКА інтерфейсу: {0}": "Interface ERROR: {0}",
+    "Збій інтерфейсу: {0}": "Interface failure: {0}",
+    "Сталася помилка інтерфейсу: {0}. Подробиці — у журналі; програма продовжує роботу.": "An interface error occurred: {0}. Details are in the log; the program keeps running.",
     "Не вдалося відкрити {0}: {1}": "Couldn’t open {0}: {1}",
     "Добрий стан": "Good shape",
     "Потребує уваги": "Needs attention",

@@ -383,7 +383,7 @@ function Show-D9Gui {
     $wa = [Windows.SystemParameters]::WorkArea
     if ($wa.Height -lt $win.Height -or $wa.Width -lt $win.Width) { $win.Width = [math]::Min($win.Width, $wa.Width); $win.Height = [math]::Min($win.Height, $wa.Height); $win.WindowState = 'Maximized' }
     $ui = @{}
-    foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
+    foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'BtnElevate', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
                    'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'BtnMoreFindings', 'BtnScoreHelp', 'StaleBanner', 'StaleText', 'BtnStaleRescan', 'FindingsTitle', 'ScoreExplain',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
@@ -410,7 +410,17 @@ function Show-D9Gui {
     $ui.TitleText.Text = "Debora $script:D9Version"
     $ui.SystemLine.Text = "$($s.Manufacturer) $($s.Model)`n$($s.OsName) $($s.DisplayVersion)`n" + (T-D9 '{0} ГБ, {1}, профіль {2}' $s.RamGB $disk $Recommendation.Preset)
     if ($isAdmin) { $ui.AdminBadge.Text = (T-D9 'Адміністратор'); $ui.AdminBadge.Foreground = (Get-D9UiColor '#248A3D') }
-    else { $ui.AdminBadge.Text = (T-D9 'Без прав адміністратора — лише перегляд'); $ui.AdminBadge.Foreground = (Get-D9UiColor '#B25000') }
+    else {
+        $ui.AdminBadge.Text = (T-D9 'Без прав адміністратора — лише перегляд'); $ui.AdminBadge.Foreground = (Get-D9UiColor '#B25000')
+        if ($script:D9ScriptPath) { $ui.BtnElevate.Visibility = 'Visible' }
+    }
+    # Підвищення прав без ручного перезапуску через run.bat (запит UAC)
+    $ui.BtnElevate.Add_Click({
+        try {
+            Start-Process powershell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$($script:D9ScriptPath)`" -Gui" -ErrorAction Stop
+            $win.Close()
+        } catch { [void][Windows.MessageBox]::Show($win, (T-D9 'Права адміністратора не надано — Debora лишається в режимі перегляду.'), 'Debora') }
+    })
     $ui.DriverFolder.Text = $DriverDir
 
     # ---------- фонове виконання ----------
@@ -1348,7 +1358,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             }
             if ($i.Missing) { $note += (T-D9 'файл відсутній — запис можна вимкнути'); $color = '#D70015' }
             if (-not $i.Publisher -and -not $i.Verdict) { $note += (T-D9 'видавець невідомий') }
-            New-D9Row @{ Selected = [bool]$i.Enabled; Title = $i.Name; Detail = $i.Command; Group = $(if ($i.Publisher) { $i.Publisher } else { '—' })
+            New-D9Row @{ Selected = [bool]$i.Enabled; Title = (Format-D9StartupName $i.Name); Detail = "$($i.Name)`n$($i.Command)"; Group = $(if ($i.Publisher) { $i.Publisher } else { '—' })
                          Note = $i.Where; Status = ($note -join '; '); Color = $color; Tag = $i }
         })
         Set-D9Items $ui.StartupGrid $state.StartupRows
@@ -1725,7 +1735,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     # ---------- Видалення програм ----------
     $fillUninst = {
         param($list)
-        $state.UninstRows = @(@($list | Where-Object { $_ }) | Sort-Object @{ Expression = { [bool]$_.Bloat }; Descending = $true }, Name | ForEach-Object {
+        $state.UninstRows = @(@($list | Where-Object { $_ }) | Sort-Object @{ Expression = { [bool]$_.Bloat }; Descending = $true }, @{ Expression = { [long]$_.Size }; Descending = $true }, Name | ForEach-Object {
             $cmd = Get-D9UninstallCommand $_
             $note = if ($_.Bloat) { @((T-D9 'Рекомендуємо видалити: {0}' "$($_.Bloat)"), '#D70015') }
                     elseif ($cmd -and $cmd.Method -eq 'orphan') { @((T-D9 'Програму вже видалено, лишився лише запис у списку — Debora прибере його'), '#B25000') }
@@ -1735,7 +1745,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                     else { @('', '#6E6E73') }
             New-D9Row @{ Title = $_.Name; Detail = (T-D9 'Версія: {0}' "$($_.Version)") + $(if ($cmd) { T-D9 '; видалення: {0}' $(if ($cmd.Silent) { T-D9 'тихо' } else { T-D9 'з вікном деінсталятора' }) })
                          Group = $_.Publisher; Note = $(if ($_.Size) { Format-D9Size $_.Size } else { '' }); Kind = $(if ($_.InstallDate) { ([datetime]$_.InstallDate).ToString('dd.MM.yyyy') } else { '' })
-                         Status = $note[0]; Color = $note[1]; Tag = $_ }
+                         Status = $note[0]; Color = $note[1]; Tag = $_; Number = [int]([long]$_.Size / 1MB) }
         })
         & $showUninst
         $bloat = @($state.UninstRows | Where-Object { $_.Tag.Bloat }).Count

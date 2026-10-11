@@ -139,3 +139,18 @@ function New-D9StartupCatalog {
     }
     [pscustomobject]@{ Tweaks = @($tweaks); Presets = @() }
 }
+
+# Зрозуміла назва запису автозавантаження: без GUID і номерів версій («GoogleUpdaterTaskUser156.0.8067.0{023FF…}»
+# → «Оновлення Google»). Справжня назва лишається в підказці.
+function Format-D9StartupName {
+    param([string]$Name)
+    $known = [ordered]@{
+        '^GoogleUpdaterTask'       = (T-D9 'Оновлення Google (Chrome)')
+        '^MicrosoftEdgeUpdateTask' = (T-D9 'Оновлення Microsoft Edge')
+        '^OneDrive'                = 'OneDrive'
+    }
+    foreach ($k in $known.Keys) { if ($Name -match $k) { return $known[$k] } }
+    $n = $Name -replace '\{[0-9A-Fa-f-]{36}\}', '' -replace '(?<=\D)\d+(\.\d+){2,}', ''
+    $n = $n.Trim(' ', '-', '_')
+    if ($n) { $n } else { $Name }
+}

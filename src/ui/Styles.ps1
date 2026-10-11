@@ -39,6 +39,7 @@ $script:D9StatusStrip = @'
       <ProgressBar x:Name="Progress" Width="120" Height="5" Margin="0,0,12,0" VerticalAlignment="Center" Visibility="Collapsed"/>
       <TextBlock x:Name="StatusText" Foreground="#6E6E73" FontSize="13.5" Text="Готово" MaxWidth="360" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
       <TextBlock x:Name="AdminBadge" FontSize="13.5" FontWeight="Medium" Margin="16,0,0,0" MaxWidth="300" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+      <Button x:Name="BtnElevate" Style="{StaticResource LinkButton}" Content="Перезапустити від адміністратора" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" ToolTip="Відкрити Debora з правами адміністратора, щоб можна було вносити зміни"/>
       <Button x:Name="BtnLanguage" Style="{StaticResource LinkButton}" Content="English" Margin="16,0,0,0" VerticalAlignment="Center" ToolTip="Українська / English"/>
       <Button x:Name="BtnStyle" Style="{StaticResource LinkButton}" Content="Стиль" Margin="14,0,0,0" VerticalAlignment="Center" ToolTip="Фокус ↔ Швейцарський"/>
       <TextBlock x:Name="TitleText" Visibility="Collapsed"/>

@@ -116,7 +116,7 @@
     "Видалення": "Uninstall",
     "Пошук серед встановлених програм": "Search installed programs",
     "Лише рекомендовані до видалення": "Only recommended for removal",
-    "Позначте програми, які більше не потрібні. Більшість видаляється тихо; для решти відкриється звичайний деінсталятор.": "Select the programs you no longer need. Most are removed silently; for the rest the regular uninstaller opens.",
+    "Позначте програми, які більше не потрібні. Більшість видаляється тихо; для решти відкриється звичайний деінсталятор. Вбудовані застосунки Windows (Xbox, Кліпчамп, Copilot…) — на вкладці «Деблоат».": "Select the programs you no longer need. Most are removed silently; for the rest the regular uninstaller opens. Built-in Windows apps (Xbox, Clipchamp, Copilot…) are on the Debloat tab.",
     "Програма": "Program",
     "Видавець": "Publisher",
     "Розмір": "Size",
@@ -231,6 +231,8 @@
     "Спершу знайдіть драйвери в папці й відмітьте потрібні": "First find drivers in a folder and tick the ones you want",
     "Клацніть по картках програм, щоб вибрати": "Click app cards to select them",
     "Позначте програми в списку": "Tick programs in the list",
-    "Позначте пункти в списку": "Tick items in the list"
+    "Позначте пункти в списку": "Tick items in the list",
+    "Перезапустити від адміністратора": "Restart as administrator",
+    "Відкрити Debora з правами адміністратора, щоб можна було вносити зміни": "Reopen Debora with administrator rights so it can make changes"
   }
 }

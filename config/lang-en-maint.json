@@ -384,6 +384,8 @@
     "{0} год": "{0} h",
     "Швидка перевірка Захисником Windows (минулого разу на цьому ПК тривала ≈ {0})...": "Microsoft Defender quick scan (last time on this PC it took ≈ {0})...",
     "Швидка перевірка Захисником Windows (зазвичай до 20 хвилин)...": "Microsoft Defender quick scan (usually up to 20 minutes)...",
-    "Перевірка триває понад {0} хв — не чекаємо, Захисник завершить її сам.": "The scan has taken over {0} min — not waiting any longer, Defender will finish it on its own."
+    "Перевірка триває понад {0} хв — не чекаємо, Захисник завершить її сам.": "The scan has taken over {0} min — not waiting any longer, Defender will finish it on its own.",
+    "Оновлення Google (Chrome)": "Google updates (Chrome)",
+    "Оновлення Microsoft Edge": "Microsoft Edge updates"
   }
 }

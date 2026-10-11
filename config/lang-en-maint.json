@@ -386,6 +386,7 @@
     "Швидка перевірка Захисником Windows (зазвичай до 20 хвилин)...": "Microsoft Defender quick scan (usually up to 20 minutes)...",
     "Перевірка триває понад {0} хв — не чекаємо, Захисник завершить її сам.": "The scan has taken over {0} min — not waiting any longer, Defender will finish it on its own.",
     "Оновлення Google (Chrome)": "Google updates (Chrome)",
-    "Оновлення Microsoft Edge": "Microsoft Edge updates"
+    "Оновлення Microsoft Edge": "Microsoft Edge updates",
+    "Підтвердіть видалення у вікні {0} — Debora чекає, поки програма зникне зі списку (до {1} хв; «Зупинити» — перестати чекати).": "Confirm the removal in the {0} window — Debora waits until the program disappears from the list (up to {1} min; “Stop” stops waiting)."
   }
 }

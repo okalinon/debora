@@ -168,3 +168,11 @@ Describe 'Записи від видалених програм у реєстр�
         } finally { [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\zzdeboratest.exe', $false) }
     }
 }
+
+Describe 'Видалення через лаунчер (Steam тощо)' {
+    It 'розпізнає лаунчери, яким деінсталятор лише передає команду' {
+        Get-D9UninstallLauncher ([pscustomobject]@{ File = 'C:\Program Files (x86)\Steam\steam.exe'; Args = 'steam://uninstall/377160' }) | Should -Be 'Steam'
+        Get-D9UninstallLauncher ([pscustomobject]@{ File = 'C:\Program Files (x86)\Epic Games\Launcher\Portal\Binaries\Win32\EpicGamesLauncher.exe'; Args = '' }) | Should -Be 'Epic Games'
+        Get-D9UninstallLauncher ([pscustomobject]@{ File = 'C:\Games\X\unins000.exe'; Args = '/SILENT' }) | Should -BeNullOrEmpty
+    }
+}

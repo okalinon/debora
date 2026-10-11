@@ -263,6 +263,18 @@ function Get-D9UninstallCommand {
     [pscustomobject]@{ File = $c.File; Args = $c.Args; Silent = $false; Method = 'interactive' }
 }
 
+# Лаунчер, якому деінсталятор лише передає команду (тоді процес виходить одразу): назва або $null
+function Get-D9UninstallLauncher {
+    param($Command)
+    $s = "$($Command.File) $($Command.Args)"
+    if ($s -match 'steam\.exe|steam://') { return 'Steam' }
+    if ($s -match 'com\.epicgames\.launcher|EpicGamesLauncher') { return 'Epic Games' }
+    if ($s -match 'uplay://|ubisoftconnect|upc\.exe') { return 'Ubisoft Connect' }
+    if ($s -match 'origin2?://|EADesktop|EALauncher') { return 'EA app' }
+    if ($s -match 'battle\.net|Battle\.net\.exe') { return 'Battle.net' }
+    $null
+}
+
 # Видаляє по черзі. Результат: name, result (removed|reboot|stillPresent|failed), message
 function Uninstall-D9Programs {
     param([Parameter(Mandatory)][object[]]$Programs, [int]$TimeoutMinutes = 15)
@@ -300,6 +312,21 @@ function Uninstall-D9Programs {
         } catch { $msg = $_.Exception.Message }
         Start-Sleep -Milliseconds 800   # деякі деінсталятори дочищають реєстр уже після виходу
         $gone = -not (Test-Path -LiteralPath $prog.Key)
+        # Лаунчери (Steam, Epic, Ubisoft, EA, Battle.net) лише передають команду своєму вікну й одразу виходять, а
+        # деякі інсталятори (NSIS) перезапускають себе з тимчасової папки — тоді чекаємо, поки запис справді зникне
+        $launcher = Get-D9UninstallLauncher $cmd
+        # NSIS та подібні перезапускають себе з тимчасової папки (Au_.exe) і виходять — тоді чекаємо той процес
+        $started = if ($p) { try { $p.StartTime } catch { Get-Date } } else { Get-Date }
+        $relaunched = { @(Get-Process -ErrorAction SilentlyContinue | Where-Object { try { $_.StartTime -ge $started -and ($_.Name -match '^(Au_|Un_A|Un_)' -or "$($_.Path)" -like "$env:TEMP*") } catch { $false } }).Count }
+        if (-not $gone -and -not $msg -and ($launcher -or (& $relaunched))) {
+            if ($launcher) { Write-D9Log ('  ' + (T-D9 'Підтвердіть видалення у вікні {0} — Debora чекає, поки програма зникне зі списку (до {1} хв; «Зупинити» — перестати чекати).' $launcher $TimeoutMinutes)) }
+            $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+            while (-not $gone -and (Get-Date) -lt $deadline -and -not (Test-D9CancelRequested)) {
+                Start-Sleep -Seconds 2
+                $gone = -not (Test-Path -LiteralPath $prog.Key)
+                if (-not $launcher -and -not (& $relaunched)) { Start-Sleep -Milliseconds 800; $gone = -not (Test-Path -LiteralPath $prog.Key); break }
+            }
+        }
         $result = if ($gone -and $code -eq 3010) { 'reboot' } elseif ($gone) { 'removed' } elseif ($msg) { 'failed' } else { 'stillPresent' }
         $text = @{ removed = (T-D9 'видалено'); reboot = (T-D9 'видалено, потрібне перезавантаження'); stillPresent = (T-D9 'не видалено (код {0}; можливо, скасовано у вікні деінсталятора)' "$code"); failed = (T-D9 'помилка: {0}' $msg) }[$result]
         Write-D9Log "  $($prog.Name): $text" $(if ($result -in 'removed', 'reboot') { 'Ok' } else { 'Warn' })

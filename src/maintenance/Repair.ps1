@@ -103,6 +103,7 @@ function Invoke-D9DefenderScan {
     # Оцінка — за фактом минулої перевірки на цьому ПК, без неї — «до 20 хвилин»
     $last = Get-D9LastQuickScanDuration
     Write-D9Log $(if ($last) { T-D9 'Швидка перевірка Захисником Windows (минулого разу на цьому ПК тривала ≈ {0})...' (Format-D9ApproxDuration $last) } else { T-D9 'Швидка перевірка Захисником Windows (зазвичай до 20 хвилин)...' })
+    if ($last) { Set-D9Stage -EstimateSec $last.TotalSeconds }
     $since = Get-Date
     # Start-MpScan іноді не повертається (перевірка застрягла або чекає іншої) — чекаємо вдвічі довше за минулу
     # перевірку (щонайменше 30 хвилин, щонайбільше 3 години), далі Захисник завершить її сам

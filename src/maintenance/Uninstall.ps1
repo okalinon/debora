@@ -268,6 +268,7 @@ function Uninstall-D9Programs {
     param([Parameter(Mandatory)][object[]]$Programs, [int]$TimeoutMinutes = 15)
     $n = 0
     foreach ($prog in $Programs) {
+        if (Test-D9CancelRequested) { Write-D9Log (T-D9 'Зупинено на вашу вимогу — решту пропущено.') Warn; break }
         $n++
         if ($script:D9OnProgress) { & $script:D9OnProgress $n $Programs.Count $prog.Name }
         $cmd = Get-D9UninstallCommand $prog

@@ -396,6 +396,24 @@
     "у Кошик: {0}": "to the Recycle Bin: {0}",
     "Вирішено — рахувати лише нові події": "Resolved — count only new events",
     "Знахідка рахує події журналу Windows за останні дні. Якщо ви вже усунули причину, Debora відтепер рахуватиме лише нові події.": "This finding counts Windows event log entries from recent days. If you have already fixed the cause, Debora will count only new events from now on.",
-    "Позначено вирішеним: {0}. Наступні сканування рахуватимуть лише нові події.": "Marked as resolved: {0}. Next scans will count only new events."
+    "Позначено вирішеним: {0}. Наступні сканування рахуватимуть лише нові події.": "Marked as resolved: {0}. Next scans will count only new events.",
+    "Зупинено на вашу вимогу — решту пропущено.": "Stopped at your request — the rest was skipped.",
+    "{0} з {1}: {2}": "{0} of {1}: {2}",
+    "до {0} хв": "up to {0} min",
+    "Додано в чергу: {0}": "Added to the queue: {0}",
+    "З черги: {0}": "From the queue: {0}",
+    "Зупинка: поточний крок завершиться, решту буде пропущено.": "Stopping: the current step will finish, the rest will be skipped.",
+    "Зупиняється після поточного кроку…": "Stopping after the current step…",
+    "Крок {0} з {1}": "Step {0} of {1}",
+    "Наступна задача запуститься за мить": "The next task starts in a moment",
+    "Прибрано з черги: {0}": "Removed from the queue: {0}",
+    "У черзі: {0}": "Queued: {0}",
+    "Уже виконується або в черзі: {0}": "Already running or queued: {0}",
+    "Чергу очищено.": "Queue cleared.",
+    "зазвичай {0}": "usually {0}",
+    "лишилось ≈ {0}": "≈ {0} left",
+    "майже готово": "almost done",
+    "минулого разу ≈ {0}": "last time ≈ {0}",
+    "цього разу довше": "taking longer this time"
   }
 }

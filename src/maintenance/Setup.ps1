@@ -204,8 +204,10 @@ function Invoke-D9Setup {
     $rp = if ($NoRestorePoint) { $null } else { New-D9RestorePoint }
     $n = 0; $total = @($Profile.steps).Count
     $results = foreach ($s in @($Profile.steps)) {
+        if (Test-D9CancelRequested) { Write-D9Log (T-D9 'Зупинено на вашу вимогу — решту пропущено.') Warn; break }
         $n++
         if ($script:D9OnProgress) { & $script:D9OnProgress $n $total (Get-D9SetupStepName $s) }
+        Set-D9Stage -Name (Get-D9SetupStepName $s) -Step $n -Of $total -Key "setup:$s"
         Write-D9Log "— [$n/$total] $(Get-D9SetupStepName $s)"
         try {
             $out = Invoke-D9SetupStep -Step $s -Profile $Profile -Catalog $Catalog -SystemInfo $SystemInfo

@@ -256,6 +256,7 @@ function Test-D9ChecklistReady {
 function Invoke-D9ChecklistStep {
     param([Parameter(Mandatory)]$Checklist, [Parameter(Mandatory)]$Item, [Parameter(Mandatory)]$Context, [switch]$AllowReboot, [switch]$NoSave)
     Write-D9Log (T-D9 'Крок {0}. {1}' $Item.number $Item.title)
+    Set-D9Stage -Name $Item.title -Key $(if ($Item.action.type -eq 'maintenance') { "maintenance:$($Item.action.action)" } else { "step:$($Item.action.type)" })
     switch ($Item.action.type) {
         'manual' { Write-D9Log (T-D9 '  Це ручний крок: {0}' $Item.why) Warn; return $false }
         'restorePoint' {

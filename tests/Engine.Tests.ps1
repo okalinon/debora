@@ -170,3 +170,25 @@ Describe 'Дія command' {
         Restore-D9Command ([pscustomobject]@{ type = 'command'; run = '1' }) ([ordered]@{}) | Should -Match 'не можна'
     }
 }
+
+Describe 'Таймер, історія тривалості й оцінка часу' {
+    It 'таймер мм:сс і г:мм:сс' {
+        Format-D9Elapsed 5 | Should -Be '0:05'
+        Format-D9Elapsed 754 | Should -Be '12:34'
+        Format-D9Elapsed 3725 | Should -Be '1:02:05'
+    }
+    It 'історія: останні 5, оцінка — медіана; миттєві не записуються' {
+        Add-D9Duration 'test:op' 1
+        Get-D9DurationEstimate 'test:op' | Should -BeNullOrEmpty
+        foreach ($s in 600, 3780, 700, 650, 640, 620) { Add-D9Duration 'test:op' $s }
+        @((Get-D9Durations)['test:op']).Count | Should -Be 5
+        Get-D9DurationEstimate 'test:op' | Should -Be 650
+    }
+    It 'оцінка: за фактом минулого разу (округлено), інакше — верхня межа, без вигаданих цифр' {
+        Format-D9EtaText 600 3780 '' | Should -Be 'минулого разу ≈ 60 хв · лишилось ≈ 55 хв'
+        Format-D9EtaText 3700 3780 '' | Should -Match 'майже готово'
+        Format-D9EtaText 5000 3780 '' | Should -Match 'цього разу довше'
+        Format-D9EtaText 10 0 'до 3 хв' | Should -Be 'зазвичай до 3 хв'
+        Format-D9EtaText 10 0 '' | Should -Be ''
+    }
+}

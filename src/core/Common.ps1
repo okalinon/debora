@@ -4,6 +4,28 @@ $script:D9Language = 'uk'
 $script:D9LogPath  = $null
 $script:D9OnLog      = $null   # scriptblock для інтерфейсу: { param($Message, $Level) }
 $script:D9OnProgress = $null   # scriptblock для інтерфейсу: { param($Done, $Total, $Name) }
+$script:D9OnStage    = $null   # scriptblock для інтерфейсу: { param([hashtable]$Stage) } — див. Set-D9Stage
+$script:D9CancelCheck = $null  # scriptblock інтерфейсу: $true, якщо натиснуто «Зупинити»
+
+# Поточний етап довгої операції для панелі «Зараз виконується». Передаються лише задані поля, решта
+# лишається з попереднього виклику: Name — що робиться, Step/Of — крок N з M, Key — ключ історії тривалості
+# (durations.json), EstimateSec — відома оцінка (наприклад, тривалість минулої перевірки Захисником).
+function Set-D9Stage {
+    param([string]$Name, [int]$Step, [int]$Of, [string]$Key, [double]$EstimateSec)
+    if ($script:D9OnStage) { $h = @{}; foreach ($k in $PSBoundParameters.Keys) { $h[$k] = $PSBoundParameters[$k] }; & $script:D9OnStage $h }
+}
+
+# Натиснуто «Зупинити»: цикли перевіряють між кроками й зупиняються, не перериваючи крок посередині
+function Test-D9CancelRequested {
+    [bool]($script:D9CancelCheck -and (& $script:D9CancelCheck))
+}
+
+# Таймер «мм:сс» або «г:мм:сс»
+function Format-D9Elapsed {
+    param([double]$Seconds)
+    $s = [TimeSpan]::FromSeconds([math]::Max(0, [math]::Floor($Seconds)))
+    if ($s.TotalHours -ge 1) { '{0}:{1:00}:{2:00}' -f [int][math]::Floor($s.TotalHours), $s.Minutes, $s.Seconds } else { '{0}:{1:00}' -f $s.Minutes, $s.Seconds }
+}
 
 function Write-D9Log {
     param(
@@ -185,4 +207,16 @@ public static class D9ConsoleFont {
 function Test-D9IsAdmin {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     return ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+# Округлена тривалість для оцінки «минулого разу ≈ …»: до 10 хв — з точністю до хвилини, до години — до 5 хв,
+# далі — до 10 хв (63 хв → «60 хв», 95 хв → «1 год 40 хв»)
+function Format-D9ApproxDuration {
+    param([Parameter(Mandatory)][TimeSpan]$Span)
+    $m = $Span.TotalMinutes
+    if ($m -lt 1) { return (T-D9 'менше хвилини') }
+    $r = if ($m -lt 10) { [math]::Round($m) } elseif ($m -lt 60) { [math]::Round($m / 5) * 5 } else { [math]::Round($m / 10) * 10 }
+    if ($r -le 60) { return (T-D9 '{0} хв' ([int]$r)) }
+    $h = [math]::Floor($r / 60); $rest = $r % 60
+    if ($rest) { T-D9 '{0} год {1} хв' ([int]$h) ([int]$rest) } else { T-D9 '{0} год' ([int]$h) }
 }

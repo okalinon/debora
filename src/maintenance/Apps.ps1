@@ -78,6 +78,7 @@ function Install-D9Apps {
     param([Parameter(Mandatory)][object[]]$Apps)
     $n = 0
     foreach ($app in $Apps) {
+        if (Test-D9CancelRequested) { Write-D9Log (T-D9 'Зупинено на вашу вимогу — решту пропущено.') Warn; break }
         $n++
         if ($script:D9OnProgress) { & $script:D9OnProgress $n $Apps.Count $app.name }
         Write-D9Log "[$n/$($Apps.Count)] $($app.name) ($($app.id))..."

@@ -262,6 +262,54 @@ Describe 'Вікно' {
         $r.After | Should -Be 0
     }
 
+    It 'черга: друга задача під час першої не губиться, дублі не додаються, порядок можна змінити' {
+        $r = Invoke-InGui {
+            $script:order = @()
+            $runTicks = { for ($i = 0; $i -lt 600 -and ($state.Job -or $state.Queue.Count); $i++) { if ($state.Job) { [void]$state.Job.Handle.AsyncWaitHandle.WaitOne(100) }; & $onTick } }
+            & $startJob 'A' { Start-Sleep -Milliseconds 300; 'a' } $null { param($x) $script:order += $x }
+            & $startJob 'B' { 'b' } $null { param($x) $script:order += $x }
+            & $startJob 'C' { 'c' } $null { param($x) $script:order += $x }
+            & $startJob 'B' { 'b2' } $null { param($x) $script:order += $x }      # дубль — не додається
+            $queued = @($state.Queue | ForEach-Object Title)
+            $panel = [string]$ui.TaskPanel.Visibility
+            $toggle = [string]$ui.BtnQueueToggle.Content
+            # «Вище» для C
+            $state.Queue.RemoveAt(1); $state.Queue.Insert(0, @{ Id = 'c'; Title = 'C'; Work = { 'c' }; Done = { param($x) $script:order += $x }; Kind = 'C' })
+            & $runTicks
+            @{ Queued = $queued; Order = $script:order; Panel = $panel; Toggle = $toggle; After = [string]$ui.TaskPanel.Visibility }
+        }
+        $r.Queued | Should -Be @('B', 'C')
+        $r.Panel | Should -Be 'Visible'
+        $r.Toggle | Should -Match '2'
+        $r.Order | Should -Be @('a', 'c', 'b')
+        $r.After | Should -Be 'Collapsed'
+    }
+
+    It 'панель: крок N з M і назва етапу з фону, таймер іде, «Зупинити» перериває між кроками' {
+        $r = Invoke-InGui {
+            & $startJob 'Довга задача' {
+                $n = 0
+                for ($i = 1; $i -le 30; $i++) {
+                    if (Test-D9CancelRequested) { break }
+                    Set-D9Stage -Name "етап $i" -Step $i -Of 30
+                    Start-Sleep -Milliseconds 100; $n++
+                }
+                $n
+            } $null { param($x) $script:done = $x } -CanCancel
+            Start-Sleep -Milliseconds 650
+            & $onTick
+            $stage = $ui.TaskStage.Text; $stop = [string]$ui.BtnTaskStop.Visibility; $timerText = $ui.TaskTimer.Text; $bar = $ui.TaskBar.Maximum
+            $ui.BtnTaskStop.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
+            for ($i = 0; $i -lt 100 -and $state.Job; $i++) { [void]$state.Job.Handle.AsyncWaitHandle.WaitOne(100); & $onTick }
+            @{ Stage = $stage; Stop = $stop; Timer = $timerText; Bar = $bar; Done = $script:done }
+        }
+        $r.Stage | Should -Match '^Крок \d+ з 30: етап \d+$'
+        $r.Stop | Should -Be 'Visible'
+        $r.Timer | Should -Match '^0:0\d$'
+        $r.Bar | Should -Be 30
+        $r.Done | Should -BeLessThan 30
+    }
+
     It 'ланцюжок завдань через таймер: контекст доходить до $Done і до наступного завдання' {
         # Регресія: «Застосувати вибране» запускало друге завдання з $Done, де локальна $ids була порожня
         $r = Invoke-InGui {

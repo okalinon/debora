@@ -124,18 +124,6 @@ function Format-D9Duration {
     if ($Span.TotalHours -ge 1) { T-D9 '{0} год {1} хв' ([int][math]::Floor($Span.TotalHours)) $Span.Minutes } else { T-D9 '{0} хв' ([int]$Span.TotalMinutes) }
 }
 
-# Округлена тривалість для оцінки «минулого разу ≈ …»: до 10 хв — з точністю до хвилини, до години — до 5 хв,
-# далі — до 10 хв (63 хв → «60 хв», 95 хв → «1 год 40 хв»)
-function Format-D9ApproxDuration {
-    param([Parameter(Mandatory)][TimeSpan]$Span)
-    $m = $Span.TotalMinutes
-    if ($m -lt 1) { return (T-D9 'менше хвилини') }
-    $r = if ($m -lt 10) { [math]::Round($m) } elseif ($m -lt 60) { [math]::Round($m / 5) * 5 } else { [math]::Round($m / 10) * 10 }
-    if ($r -le 60) { return (T-D9 '{0} хв' ([int]$r)) }
-    $h = [math]::Floor($r / 60); $rest = $r % 60
-    if ($rest) { T-D9 '{0} год {1} хв' ([int]$h) ([int]$rest) } else { T-D9 '{0} год' ([int]$h) }
-}
-
 # «Ємність 34,2 з 46,7 Вт·год (73%); знос ≈ 10% на рік; …»
 function Format-D9BatteryDetails {
     param([Parameter(Mandatory)]$Battery)

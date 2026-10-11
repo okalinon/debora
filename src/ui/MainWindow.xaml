@@ -514,12 +514,12 @@
 
   <Grid>
     <!--S:GRIDCOLS--><Grid.ColumnDefinitions><ColumnDefinition Width="72"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><!--/S:GRIDCOLS-->
-    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
-    <!--S:SIDEBAR-->    <Border Grid.RowSpan="2" Background="#E9E9EE" BorderBrush="#DCDCE1" BorderThickness="0,0,1,0"/>
+    <!--S:SIDEBAR-->    <Border Grid.RowSpan="3" Background="#E9E9EE" BorderBrush="#DCDCE1" BorderThickness="0,0,1,0"/>
     <Border Width="42" Height="42" CornerRadius="11" Background="#1D1D1F" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,22,0,0">
       <TextBlock Text="&#xE9D9;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="#F2F2F7" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-    </Border>    <StackPanel Grid.Row="1" Grid.Column="1" Panel.ZIndex="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,42,0">
+    </Border>    <StackPanel Grid.Row="2" Grid.Column="1" Panel.ZIndex="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,42,0">
       <ProgressBar x:Name="Progress" Width="120" Height="5" Margin="0,0,12,0" VerticalAlignment="Center" Visibility="Collapsed"/>
       <TextBlock x:Name="StatusText" Foreground="#6E6E73" FontSize="13.5" Text="Готово" MaxWidth="360" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
       <TextBlock x:Name="AdminBadge" FontSize="13.5" FontWeight="Medium" Margin="16,0,0,0" MaxWidth="300" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
@@ -1355,8 +1355,44 @@
       </TabItem>
     </TabControl>
 
+    <!-- Зараз виконується: назва, крок, шкала, таймер, оцінка часу; черга наступних задач -->
+    <Border x:Name="TaskPanel" Grid.Row="1" Grid.Column="1" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,12,18,12" Visibility="Collapsed">
+      <StackPanel>
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+            <TextBlock x:Name="TaskTimer" Text="0:00" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,16,0"/>
+            <Button x:Name="BtnTaskStop" Content="Зупинити" Visibility="Collapsed" Margin="0,0,10,0" Padding="13,6" ToolTip="Зупинити після поточного кроку"/>
+            <Button x:Name="BtnQueueToggle" Style="{StaticResource LinkButton}" Content="Черга" Visibility="Collapsed" VerticalAlignment="Center" Margin="0"/>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock x:Name="TaskTitle" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="TaskStage" Foreground="#6E6E73" FontSize="13.5" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+            <ProgressBar x:Name="TaskBar" Height="6" Margin="0,8,0,0" IsIndeterminate="True"/>
+            <TextBlock x:Name="TaskEta" Foreground="#6E6E73" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap"/>
+          </StackPanel>
+        </DockPanel>
+        <StackPanel x:Name="QueuePanel" Visibility="Collapsed" Margin="0,10,0,0">
+          <DockPanel>
+            <Button x:Name="BtnQueueClear" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Очистити чергу" Margin="0"/>
+            <TextBlock Text="Далі в черзі" FontWeight="SemiBold" FontSize="13.5"/>
+          </DockPanel>
+          <ItemsControl x:Name="QueueList" Margin="0,4,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <DockPanel Margin="0,3,0,3">
+                  <Button x:Name="BtnQueueRemove" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Прибрати" Tag="{Binding Id}" Margin="12,0,0,0"/>
+                  <Button x:Name="BtnQueueUp" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Вище" Tag="{Binding Id}" Margin="12,0,0,0"/>
+                  <TextBlock Text="{Binding Title}" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
     <!-- Журнал виконання під вмістом -->
-    <Expander x:Name="LogExpander" Grid.Row="1" Grid.Column="1" Header="Журнал виконання" Margin="40,0,40,8">
+    <Expander x:Name="LogExpander" Grid.Row="2" Grid.Column="1" Header="Журнал виконання" Margin="40,0,40,8">
       <Border Style="{StaticResource Panel}" Margin="0,0,0,6">
         <TextBox x:Name="LogBox" Height="170" VerticalAlignment="Stretch" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="13" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"/>
       </Border>

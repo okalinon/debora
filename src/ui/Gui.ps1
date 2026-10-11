@@ -357,16 +357,13 @@ function Show-D9Gui {
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
                    'BtnDisksRefresh', 'DisksState', 'DisksList', 'BtnStyle', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnLanguage',
+                   'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
                    'ChkSuDrivers', 'ChkSuDebloat', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
     $isAdmin = Test-D9IsAdmin
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
-    $actionButtons = @('BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnApply', 'BtnPreview', 'BtnDriverScan', 'BtnFindDrivers', 'BtnInstallDrivers', 'BtnUndo',
-                       'BtnStartupApply', 'BtnStartupRefresh', 'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'BtnPause', 'BtnResume', 'BtnWuDrivers', 'BtnDiagnostics',
-                       'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'BtnOemTool', 'BtnPrepareUsb', 'BtnExportDrivers', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'BtnUninstRefresh', 'BtnUninstall',
-                       'BtnDisksRefresh', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset', 'BtnDebloatRun', 'BtnDebloatRefresh')
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -378,7 +375,8 @@ function Show-D9Gui {
     $ui.DriverFolder.Text = $DriverDir
 
     # ---------- фонове виконання ----------
-    $sync = [hashtable]::Synchronized(@{ Log = New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'; Progress = $null })
+    $sync = [hashtable]::Synchronized(@{ Log = New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'; Progress = $null
+                                          Stages = New-Object 'System.Collections.Concurrent.ConcurrentQueue[object]'; Cancel = $false })
     $iss = [Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
     foreach ($f in (Get-ChildItem function: | Where-Object { $_.Name -like '*-D9*' })) {
         $iss.Commands.Add((New-Object Management.Automation.Runspaces.SessionStateFunctionEntry $f.Name, $f.Definition))
@@ -391,12 +389,14 @@ param($sync, $work, $arg)
 $global:D9Sync = $sync
 $global:D9OnLog = { param($Message, $Level) $global:D9Sync.Log.Enqueue("$Level|$Message") }
 $global:D9OnProgress = { param($n, $total, $name) $global:D9Sync.Progress = @($n, $total, $name) }
+$global:D9OnStage = { param($h) $global:D9Sync.Stages.Enqueue($h) }
+$global:D9CancelCheck = { [bool]$global:D9Sync.Cancel }
 try { $r = & ([scriptblock]::Create($work)) $arg; , @{ ok = $true; result = $r } }
 catch { , @{ ok = $false; error = $_.Exception.Message } }
 '@
+    # Кнопки під час роботи не вимикаються: нова задача стає в чергу (див. $startJob)
     $setBusy = {
         param([bool]$busy, [string]$text)
-        foreach ($b in $actionButtons) { $ui[$b].IsEnabled = -not $busy }
         $ui.Progress.Visibility = if ($busy) { 'Visible' } else { 'Collapsed' }
         $ui.Progress.IsIndeterminate = $true
         $ui.StatusText.Text = if ($text) { $text } elseif ($busy) { T-D9 'Виконується…' } else { T-D9 'Готово' }
@@ -408,18 +408,122 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $ui.BtnOpenReport.IsEnabled = [bool]$state.ReportPath
         }
     }
+    # ---------- задачі й черга ----------
+    # Одночасно виконується одна задача; інші стають у чергу $state.Queue і запускаються по черзі.
     # $Done викликається з таймера, коли обробник кнопки вже завершився: блоки коду PowerShell не є замиканнями,
     # тож локальні змінні обробника там недоступні. Усе потрібне передавайте через $Context — він приходить
-    # у $Done другим параметром.
-    $startJob = {
-        param([string]$Title, [scriptblock]$Work, $Arg, [scriptblock]$Done, $Context)
-        if ($state.Job) { return }
-        & $setBusy $true $Title
-        $sync.Progress = $null
+    # у $Done другим параметром. Задача, запущена з $Done (ланцюжок: скан → виправлення → скан), стартує одразу,
+    # раніше за чергу. Kind — ключ історії тривалості й захисту від дублів; Typical — верхня межа часу для першого
+    # разу («до 3 хв»); CanCancel — можна зупинити між кроками.
+    $state.Queue = New-Object System.Collections.ArrayList
+    $jobKey = { param($j) if ($j.Kind) { [string]$j.Kind } else { [string]$j.Title } }
+    $refreshQueueList = {
+        Set-D9Items $ui.QueueList @($state.Queue | ForEach-Object { New-D9Row @{ Id = $_.Id; Title = $_.Title } })
+    }
+    $runJob = {
+        param($spec)
+        & $setBusy $true $spec.Title
+        $sync.Progress = $null; $sync.Cancel = $false
+        $st = $null; while ($sync.Stages.TryDequeue([ref]$st)) { }
         $rs = [runspacefactory]::CreateRunspace($iss); $rs.Open()
         $ps = [powershell]::Create(); $ps.Runspace = $rs
-        [void]$ps.AddScript($prelude).AddArgument($sync).AddArgument($Work.ToString()).AddArgument($Arg)
-        $state.Job = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); Done = $Done; Title = $Title; Context = $Context }
+        [void]$ps.AddScript($prelude).AddArgument($sync).AddArgument($spec.Work.ToString()).AddArgument($spec.Arg)
+        $state.Job = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); Done = $spec.Done; Title = $spec.Title; Context = $spec.Context
+                        Kind = $spec.Kind; Typical = $spec.Typical; CanCancel = $spec.CanCancel; Started = (Get-Date); Stage = $null
+                        EstimateSec = $(try { Get-D9DurationEstimate $spec.Kind } catch { $null }) }
+        & $refreshTaskPanel
+    }
+    # Профілі задач за назвою: стабільний ключ історії тривалості, верхня межа часу для першого разу, чи можна
+    # зупинити між кроками. Решта задач збирає історію за своєю назвою.
+    $jobProfiles = @{
+        (T-D9 'Сканування')                            = @{ Kind = 'scan'; Typical = (T-D9 'до {0} хв' 3) }
+        (T-D9 'Повторне сканування')                   = @{ Kind = 'scan'; Typical = (T-D9 'до {0} хв' 3) }
+        (T-D9 'Глибоке сканування')                    = @{ Kind = 'scan:deep'; Typical = (T-D9 'до {0} хв' 10) }
+        (T-D9 'Виправлення')                           = @{ Kind = 'fixall'; CanCancel = $true }
+        (T-D9 'Налаштування з нуля')                   = @{ Kind = 'setup'; CanCancel = $true }
+        (T-D9 'Встановлення програм')                  = @{ Kind = 'apps:install'; CanCancel = $true }
+        (T-D9 'Видалення програм')                     = @{ Kind = 'uninstall'; CanCancel = $true }
+        (T-D9 'Завантаження й встановлення драйверів') = @{ Kind = 'drivers:online-install'; CanCancel = $true }
+        (T-D9 'Пошук драйверів онлайн')                = @{ Kind = 'drivers:online-search'; Typical = (T-D9 'до {0} хв' 15) }
+        (T-D9 'Відновлення системних файлів')          = @{ Kind = 'maintenance:repairSystem'; Typical = (T-D9 'до {0} хв' 40) }
+        (T-D9 'Оновлення програм')                     = @{ Kind = 'apps:upgrade' }
+    }
+    $startJob = {
+        param([string]$Title, [scriptblock]$Work, $Arg, [scriptblock]$Done, $Context, [string]$Kind, [string]$Typical, [switch]$CanCancel)
+        if (-not $Kind) {
+            $pr = $jobProfiles[$Title]
+            if ($pr) { $Kind = $pr.Kind; if (-not $Typical) { $Typical = $pr.Typical }; if ($pr.CanCancel) { $CanCancel = [switch]$true } } else { $Kind = $Title }
+        }
+        $spec = @{ Id = [guid]::NewGuid().ToString('N'); Title = $Title; Work = $Work; Arg = $Arg; Done = $Done; Context = $Context; Kind = $Kind; Typical = $Typical; CanCancel = [bool]$CanCancel }
+        if ($state.Job) {
+            $key = & $jobKey $spec
+            if ((& $jobKey $state.Job) -eq $key -or @($state.Queue | Where-Object { (& $jobKey $_) -eq $key }).Count) { & $log (T-D9 'Уже виконується або в черзі: {0}' $Title); return }
+            [void]$state.Queue.Add($spec)
+            & $log (T-D9 'Додано в чергу: {0}' $Title)
+            & $refreshQueueList; & $refreshTaskPanel
+            return
+        }
+        & $runJob $spec
+    }
+    # Етапи з фону (Set-D9Stage): нова назва — новий етап (і запис тривалості попереднього в історію)
+    $closeStage = {
+        param($job)
+        $s = $job.Stage
+        if ($s -and $s.Key -and -not $sync.Cancel) { try { Add-D9Duration $s.Key ((Get-Date) - $s.Started).TotalSeconds } catch { } }
+    }
+    $applyStage = {
+        param($h)
+        $job = $state.Job
+        if (-not $job) { return }
+        if ($h.ContainsKey('Name') -and (-not $job.Stage -or $job.Stage.Name -ne $h.Name)) {
+            & $closeStage $job
+            $job.Stage = @{ Name = $h.Name; Started = (Get-Date) }
+        }
+        if (-not $job.Stage) { $job.Stage = @{ Started = (Get-Date) } }
+        foreach ($k in 'Step', 'Of', 'Key') { if ($h.ContainsKey($k)) { $job.Stage[$k] = $h[$k] } }
+        if ($h.ContainsKey('Key') -and $h.Key) { $job.Stage.EstimateSec = $(try { Get-D9DurationEstimate $h.Key } catch { $null }) }
+        if ($h.ContainsKey('EstimateSec')) { $job.Stage.EstimateSec = $h.EstimateSec }
+    }
+    # Панель «Зараз виконується»: назва, крок, шкала, таймер, оцінка часу, черга
+    $refreshTaskPanel = {
+        $job = $state.Job
+        $q = $state.Queue.Count
+        if (-not $job -and -not $q) { $ui.TaskPanel.Visibility = 'Collapsed'; $ui.QueuePanel.Visibility = 'Collapsed'; return }
+        $ui.TaskPanel.Visibility = 'Visible'
+        $ui.BtnQueueToggle.Visibility = if ($q) { 'Visible' } else { 'Collapsed' }
+        $ui.BtnQueueToggle.Content = T-D9 'У черзі: {0}' $q
+        if (-not $q) { $ui.QueuePanel.Visibility = 'Collapsed' }
+        if (-not $job) {
+            $ui.TaskTitle.Text = T-D9 'Наступна задача запуститься за мить'; $ui.TaskStage.Text = ''; $ui.TaskEta.Text = ''; $ui.TaskTimer.Text = ''
+            $ui.BtnTaskStop.Visibility = 'Collapsed'; return
+        }
+        $now = Get-Date
+        $elapsed = ($now - $job.Started).TotalSeconds
+        $ui.TaskTitle.Text = $job.Title
+        $ui.TaskTimer.Text = Format-D9Elapsed $elapsed
+        $s = $job.Stage
+        $p = $sync.Progress
+        $parts = @()
+        if ($s -and $s.Of) { $parts += (T-D9 'Крок {0} з {1}' $s.Step $s.Of) }
+        if ($s -and $s.Name -and $s.Name -ne $job.Title) { $parts += $s.Name }
+        if (-not $parts -and $p) { $parts += (T-D9 '{0} з {1}: {2}' $p[0] $p[1] $p[2]) }
+        $ui.TaskStage.Text = $parts -join ': '
+        $stageElapsed = if ($s -and $s.Started) { ($now - $s.Started).TotalSeconds } else { $elapsed }
+        if ($s -and $s.Of) {
+            $frac = if ($s.EstimateSec) { [math]::Min(0.95, $stageElapsed / $s.EstimateSec) } else { 0 }
+            $ui.TaskBar.IsIndeterminate = $false; $ui.TaskBar.Maximum = [double]$s.Of; $ui.TaskBar.Value = [double]($s.Step - 1) + $frac
+        } elseif ($p -and $p[1]) {
+            $ui.TaskBar.IsIndeterminate = $false; $ui.TaskBar.Maximum = [double]$p[1]; $ui.TaskBar.Value = [double]$p[0]
+        } elseif ($s -and $s.EstimateSec) {
+            $ui.TaskBar.IsIndeterminate = $false; $ui.TaskBar.Maximum = 1; $ui.TaskBar.Value = [math]::Min(0.95, $stageElapsed / $s.EstimateSec)
+        } elseif ($job.EstimateSec) {
+            $ui.TaskBar.IsIndeterminate = $false; $ui.TaskBar.Maximum = 1; $ui.TaskBar.Value = [math]::Min(0.95, $elapsed / $job.EstimateSec)
+        } else { $ui.TaskBar.IsIndeterminate = $true }
+        $ui.TaskEta.Text = if ($s -and $s.EstimateSec) { Format-D9EtaText $stageElapsed $s.EstimateSec '' }
+                           else { Format-D9EtaText $elapsed $job.EstimateSec $job.Typical }
+        $ui.BtnTaskStop.Visibility = if ($job.CanCancel) { 'Visible' } else { 'Collapsed' }
+        $ui.BtnTaskStop.IsEnabled = -not $sync.Cancel
+        if ($sync.Cancel) { $ui.TaskEta.Text = T-D9 'Зупиняється після поточного кроку…' }
     }
     $log = { param([string]$text) $ui.LogBox.AppendText("$text`r`n"); $ui.LogBox.ScrollToEnd() }
     $needAdmin = {
@@ -437,6 +541,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             & $log $msg
             if ($level -in 'Error', 'Warn') { $ui.LogExpander.IsExpanded = $true }
         }
+        $st = $null
+        while ($sync.Stages.TryDequeue([ref]$st)) { & $applyStage $st }
         if ($sync.Progress) {
             $n, $total, $name = $sync.Progress
             $ui.Progress.IsIndeterminate = $false; $ui.Progress.Maximum = $total; $ui.Progress.Value = $n
@@ -447,19 +553,54 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $out = $null
             try { $out = $job.PS.EndInvoke($job.Handle) } catch { $out = @(@{ ok = $false; error = $_.Exception.Message }) }
             $job.PS.Dispose(); $job.RS.Dispose()
+            $res = @($out)[0]
+            & $closeStage $job
+            if ($res.ok -and $job.Kind -and -not $sync.Cancel) { try { Add-D9Duration $job.Kind ((Get-Date) - $job.Started).TotalSeconds } catch { } }
             $state.Job = $null
             & $setBusy $false $null
-            $res = @($out)[0]
-            if (-not $res.ok) {
-                & $log (T-D9 'ПОМИЛКА: {0}' "$($res.error)")
-                $ui.LogExpander.IsExpanded = $true
-                [void][Windows.MessageBox]::Show($win, (T-D9 'Не вдалося виконати: {0}' "$($res.error)"), 'Debora', 'OK', 'Error')
-            } elseif ($job.Done) {
-                try { & $job.Done $res.result $job.Context } catch { & $log (T-D9 'ПОМИЛКА інтерфейсу: {0}' $_.Exception.Message) }
-            }
+            # Поки йде $Done (часто з діалогом), черга чекає: таймер тікає й під час модального вікна
+            $state.InDone = $true
+            try {
+                if (-not $res.ok) {
+                    & $log (T-D9 'ПОМИЛКА: {0}' "$($res.error)")
+                    $ui.LogExpander.IsExpanded = $true
+                    [void][Windows.MessageBox]::Show($win, (T-D9 'Не вдалося виконати: {0}' "$($res.error)"), 'Debora', 'OK', 'Error')
+                } elseif ($job.Done) {
+                    try { & $job.Done $res.result $job.Context } catch { & $log (T-D9 'ПОМИЛКА інтерфейсу: {0}' $_.Exception.Message) }
+                }
+            } finally { $state.InDone = $false }
         }
+        if (-not $state.Job -and -not $state.InDone -and $state.Queue.Count) {
+            $next = $state.Queue[0]; $state.Queue.RemoveAt(0)
+            & $refreshQueueList
+            & $log (T-D9 'З черги: {0}' $next.Title)
+            & $runJob $next
+        }
+        & $refreshTaskPanel
     }
     $timer.Add_Tick($onTick)
+
+    # Кнопки панелі задач
+    $ui.BtnTaskStop.Add_Click({
+        if (-not $state.Job) { return }
+        $sync.Cancel = $true
+        & $log (T-D9 'Зупинка: поточний крок завершиться, решту буде пропущено.')
+        & $refreshTaskPanel
+    })
+    $ui.BtnQueueToggle.Add_Click({ $ui.QueuePanel.Visibility = if ($ui.QueuePanel.Visibility -eq 'Visible') { 'Collapsed' } else { 'Visible' } })
+    $ui.BtnQueueClear.Add_Click({ $state.Queue.Clear(); & $refreshQueueList; & $refreshTaskPanel; & $log (T-D9 'Чергу очищено.') })
+    $ui.QueueList.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{
+        param($sender, $e)
+        $b = $e.OriginalSource
+        if (-not ($b -is [Windows.Controls.Button]) -or $b.Name -notin 'BtnQueueRemove', 'BtnQueueUp') { return }
+        $e.Handled = $true
+        $i = -1; for ($k = 0; $k -lt $state.Queue.Count; $k++) { if ($state.Queue[$k].Id -eq [string]$b.Tag) { $i = $k } }
+        if ($i -lt 0) { return }
+        $item = $state.Queue[$i]
+        if ($b.Name -eq 'BtnQueueRemove') { $state.Queue.RemoveAt($i); & $log (T-D9 'Прибрано з черги: {0}' $item.Title) }
+        elseif ($i -gt 0) { $state.Queue.RemoveAt($i); $state.Queue.Insert($i - 1, $item) }
+        & $refreshQueueList; & $refreshTaskPanel
+    })
 
     # Клік по будь-якому посиланню в списках
     $win.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{
@@ -561,7 +702,6 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             }
             return
         }
-        if ($state.Job) { [void][Windows.MessageBox]::Show($win, (T-D9 'Зачекайте, поки завершиться поточна операція.'), 'Debora'); return }
         if ((Test-D9FindingFixNeedsAdmin $f $Catalog) -and -not (& $needAdmin)) { return }
         $paths = $null
         if ($f.fix.type -eq 'files') {
@@ -817,7 +957,12 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($a)
         $list = Get-D9Checklist
         $ctx = New-D9ScanContext -Catalog $a.Catalog -SystemInfo $a.Sys
-        foreach ($item in @($list.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' } | Sort-Object number)) {
+        $todo = @($list.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' } | Sort-Object number)
+        $i = 0
+        foreach ($item in $todo) {
+            if (Test-D9CancelRequested) { Write-D9Log (T-D9 'Зупинено на вашу вимогу — решту пропущено.') Warn; break }
+            $i++
+            Set-D9Stage -Name $item.title -Step $i -Of $todo.Count
             if (-not (Test-D9ChecklistReady $list $item)) { Write-D9Log (T-D9 'Крок {0} пропущено: спершу виконайте попередні' $item.number) Warn; continue }
             try { [void](Invoke-D9ChecklistStep -Checklist $list -Item $item -Context $ctx) } catch { Write-D9Log (T-D9 '  Помилка: {0}' $_.Exception.Message) Error }
         }
@@ -1157,7 +1302,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $applied = (Get-D9TweakState $t $SystemInfo) -eq 'applied'
         $ui.WuDriversState.Text = if ($applied) { T-D9 'Вимкнено: Windows не встановлює драйвери сама. Драйвери ставите ви — з сайту виробника або на вкладці «Драйвери». Скасувати можна в «Журналі змін».' }
                                   else { T-D9 'Увімкнено: Windows Update сама ставить і підмінює драйвери (часто загальними або старшими версіями). Вимкніть, якщо ставите драйвери самі.' }
-        $ui.BtnWuDrivers.IsEnabled = -not $applied -and -not $state.Job
+        $ui.BtnWuDrivers.IsEnabled = -not $applied
     }
     $maintenanceJob = {
         param([string]$title, [string]$confirm, [string]$function)
@@ -1296,7 +1441,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $ui.AppSelectedText.Text = if ($sel) { (T-D9 'Вибрано: {0}' $sel.Count) + $(if ($upd) { T-D9 ' (з них оновити: {0})' $upd }) + " — $(($sel | Select-Object -First 6 | ForEach-Object Title) -join ', ')$(if ($sel.Count -gt 6) { '…' })" } else { T-D9 'Нічого не вибрано. Клацніть по картці програми, щоб вибрати.' }
         $ui.AppSelectedText.ToolTip = if ($sel) { ($sel | ForEach-Object Title) -join "`n" } else { $null }
     $ui.BtnAppsInstall.Content = if ($sel) { T-D9 'Встановити вибрані ({0})' $sel.Count } else { T-D9 'Встановити вибрані' }
-        $ui.BtnAppsInstall.IsEnabled = [bool]$sel -and $hasWinget -and -not $state.Job
+        $ui.BtnAppsInstall.IsEnabled = [bool]$sel -and $hasWinget
         $c = $state.AppCategoryRows | Where-Object Id -eq 'selected' | Select-Object -First 1
         if ($c) { $c.Status = $(if ($sel) { "$($sel.Count)" } else { '' }) }
     }
@@ -1447,7 +1592,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $size = [long](($sel | ForEach-Object { $_.Tag.Size } | Measure-Object -Sum).Sum)
         $ui.UninstSelectedText.Text = if ($sel) { (T-D9 'Вибрано: {0}' $sel.Count) + $(if ($size) { T-D9 ', звільниться ≈ {0}' (Format-D9Size $size) }) + (T-D9 '. Після видалення Debora запропонує прибрати залишки.') } else { T-D9 'Нічого не вибрано' }
         $ui.BtnUninstall.Content = if ($sel) { T-D9 'Видалити вибрані ({0})' $sel.Count } else { T-D9 'Видалити вибрані' }
-        $ui.BtnUninstall.IsEnabled = [bool]$sel -and -not $state.Job
+        $ui.BtnUninstall.IsEnabled = [bool]$sel
     }
     $loadUninst = { & $startJob (T-D9 'Читання списку програм (розміри папок рахуються лише першого разу)') { @(Get-D9UninstallListDetailed) } $null { param($r) & $fillUninst @($r) } }
     $ui.UninstSearch.Add_TextChanged({ $ui.UninstSearchHint.Visibility = if ($ui.UninstSearch.Text) { 'Collapsed' } else { 'Visible' }; & $showUninst })
@@ -1700,14 +1845,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $ui.Tabs.Add_SelectionChanged({
         param($sender, $e)
         if ($e.OriginalSource -ne $ui.Tabs) { return }
-        if ($ui.Tabs.SelectedItem.Uid -eq 'startup' -and -not $state.StartupRows -and -not $state.Job) { & $loadStartup }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'startup' -and -not $state.StartupRows) { & $loadStartup }
         if ($ui.Tabs.SelectedItem.Uid -eq 'apps') { & $buildApps }
-        if ($ui.Tabs.SelectedItem.Uid -eq 'apps' -and -not $state.AppsLoaded -and -not $state.Job) { & $loadApps }
-        if ($ui.Tabs.SelectedItem.Uid -eq 'uninstall' -and $null -eq $state.UninstRows -and -not $state.Job) { & $loadUninst }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'apps' -and -not $state.AppsLoaded) { & $loadApps }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'uninstall' -and $null -eq $state.UninstRows) { & $loadUninst }
         if ($ui.Tabs.SelectedItem.Uid -eq 'reinstall' -and $null -eq $state.UsbMedia) { & $fillUsb }
-        if ($ui.Tabs.SelectedItem.Uid -eq 'maintenance' -and -not $state.DisksLoaded -and -not $state.Job) { & $loadDisks }
-        if ($ui.Tabs.SelectedItem.Uid -eq 'debloat' -and -not $state.DebloatLoaded -and -not $state.Job) { & $loadDebloat }
-        if ($ui.Tabs.SelectedItem.Uid -eq 'drivers' -and $null -eq $state.Devices -and -not $state.Job) { & $driverReport }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'maintenance' -and -not $state.DisksLoaded) { & $loadDisks }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'debloat' -and -not $state.DebloatLoaded) { & $loadDebloat }
+        if ($ui.Tabs.SelectedItem.Uid -eq 'drivers' -and $null -eq $state.Devices) { & $driverReport }
         if ($ui.Tabs.SelectedItem.Uid -eq 'setup' -and -not $state.SetupLoaded) { & $loadSetup }
     })
     $win.Add_Closing({ param($sender, $e)

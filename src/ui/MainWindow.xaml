@@ -866,20 +866,20 @@
                 </DockPanel>
               </StackPanel>
             </Border>
-            <TextBlock Style="{StaticResource Section}" Text="Профіль"/>
+            <TextBlock Style="{StaticResource Section}" Text="План"/>
             <Border Style="{StaticResource Group}">
               <StackPanel>
                 <DockPanel Style="{StaticResource Row}">
                   <TextBox x:Name="SuNameBox" DockPanel.Dock="Right" Width="380"/>
-                  <TextBlock Text="Назва профілю" VerticalAlignment="Center"/>
+                  <TextBlock Text="Назва плану" VerticalAlignment="Center"/>
                 </DockPanel>
                 <Border Style="{StaticResource Sep}"/>
                 <StackPanel Margin="16,12,14,14">
                   <WrapPanel>
                     <Button x:Name="BtnSuRun" Style="{StaticResource Primary}" Content="Почати налаштування"/>
                     <Button x:Name="BtnSuPlan" Content="Що буде зроблено"/>
-                    <Button x:Name="BtnSuSave" Content="Зберегти профіль у файл…"/>
-                    <Button x:Name="BtnSuLoad" Content="Завантажити профіль з файлу…"/>
+                    <Button x:Name="BtnSuSave" Content="Зберегти план у файл…"/>
+                    <Button x:Name="BtnSuLoad" Content="Завантажити план з файлу…"/>
                   </WrapPanel>
                   <TextBlock x:Name="SuState" Style="{StaticResource RowNote}" Margin="0,10,0,0"/>
                 </StackPanel>

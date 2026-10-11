@@ -472,6 +472,7 @@
     "Застосовано змін: {0} ({1}). Передумали?": "Changes applied: {0} ({1}). Changed your mind?",
     "Зміни відкочено.": "Changes undone.",
     "минулого разу {0} ({1})": "last time {0} ({1})",
-    "Перевірено {0}": "Checked {0}"
+    "Перевірено {0}": "Checked {0}",
+    "сповільнює запуск Windows ≈ на {0} с": "slows Windows startup by ≈ {0} s"
   }
 }

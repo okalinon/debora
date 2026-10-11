@@ -238,6 +238,10 @@
     "Пошук (Ctrl+K)": "Search (Ctrl+K)",
     "Знайти налаштування, пункт деблоату, програму чи дію": "Find a setting, debloat item, app or action",
     "Відкотити": "Undo",
-    "Закрити": "Close"
+    "Закрити": "Close",
+    "План": "Plan",
+    "Назва плану": "Plan name",
+    "Зберегти план у файл…": "Save plan to file…",
+    "Завантажити план з файлу…": "Load plan from file…"
   }
 }

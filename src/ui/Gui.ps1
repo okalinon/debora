@@ -1492,6 +1492,10 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             }
             if ($i.Missing) { $note += (T-D9 'файл відсутній — запис можна вимкнути'); $color = '#D70015' }
             if (-not $i.Publisher -and -not $i.Verdict) { $note += (T-D9 'видавець невідомий') }
+            # Скільки програма сповільнює завантаження Windows (журнал Diagnostics-Performance, лише від адміністратора)
+            $exe = if ($i.Exe) { [IO.Path]::GetFileNameWithoutExtension([string]$i.Exe) } else { '' }
+            $slow = @($state.BootCulprits | Where-Object { $_.Name -and ($_.Name -like "*$($i.Name)*" -or ($exe -and $_.Name -like "*$exe*") -or "$($i.Name)" -like "*$($_.Name)*") }) | Select-Object -First 1
+            if ($slow) { $note = @(T-D9 'сповільнює запуск Windows ≈ на {0} с' $slow.Seconds) + $note; if ($color -eq '#6E6E73') { $color = '#B25000' } }
             New-D9Row @{ Selected = [bool]$i.Enabled; Title = (Format-D9StartupName $i.Name); Detail = "$($i.Name)`n$($i.Command)"; Group = $(if ($i.Publisher) { $i.Publisher } else { '—' })
                          Note = $i.Where; Status = ($note -join '; '); Color = $color; Tag = $i }
         })
@@ -1503,7 +1507,10 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $ui.BtnStartupRecommended.Content = if ($rec) { T-D9 'Вимкнути рекомендовані ({0})' $rec } else { T-D9 'Вимкнути рекомендовані' }
         $ui.StartupSummary.Text = (T-D9 'Програм в автозавантаженні: {0}, запускаються: {1}' (@($items).Count) $on) + $(if ($rec) { T-D9 ', з них рекомендуємо вимкнути: {0}' $rec }) + (T-D9 '. Зніміть галочку з тих, яким не потрібно стартувати разом із Windows, і натисніть «Застосувати зміни» — або «Вимкнути рекомендовані». Програми не видаляються; усе відкочується в «Журналі змін».')
     }
-    $loadStartup = { & $startJob (T-D9 'Читання автозавантаження') { Get-D9StartupItems } $null { param($r) & $fillStartup @($r) } }
+    $loadStartup = { & $startJob (T-D9 'Читання автозавантаження') {
+            @{ Items = @(Get-D9StartupItems)
+               Culprits = @(try { Get-D9BootCulprits @(Get-D9EventCount @{ LogName = 'Microsoft-Windows-Diagnostics-Performance/Operational'; Id = 101; StartTime = (Get-Date).AddDays(-30) }) | Where-Object Seconds -ge 1 } catch { }) }
+        } $null { param($r) $state.BootCulprits = @($r.Culprits); & $fillStartup @($r.Items) } }
     $ui.BtnStartupRefresh.Add_Click($loadStartup)
     $ui.BtnStartupRecommended.Add_Click({
         foreach ($r in $state.StartupRows) { if ($r.Tag.Enabled -and ($r.Tag.Verdict -eq 'disable' -or $r.Tag.Missing)) { $r.Selected = $false } }

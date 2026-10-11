@@ -631,6 +631,15 @@
                           </Style>
                         </Button.Style>
                       </Button>
+                      <!-- «Приховати» (прийнято, не показувати до нового випадку) / «Показати знову» у списку прихованого -->
+                      <Button x:Name="BtnFindingHide" Content="{Binding HideLabel}" Tag="{Binding}" ToolTip="{Binding HideTip}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="14,6,0,0">
+                        <Button.Style>
+                          <Style TargetType="Button" BasedOn="{StaticResource LinkButton}">
+                            <Setter Property="Foreground" Value="#6E6E73"/>
+                            <Style.Triggers><DataTrigger Binding="{Binding HideLabel}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding HideLabel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                          </Style>
+                        </Button.Style>
+                      </Button>
                       <Button x:Name="BtnFindingGuide" DockPanel.Dock="Right" Content="{Binding GuideLabel}" Tag="{Binding}" ToolTip="Покрокова інструкція: що і де зробити"
                               Padding="13,5" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Top">
                         <Button.Style>
@@ -649,15 +658,6 @@
                             <DataTemplate><Button Style="{StaticResource LinkButton}" Content="{Binding Label}" Tag="{Binding Url}" ToolTip="{Binding Url}"/></DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <!-- «Приховати» (прийнято, не показувати до нового випадку) / «Показати знову» у списку прихованого -->
-                        <Button x:Name="BtnFindingHide" Content="{Binding HideLabel}" Tag="{Binding}" ToolTip="{Binding HideTip}" HorizontalAlignment="Left" Margin="0,5,0,0">
-                          <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource LinkButton}">
-                              <Setter Property="Foreground" Value="#6E6E73"/>
-                              <Style.Triggers><DataTrigger Binding="{Binding HideLabel}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding HideLabel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                            </Style>
-                          </Button.Style>
-                        </Button>
                         <!-- Перелік файлів і папок знахідки: підказка в згорнутому рядку, перелік — після кліку (рядок вибрано) -->
                         <TextBlock Text="{Binding Hint}" Foreground="#007AFF" FontSize="13" Margin="0,4,0,0" Cursor="Hand">
                           <TextBlock.Style>

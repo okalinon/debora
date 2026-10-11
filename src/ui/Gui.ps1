@@ -197,6 +197,37 @@ function New-D9FilesWindow {
     $w
 }
 
+# Список з галочками (кроки «Виправити все» тощо): $Items — { Id; Text; Checked }. Повертає вікно; вибране — $w.Tag
+function New-D9CheckListWindow {
+    param($Owner, [string]$Title, [string]$Header, [object[]]$Items, [string]$OkText)
+    $w = New-Object Windows.Window
+    $w.Title = $Title; $w.Width = 720; $w.SizeToContent = 'Height'; $w.MaxHeight = 720
+    if ($Owner -and $Owner.IsLoaded) { $w.Owner = $Owner }
+    $w.WindowStartupLocation = 'CenterOwner'; $w.FontFamily = 'Segoe UI Variable Text, Segoe UI'; $w.FontSize = 14
+    if ($Owner) { $w.Resources = $Owner.Resources; $w.Background = $Owner.Background; $w.Foreground = $Owner.Foreground }
+    $dock = New-Object Windows.Controls.DockPanel; $dock.Margin = '20'
+    $h = New-Object Windows.Controls.TextBlock; $h.Text = $Header; $h.TextWrapping = 'Wrap'; $h.Margin = '0,0,0,10'
+    [Windows.Controls.DockPanel]::SetDock($h, 'Top'); [void]$dock.Children.Add($h)
+    $buttons = New-Object Windows.Controls.StackPanel; $buttons.Orientation = 'Horizontal'; $buttons.HorizontalAlignment = 'Right'; $buttons.Margin = '0,12,0,0'
+    [Windows.Controls.DockPanel]::SetDock($buttons, 'Bottom'); [void]$dock.Children.Add($buttons)
+    $list = New-Object Windows.Controls.StackPanel
+    $boxes = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($i in @($Items)) {
+        $cb = New-Object Windows.Controls.CheckBox; $cb.Margin = '0,4'; $cb.Tag = [string]$i.Id; $cb.IsChecked = [bool]$i.Checked
+        $tb = New-Object Windows.Controls.TextBlock; $tb.Text = [string]$i.Text; $tb.TextWrapping = 'Wrap'; $cb.Content = $tb
+        [void]$list.Children.Add($cb); [void]$boxes.Add($cb)
+    }
+    $sv = New-Object Windows.Controls.ScrollViewer; $sv.VerticalScrollBarVisibility = 'Auto'; $sv.Content = $list
+    [void]$dock.Children.Add($sv)
+    $ok = New-Object Windows.Controls.Button; $ok.Content = $(if ($OkText) { $OkText } else { T-D9 'Виконати' }); $ok.Margin = '0,0,8,0'; $ok.IsDefault = $true
+    if ($Owner) { $ok.Style = $Owner.FindResource('Primary') }
+    $ok.Add_Click({ param($s) [Windows.Window]::GetWindow($s).DialogResult = $true })
+    $cancel = New-Object Windows.Controls.Button; $cancel.Content = T-D9 'Скасувати'; $cancel.Margin = '0'; $cancel.IsCancel = $true
+    [void]$buttons.Children.Add($ok); [void]$buttons.Children.Add($cancel)
+    $w.Content = $dock; $w.Tag = $boxes
+    $w
+}
+
 # Вибір програм із каталогу (майстер «З нуля»): пошук і галочки замість ручного введення ID winget.
 # Повертає вибрані ID або $null (скасовано). Обробники — без локальних змінних (лише Tag вікна).
 function New-D9AppPickerWindow {
@@ -689,6 +720,19 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         Set-D9Items $ui.CategoryList @($cats)
         & $showFindings $null
         if ($updateStale) { & $updateStale }
+        # «Обслуговування»: ремонти, на які вказує скан, — головними кнопками
+        $want = @{}
+        foreach ($f in @($scan.findings)) {
+            if ($f.fix.type -eq 'maintenance') { $want[[string]$f.fix.action] = $true }
+            if ($f.fix.type -eq 'tweaks' -and @($f.fix.ids | Where-Object { $_ -like 'cleanup.*' }).Count) { $want['cleanup'] = $true }
+        }
+        $map = @{ repairSystem = 'BtnRepair'; networkReset = 'BtnNetReset'; wuReset = 'BtnWuReset'; memoryTest = 'BtnMemoryTest'; searchReset = 'BtnSearchReset'; iconCache = 'BtnIconCache'; cleanup = 'BtnCleanNow' }
+        foreach ($k in $map.Keys) {
+            $b = $ui[$map[$k]]
+            if (-not $b) { continue }
+            if ($want[$k]) { $b.Style = $win.FindResource('Primary'); $b.ToolTip = T-D9 'Рекомендовано за результатами сканування' }
+            else { $b.ClearValue([Windows.FrameworkElement]::StyleProperty); $b.ClearValue([Windows.FrameworkElement]::ToolTipProperty) }
+        }
     }
     # Знахідки: усі або однієї категорії (клік по категорії) — з поясненням, з чого склалась оцінка
     $showFindings = {
@@ -1118,7 +1162,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         param($a)
         $list = Get-D9Checklist
         $ctx = New-D9ScanContext -Catalog $a.Catalog -SystemInfo $a.Sys
-        $todo = @($list.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' } | Sort-Object number)
+        $todo = @($list.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' -and (-not $a.Ids -or @($a.Ids) -contains $_.id) } | Sort-Object number)
         $i = 0
         foreach ($item in $todo) {
             if (Test-D9CancelRequested) { Write-D9Log (T-D9 'Зупинено на вашу вимогу — решту пропущено.') Warn; break }
@@ -1141,10 +1185,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $before = $r.Scan.score.overall
             $todo = @($r.Checklist.items | Where-Object { $_.auto -and $_.status -ne 'done' -and $_.action.action -ne 'reboot' })
             if (-not $todo) { [void][Windows.MessageBox]::Show($win, (T-D9 'Оцінка: {0}/100. Автоматично виправляти нічого — решта порад у знахідках на «Огляді» (кнопка «Як виправити»).' $before), 'Debora'); return }
-            $text = ($todo | ForEach-Object { "$($_.number). $($_.title)" }) -join "`r`n"
             $manual = @($r.Checklist.items | Where-Object { -not $_.auto -and $_.status -ne 'done' }).Count
-            if (-not (Show-D9TextDialog $win (T-D9 'Виправити все') ((T-D9 'Оцінка зараз: {0}/100. Debora виконає {1} кроків сама (спершу — точка відновлення; усе відкочується в «Журналі змін»)' $before $todo.Count) + $(if ($manual) { T-D9 '. Ще {0} порад потребують вашого рішення — вони лишаться у знахідках з кнопкою «Як виправити»' $manual }) + '.') $text (T-D9 'Виконати'))) { return }
-            & $startJob (T-D9 'Виправлення') $runChecklistWork @{ Catalog = $Catalog; Sys = $SystemInfo } {
+            # Кроки з галочками: непотрібне можна зняти
+            $hdr = (T-D9 'Оцінка зараз: {0}/100. Debora виконає {1} кроків сама (спершу — точка відновлення; усе відкочується в «Журналі змін»)' $before $todo.Count) + $(if ($manual) { T-D9 '. Ще {0} порад потребують вашого рішення — вони лишаться у знахідках з кнопкою «Як виправити»' $manual }) + '. ' + (T-D9 'Зніміть галочки з кроків, які не потрібні.')
+            $dlg = New-D9CheckListWindow $win (T-D9 'Виправити все') $hdr @($todo | ForEach-Object { [pscustomobject]@{ Id = $_.id; Text = "$($_.number). $($_.title)"; Checked = $true } }) (T-D9 'Виконати')
+            if (-not $dlg.ShowDialog()) { return }
+            $ids = @($dlg.Tag | Where-Object { $_.IsChecked } | ForEach-Object { [string]$_.Tag })
+            if (-not $ids) { return }
+            & $startJob (T-D9 'Виправлення') $runChecklistWork @{ Catalog = $Catalog; Sys = $SystemInfo; Ids = $ids } {
                 param($list, $c)
                 & $fillChecklist $list
                 & $fillSessions
@@ -1195,6 +1243,12 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $ids = & $selectedIds
         if (-not $ids) { [void][Windows.MessageBox]::Show($win, (T-D9 'Нічого не вибрано.'), 'Debora'); return }
         if (-not (& $needAdmin)) { return }
+        # «Експертні» зміни — окреме підтвердження з наслідками
+        $expert = @($ids | ForEach-Object { Get-D9Tweak $Catalog $_ } | Where-Object { $_.risk -eq 'expert' })
+        if ($expert) {
+            $txt = (T-D9 'Серед вибраного є експертні зміни — вони знижують захист або можуть зламати частину програм:') + "`n`n" + (($expert | ForEach-Object { '• ' + (Get-D9Text $_.name) + ' — ' + (Get-D9Text $_.description) }) -join "`n") + "`n`n" + (T-D9 'Застосовувати їх?')
+            if ([Windows.MessageBox]::Show($win, $txt, 'Debora', 'YesNo', 'Warning') -ne 'Yes') { return }
+        }
         & $startJob (T-D9 'Підготовка попереднього перегляду') $previewWork @{ Catalog = $Catalog; Sys = $SystemInfo; Ids = $ids } {
             param($r, $c)
             if (-not $r.Count) { [void][Windows.MessageBox]::Show($win, (T-D9 'Усе вибране вже застосовано.'), 'Debora'); return }
@@ -2043,6 +2097,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             (T-D9 'Кожну знахідку можна виправити окремо («Виправити»), прочитати покрокову інструкцію («Як виправити») або прийняти й приховати.')
             (T-D9 'Перед змінами Debora створює точку відновлення, а кожну зміну можна відкотити на вкладці «Журнал змін».')
             (T-D9 'Щойно встановили Windows? Вкладка «З нуля» зробить драйвери, деблоат, налаштування й програми за один прохід.')
+            (T-D9 'Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).')
         )
         Show-D9GuideDialog $win (T-D9 'З чого почати') (T-D9 'Debora перевіряє, прибирає й налаштовує Windows. Кілька порад на початок:') $steps @() | Out-Null
         try { if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }; Set-ItemProperty $key -Name Welcomed -Value 1 -Type DWord } catch { }

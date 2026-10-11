@@ -457,6 +457,11 @@
     "Вибрати програми": "Choose apps",
     "Пошук: назва або для чого програма": "Search: name or what the app is for",
     "Нічого вимикати: програми, які радимо вимкнути, вже не запускаються": "Nothing to disable: the programs we recommend disabling no longer start",
-    "Права адміністратора не надано — Debora лишається в режимі перегляду.": "Administrator rights were not granted — Debora stays in view-only mode."
+    "Права адміністратора не надано — Debora лишається в режимі перегляду.": "Administrator rights were not granted — Debora stays in view-only mode.",
+    "Зніміть галочки з кроків, які не потрібні.": "Untick the steps you don't need.",
+    "Рекомендовано за результатами сканування": "Recommended by the scan results",
+    "Серед вибраного є експертні зміни — вони знижують захист або можуть зламати частину програм:": "The selection includes expert changes — they lower protection or may break some programs:",
+    "Застосовувати їх?": "Apply them?",
+    "Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).": "Debora sends nothing anywhere: everything runs on this PC, and from the internet it only downloads drivers and apps from official sources (Microsoft, winget, manufacturers' sites)."
   }
 }

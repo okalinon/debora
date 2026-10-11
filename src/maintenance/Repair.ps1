@@ -90,14 +90,27 @@ function Invoke-D9DefenderRepair {
     [pscustomobject]@{ Done = $true; RebootRecommended = $false }
 }
 
+# Скільки тривала минула швидка перевірка Захисником (Windows пам'ятає її початок і кінець); $null — невідомо
+function Get-D9LastQuickScanDuration {
+    try {
+        $s = Get-MpComputerStatus -ErrorAction Stop
+        if ($s.QuickScanStartTime -and $s.QuickScanEndTime -and $s.QuickScanEndTime -gt $s.QuickScanStartTime) { return ($s.QuickScanEndTime - $s.QuickScanStartTime) }
+    } catch { }
+    $null
+}
+
 function Invoke-D9DefenderScan {
-    Write-D9Log (T-D9 'Швидка перевірка Захисником Windows (зазвичай 5–15 хвилин)...')
+    # Оцінка — за фактом минулої перевірки на цьому ПК, без неї — «до 20 хвилин»
+    $last = Get-D9LastQuickScanDuration
+    Write-D9Log $(if ($last) { T-D9 'Швидка перевірка Захисником Windows (минулого разу на цьому ПК тривала ≈ {0})...' (Format-D9ApproxDuration $last) } else { T-D9 'Швидка перевірка Захисником Windows (зазвичай до 20 хвилин)...' })
     $since = Get-Date
-    # Start-MpScan іноді не повертається (перевірка застрягла або чекає іншої) — чекаємо не довше 30 хвилин
+    # Start-MpScan іноді не повертається (перевірка застрягла або чекає іншої) — чекаємо вдвічі довше за минулу
+    # перевірку (щонайменше 30 хвилин, щонайбільше 3 години), далі Захисник завершить її сам
+    $limitMin = if ($last) { [math]::Min(180, [math]::Max(30, [math]::Ceiling($last.TotalMinutes * 2))) } else { 30 }
     try {
         $job = Start-MpScan -ScanType QuickScan -AsJob -ErrorAction Stop
-        if (-not (Wait-Job $job -Timeout 1800)) {
-            Write-D9Log ('  ' + (T-D9 'Перевірка триває понад 30 хвилин — не чекаємо, Захисник завершить її сам.')) Warn
+        if (-not (Wait-Job $job -Timeout ($limitMin * 60))) {
+            Write-D9Log ('  ' + (T-D9 'Перевірка триває понад {0} хв — не чекаємо, Захисник завершить її сам.' $limitMin)) Warn
             return [pscustomobject]@{ Done = $true; RebootRecommended = $false }
         }
         Receive-Job $job -ErrorAction Stop | Out-Null

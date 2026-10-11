@@ -208,3 +208,27 @@ Describe 'Кеш значків' {
         $names | Should -Be @('IconCache.db', 'iconcache_32.db', 'thumbcache_256.db')
     }
 }
+
+Describe 'Оцінка тривалості за фактом минулого разу' {
+    It 'округлення: хвилини, по 5, по 10, години' {
+        Format-D9ApproxDuration ([TimeSpan]::FromSeconds(20)) | Should -Be 'менше хвилини'
+        Format-D9ApproxDuration ([TimeSpan]::FromMinutes(7.4)) | Should -Be '7 хв'
+        Format-D9ApproxDuration ([TimeSpan]::FromMinutes(13)) | Should -Be '15 хв'
+        Format-D9ApproxDuration ([TimeSpan]::FromMinutes(63)) | Should -Be '60 хв'
+        Format-D9ApproxDuration ([TimeSpan]::FromMinutes(95)) | Should -Be '1 год 40 хв'
+        Format-D9ApproxDuration ([TimeSpan]::FromMinutes(118)) | Should -Be '2 год'
+    }
+    It 'Захисник: є минула перевірка — «минулого разу ≈ 60 хв» і довше очікування; немає — «до 20 хвилин»' {
+        $script:lines = @()
+        $script:D9OnLog = { param($Message, $Level) $script:lines += $Message }
+        Mock Get-MpComputerStatus { [pscustomobject]@{ QuickScanStartTime = [datetime]'2026-10-10T23:58:14'; QuickScanEndTime = [datetime]'2026-10-11T01:01:19' } }
+        Mock Start-MpScan { throw 'stop here' }
+        [void](Invoke-D9DefenderScan)
+        $script:lines[0] | Should -Match '≈ 60 хв'
+        Mock Get-MpComputerStatus { throw 'no defender' }
+        $script:lines = @()
+        [void](Invoke-D9DefenderScan)
+        $script:lines[0] | Should -Match 'до 20 хвилин'
+        $script:D9OnLog = { param($Message, $Level) }
+    }
+}

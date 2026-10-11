@@ -33,9 +33,10 @@ function Get-D9NextStyle {
     $script:D9Styles[($i + 1) % $script:D9Styles.Count]
 }
 
-# Нижня смуга стану для стилів без бічної панелі: праворуч від «Журналу виконання», на рівні його заголовка
+# Нижня смуга стану для стилів без бічної панелі: праворуч від «Журналу виконання», на рівні його заголовка.
+# ZIndex: журнал оголошено пізніше, і його заголовок на всю ширину інакше перехоплює кліки по кнопках смуги
 $script:D9StatusStrip = @'
-    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,42,0">
+    <StackPanel Grid.Row="1" Grid.Column="1" Panel.ZIndex="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,42,0">
       <ProgressBar x:Name="Progress" Width="120" Height="5" Margin="0,0,12,0" VerticalAlignment="Center" Visibility="Collapsed"/>
       <TextBlock x:Name="StatusText" Foreground="#6E6E73" FontSize="13.5" Text="Готово" MaxWidth="360" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
       <TextBlock x:Name="AdminBadge" FontSize="13.5" FontWeight="Medium" Margin="16,0,0,0" MaxWidth="300" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>

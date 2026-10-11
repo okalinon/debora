@@ -547,8 +547,10 @@
 
       <!-- ================= Огляд ================= -->
       <TabItem Uid="overview" Header="Огляд" Tag="&#xE9D9;" Background="#007AFF">
+        <!-- Уся вкладка — одна сторінка з прокруткою: знахідки показуються повністю, без власної прокрутки -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="20,0,20,0">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <Border Style="{StaticResource Card}" Padding="28,24">
             <DockPanel>
               <!--S:SCORE--><Grid DockPanel.Dock="Left" Width="156" Height="156" Margin="0,0,34,0">
@@ -580,8 +582,9 @@
             </Border.Style>
             <!-- Категорії — фільтр знахідок: клік показує, що саме знизило оцінку категорії -->
             <ListBox x:Name="CategoryList" Background="Transparent" BorderThickness="0" Margin="-10,0,-10,0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled"
                      ToolTip="Натисніть на категорію, щоб побачити, що вплинуло на її оцінку">
+              <!-- Без власного ScrollViewer: інакше він перехоплює коліщатко миші сторінки -->
+              <ListBox.Template><ControlTemplate TargetType="ListBox"><ItemsPresenter/></ControlTemplate></ListBox.Template>
               <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel>
               <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
@@ -608,9 +611,10 @@
             </DockPanel>
             <TextBlock x:Name="ScoreExplain" Style="{StaticResource RowNote}" Margin="16,0,16,8" Visibility="Collapsed"/>
           </StackPanel>
-          <Border Grid.Row="3" Style="{StaticResource Panel}" Margin="0,0,0,12">
+          <Border Grid.Row="3" Style="{StaticResource Panel}" Margin="0,0,0,12" MinHeight="240">
             <Grid>
-              <ListBox x:Name="FindingsList" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+              <ListBox x:Name="FindingsList" HorizontalContentAlignment="Stretch">
+                <ListBox.Template><ControlTemplate TargetType="ListBox"><ItemsPresenter/></ControlTemplate></ListBox.Template>
                 <ListBox.ItemTemplate>
                   <DataTemplate>
                     <DockPanel>
@@ -647,6 +651,7 @@
             </Grid>
           </Border>
         </Grid>
+        </ScrollViewer>
       </TabItem>
 
       <!-- ================= Чекліст ================= -->

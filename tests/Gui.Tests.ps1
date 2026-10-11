@@ -29,6 +29,20 @@ Describe 'Стилі вікна' {
         $r.Ring | Should -Be 'Collapsed'
         $r.StyleBtn | Should -Match $(if ($style -eq 'focus') { 'Фокус' } else { 'Швейцарський' })
     }
+    It 'стиль <style>: клік по «Стиль» і «English» влучає в кнопку, а не в журнал виконання' -TestCases @(@{ style = 'classic' }, @{ style = 'focus' }, @{ style = 'swiss' }) {
+        $script:D9Style = $style; $script:D9Theme = 'light'
+        $r = Invoke-InGui {
+            $root = $win.Content; $win.Content = $null; $host2 = New-Object Windows.Controls.Border; foreach ($k in $win.Resources.Keys) { $host2.Resources[$k] = $win.Resources[$k] }; $host2.Child = $root; $host2.Measure((New-Object Windows.Size 1340, 900)); $host2.Arrange((New-Object Windows.Rect 0, 0, 1340, 900)); $host2.UpdateLayout()
+            foreach ($b in $ui.BtnStyle, $ui.BtnLanguage) {
+                $pt = $b.TranslatePoint((New-Object Windows.Point ($b.ActualWidth / 2), ($b.ActualHeight / 2)), $host2)
+                $hit = [Windows.Media.VisualTreeHelper]::HitTest($host2, $pt).VisualHit
+                $ok = $false
+                while ($hit) { if ($hit -eq $b) { $ok = $true; break }; $hit = [Windows.Media.VisualTreeHelper]::GetParent($hit) }
+                $ok
+            }
+        }
+        @($r) | Should -Be @($true, $true)
+    }
     It 'Resolve-D9Style: явний вибір, інакше класичний; наступний — по колу' {
         Resolve-D9Style 'swiss' | Should -Be 'swiss'
         Resolve-D9Style 'nonsense' | Should -BeIn @('classic', 'focus', 'swiss')

@@ -462,6 +462,8 @@
     "Рекомендовано за результатами сканування": "Recommended by the scan results",
     "Серед вибраного є експертні зміни — вони знижують захист або можуть зламати частину програм:": "The selection includes expert changes — they lower protection or may break some programs:",
     "Застосовувати їх?": "Apply them?",
-    "Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).": "Debora sends nothing anywhere: everything runs on this PC, and from the internet it only downloads drivers and apps from official sources (Microsoft, winget, manufacturers' sites)."
+    "Debora нічого не надсилає: усе виконується на цьому ПК, а з інтернету вона лише завантажує драйвери й програми з офіційних джерел (Microsoft, winget, сайти виробників).": "Debora sends nothing anywhere: everything runs on this PC, and from the internet it only downloads drivers and apps from official sources (Microsoft, winget, manufacturers' sites).",
+    "Готово: {0}": "Done: {0}",
+    "Не вдалося: {0}": "Failed: {0}"
   }
 }

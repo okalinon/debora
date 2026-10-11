@@ -344,6 +344,16 @@ Describe 'Вікно' {
         $r.HiddenLabel | Should -Be 'Показати знову'
     }
 
+    It '«Деблоат»: пошук фільтрує рядки' {
+        $r = Invoke-InGui {
+            Set-D9Items $ui.DebloatGrid @((New-D9Row @{ Title = 'Copilot'; Detail = 'ШІ'; Badge = 'a' }), (New-D9Row @{ Title = 'Xbox'; Detail = 'ігри'; Badge = 'b' }))
+            $ui.DebloatSearch.Text = 'copi'
+            $v = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.DebloatGrid.ItemsSource)
+            @{ N = @($v | ForEach-Object { $_ }).Count }
+        }
+        $r.N | Should -Be 1
+    }
+
     It 'ланцюжок завдань через таймер: контекст доходить до $Done і до наступного завдання' {
         # Регресія: «Застосувати вибране» запускало друге завдання з $Done, де локальна $ids була порожня
         $r = Invoke-InGui {

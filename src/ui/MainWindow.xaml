@@ -778,6 +778,10 @@
             <Button x:Name="BtnDebloatRecommended" Content="Вибрати рекомендоване" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatNone" Content="Зняти все" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatRefresh" Content="Оновити" Margin="0,0,8,6"/>
+            <Grid Width="300" Margin="8,0,8,6">
+              <TextBox x:Name="DebloatSearch" Padding="10,6"/>
+              <TextBlock x:Name="DebloatSearchHint" Text="Пошук…" Foreground="#8E8E93" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+            </Grid>
           </WrapPanel>
           <TextBlock x:Name="DebloatSummary" Grid.Row="1" Style="{StaticResource Intro}" Margin="4,6,0,12"
                      Text="Прибирання Windows від нав'язаних застосунків, реклами, Copilot і стеження. Перед змінами створюється точка відновлення; кожну зміну можна повернути на вкладці «Журнал змін»."/>

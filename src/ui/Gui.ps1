@@ -418,7 +418,7 @@ function Show-D9Gui {
                    'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'BtnMoreFindings', 'BtnScoreHelp', 'StaleBanner', 'StaleText', 'BtnStaleRescan', 'FindingsTitle', 'ScoreExplain',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
-                   'DebloatSummary', 'DebloatGrid', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
+                   'DebloatSummary', 'DebloatGrid', 'DebloatSearch', 'DebloatSearchHint', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
                    'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
@@ -638,6 +638,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             if ($res.ok -and $job.Kind -and -not $sync.Cancel) { try { Add-D9Duration $job.Kind ((Get-Date) - $job.Started).TotalSeconds } catch { } }
             $state.Job = $null
             & $setBusy $false $null
+            if (((Get-Date) - $job.Started).TotalSeconds -ge 60 -and -not $win.IsActive) {
+                try { Show-D9Toast 'Debora' $(if ($res.ok) { T-D9 'Готово: {0}' $job.Title } else { T-D9 'Не вдалося: {0}' $job.Title }) } catch { }
+            }
             # Поки йде $Done (часто з діалогом), черга чекає: таймер тікає й під час модального вікна
             $state.InDone = $true
             try {
@@ -786,6 +789,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $showFindings $(if ($row) { [string]$row.Id } else { $null })
     })
     $ui.BtnAllFindings.Add_Click({ & $showFindings $null })
+    $ui.DebloatSearch.Add_TextChanged({ & $filterDebloat })
     $ui.BtnMoreFindings.Add_Click({ $state.ShowAllFindings = -not $state.ShowAllFindings; & $showFindings $null })
     $ui.BtnScoreHelp.Add_Click({
         [void][Windows.MessageBox]::Show($win, (T-D9 'Як рахується оцінка: кожна категорія починає зі 100 балів; критична проблема знімає 30, попередження — 10, порада — 3 (число праворуч від знахідки). Загальна оцінка — середнє категорій з урахуванням їхньої ваги; будь-яка критична проблема обмежує її 59 балами. Натисніть на категорію вгорі, щоб побачити лише її знахідки.'), 'Debora')
@@ -1000,12 +1004,23 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                          Group = $f.Description; Kind = $kind; Color = $(if ($f.Risk -in 'moderate', 'expert') { $riskUi[$f.Risk][1] } elseif ($f.Recommended) { '#248A3D' } else { '#6E6E73' }); Status = $status + $(if ($f.Reason) { " ($($f.Reason))" }) }
         })
         Set-D9Items $ui.DebloatGrid $rows
+        & $filterDebloat
         $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.DebloatGrid.ItemsSource)
         if ($view -and $view.CanGroup) { $view.GroupDescriptions.Clear(); $view.GroupDescriptions.Add((New-Object Windows.Data.PropertyGroupDescription 'Badge')) }
         $rec = @($apps | Where-Object Recommended).Count
         $ui.DebloatSummary.Text = $(if ($apps) { T-D9 'Застосунків зі списку на цьому ПК: {0}, з них рекомендовано видалити: {1} (відмічені). Xbox і корисні застосунки не відмічені — позначте самі, якщо не потрібні.' $apps.Count $rec } else { T-D9 'Нав''язаних вбудованих застосунків на цьому ПК не знайдено.' }) +
             ' ' + (T-D9 'Деблоат-налаштувань: {0}, уже застосовано: {1}. Перед змінами створюється точка відновлення; усе повертається на вкладці «Журнал змін».' $features.Count @($features | Where-Object State -eq 'applied').Count)
         foreach ($b in 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone') { $ui[$b].IsEnabled = $true }
+    }
+    # Пошук у «Деблоаті»: за назвою й описом
+    $filterDebloat = {
+        $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.DebloatGrid.ItemsSource)
+        if (-not $view) { return }
+        $q = $ui.DebloatSearch.Text.Trim()
+        $ui.DebloatSearchHint.Visibility = if ($q) { 'Collapsed' } else { 'Visible' }
+        if (-not $q) { $view.Filter = $null; return }
+        $needle = "*$q*"   # фільтр WPF викликає поза цим блоком — рядок захоплюємо замиканням (лише оператор -like, без функцій)
+        $view.Filter = [Predicate[object]]({ param($r) "$($r.Title) $($r.Detail) $($r.Badge)" -like $needle }.GetNewClosure())
     }
     $loadDebloat = {
         & $startJob (T-D9 'Перевірка вбудованих застосунків') { param($a) @{ Apps = @(Get-D9DebloatApps); Features = @(Get-D9DebloatFeatures $a.Catalog $a.Sys) } } @{ Catalog = $Catalog; Sys = $SystemInfo } { param($r) & $fillDebloat $r }

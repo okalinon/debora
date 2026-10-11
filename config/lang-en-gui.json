@@ -470,6 +470,8 @@
     "Створити ярлик Debora на робочому столі?": "Create a Debora shortcut on the desktop?",
     "Не вдалося створити ярлик: {0}": "Couldn't create the shortcut: {0}",
     "Застосовано змін: {0} ({1}). Передумали?": "Changes applied: {0} ({1}). Changed your mind?",
-    "Зміни відкочено.": "Changes undone."
+    "Зміни відкочено.": "Changes undone.",
+    "минулого разу {0} ({1})": "last time {0} ({1})",
+    "Перевірено {0}": "Checked {0}"
   }
 }

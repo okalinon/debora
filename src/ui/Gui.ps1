@@ -768,7 +768,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $ui.VerdictText.Text = @{ good = (T-D9 'Добрий стан'); attention = (T-D9 'Потребує уваги'); serious = (T-D9 'Є серйозні проблеми') }[$scan.score.verdict]
         $ui.VerdictText.Foreground = $color
         $counts = foreach ($k in 'critical', 'warning', 'suggestion') { $n = @($scan.findings | Where-Object severity -eq $k).Count; if ($n) { "$n $(T-D9 ($script:D9SevUi[$k].Name))" } }
-        $ui.CountsText.Text = "$(($counts) -join ', ')`n" + (T-D9 'Перевірок: {0}, {1} с, {2}' (@($scan.checks).Count) $scan.durationSec (([datetime]$scan.time).ToString('dd.MM.yyyy HH:mm')))
+        # Коли перевірено й як змінилась оцінка від попереднього сканування
+        $prevText = ''
+        try {
+            $prevFile = Get-ChildItem (Get-D9ScanDir) -Filter '*.json' -ErrorAction Stop | Where-Object { $_.BaseName -lt [string]$scan.id } | Sort-Object Name -Descending | Select-Object -First 1
+            if ($prevFile -and $scan.id) {
+                $prev = ConvertFrom-Json ([IO.File]::ReadAllText($prevFile.FullName, [Text.Encoding]::UTF8))
+                $prevText = ' · ' + (T-D9 'минулого разу {0} ({1})' $prev.score.overall (([datetime]$prev.time).ToString('dd.MM')))
+            }
+        } catch { }
+        $ui.CountsText.Text = "$(($counts) -join ', ')`n" + (T-D9 'Перевірено {0}' (([datetime]$scan.time).ToString('dd.MM.yyyy HH:mm'))) + $prevText
         $cats = foreach ($c in $categories) {
             $v = $scan.score.categories.($c.id)
             if ($null -eq $v) { continue }

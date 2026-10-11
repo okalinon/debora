@@ -149,16 +149,19 @@
     <!--S:TABITEM--><Style TargetType="TabItem">
       <Setter Property="Foreground" Value="#1D1D1F"/>
       <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
-      <Setter Property="ToolTip" Value="{Binding Header, RelativeSource={RelativeSource Self}}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="TabItem">
-            <Border x:Name="Bd" Width="44" Height="44" Margin="14,3" CornerRadius="11" Background="Transparent" Cursor="Hand">
-              <TextBlock x:Name="Ic" Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="18" Foreground="#6E6E73" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- Значок і назва вкладки (лише значки були незрозумілі: назва ховалась у підказці) -->
+            <Border x:Name="Bd" Height="40" Margin="12,2" Padding="10,0" CornerRadius="10" Background="Transparent" Cursor="Hand">
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="Ic" Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="17" Foreground="#6E6E73" Width="26" VerticalAlignment="Center"/>
+                <TextBlock x:Name="Lb" Text="{TemplateBinding Header}" FontSize="14" Foreground="#1D1D1F" Margin="6,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#DCDCE1"/><Setter TargetName="Ic" Property="Foreground" Value="#1D1D1F"/></Trigger>
-              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#1D1D1F"/><Setter TargetName="Ic" Property="Foreground" Value="#F2F2F7"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#1D1D1F"/><Setter TargetName="Ic" Property="Foreground" Value="#F2F2F7"/><Setter TargetName="Lb" Property="Foreground" Value="#F2F2F7"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -170,7 +173,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="TabControl">
             <Grid>
-              <Grid.ColumnDefinitions><ColumnDefinition Width="72"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
               <StackPanel IsItemsHost="True" Margin="0,84,0,0" KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Cycle"/>
               <DockPanel Grid.Column="1">
                 <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedItem.Header, RelativeSource={RelativeSource TemplatedParent}}"
@@ -513,11 +516,12 @@
   </Window.Resources>
 
   <Grid>
-    <!--S:GRIDCOLS--><Grid.ColumnDefinitions><ColumnDefinition Width="72"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><!--/S:GRIDCOLS-->
+    <!--S:GRIDCOLS--><Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><!--/S:GRIDCOLS-->
     <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
     <!--S:SIDEBAR-->    <Border Grid.RowSpan="3" Background="#E9E9EE" BorderBrush="#DCDCE1" BorderThickness="0,0,1,0"/>
-    <Border Width="42" Height="42" CornerRadius="11" Background="#1D1D1F" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,22,0,0">
+    <TextBlock Text="Debora" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="80,31,0,0"/>
+    <Border Width="42" Height="42" CornerRadius="11" Background="#1D1D1F" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="24,22,0,0">
       <TextBlock Text="&#xE9D9;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="#F2F2F7" HorizontalAlignment="Center" VerticalAlignment="Center"/>
     </Border>    <StackPanel Grid.Row="2" Grid.Column="1" Panel.ZIndex="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,42,0">
       <ProgressBar x:Name="Progress" Width="120" Height="5" Margin="0,0,12,0" VerticalAlignment="Center" Visibility="Collapsed"/>
@@ -588,6 +592,13 @@
             </ListBox>
           </Border>
           <StackPanel Grid.Row="2">
+            <!-- Результат застарів: після сканування були зміни або минуло понад добу -->
+            <Border x:Name="StaleBanner" Background="#FFF4E5" CornerRadius="12" Padding="16,10" Margin="0,4,0,8" Visibility="Collapsed">
+              <DockPanel>
+                <Button x:Name="BtnStaleRescan" DockPanel.Dock="Right" Content="Сканувати знову" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="StaleText" Foreground="#B25000" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="14"/>
+              </DockPanel>
+            </Border>
             <DockPanel>
               <Button x:Name="BtnHiddenFindings" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Приховані" VerticalAlignment="Bottom" Margin="16,0,4,7" Visibility="Collapsed" ToolTip="Знахідки, які ви прийняли й приховали: вони не показуються й не знижують оцінку"/>
               <Button x:Name="BtnAllFindings" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Показати всі знахідки" VerticalAlignment="Bottom" Margin="0,0,4,7" Visibility="Collapsed"/>
@@ -711,6 +722,15 @@
           <TextBlock x:Name="TweaksSummary" Grid.Row="1" Style="{StaticResource Intro}" Margin="4,8,0,12" Text="Стан налаштувань завантажується…"/>
           <Border Grid.Row="2" Style="{StaticResource Panel}" Margin="0,0,0,12">
             <DataGrid x:Name="TweakGrid">
+              <DataGrid.GroupStyle>
+                <GroupStyle>
+                  <GroupStyle.HeaderTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" Foreground="#6E6E73" Margin="12,14,0,6"/>
+                    </DataTemplate>
+                  </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+              </DataGrid.GroupStyle>
               <DataGrid.Columns>
                 <DataGridTemplateColumn Header="" Width="54">
                   <DataGridTemplateColumn.CellTemplate>
@@ -719,15 +739,23 @@
                     </DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Налаштування" Binding="{Binding Title}" Width="3*" MinWidth="300" IsReadOnly="True">
-                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="Категорія" Binding="{Binding Group}" Width="*" MinWidth="70" IsReadOnly="True"/>
-                <DataGridTemplateColumn Header="Ризик" Width="*" MinWidth="70">
-                  <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn Header="Налаштування" Width="3*" MinWidth="380">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="0,4,8,4">
+                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="#6E6E73" FontSize="13" Margin="0,2,0,0"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="*" MinWidth="70" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Примітка" Binding="{Binding Note}" Width="2*" MinWidth="210" IsReadOnly="True">
+                <DataGridTemplateColumn Header="Ризик" Width="120">
+                  <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="150" IsReadOnly="True">
+                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="VerticalAlignment" Value="Center"/></Style></DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Примітка" Binding="{Binding Note}" Width="2*" MinWidth="180" IsReadOnly="True">
                   <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
               </DataGrid.Columns>
@@ -882,7 +910,7 @@
                     <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}"><Setter Property="ToolTip" Value="{Binding Id}"/></Style>
                   </DataGrid.RowStyle>
                   <DataGrid.Columns>
-                    <DataGridTextColumn Header="Тип" Binding="{Binding Group}" Width="0.9*" MinWidth="110" IsReadOnly="True">
+                    <DataGridTextColumn Header="Тип" Binding="{Binding Group}" Width="150" IsReadOnly="True">
                       <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="200" IsReadOnly="True">
@@ -890,10 +918,10 @@
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Версія" Binding="{Binding Status}" Width="140" IsReadOnly="True"/>
                     <DataGridTextColumn Header="Дата" Binding="{Binding Detail}" Width="110" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Постачальник" Binding="{Binding Note}" Width="*" MinWidth="130" IsReadOnly="True">
+                    <DataGridTextColumn Header="Постачальник" Binding="{Binding Note}" Width="*" MinWidth="160" IsReadOnly="True">
                       <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTemplateColumn Header="Стан" Width="0.8*" MinWidth="90">
+                    <DataGridTemplateColumn Header="Стан" Width="130">
                       <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                   </DataGrid.Columns>
@@ -920,11 +948,11 @@
                     <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="200" IsReadOnly="True">
                       <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Id}"/></Style></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTemplateColumn Header="Що робити" Width="*" MinWidth="90">
+                    <DataGridTemplateColumn Header="Що робити" Width="150">
                       <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Зараз → нова версія" Binding="{Binding Detail}" Width="2*" MinWidth="200" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Розмір і джерело" Binding="{Binding Note}" Width="*" MinWidth="110" IsReadOnly="True">
+                    <DataGridTextColumn Header="Розмір і джерело" Binding="{Binding Note}" Width="190" IsReadOnly="True">
                       <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="#6E6E73"/></Style></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                   </DataGrid.Columns>
@@ -956,11 +984,11 @@
                       </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Пристрій" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True"/>
-                    <DataGridTemplateColumn Header="Що робити" Width="*" MinWidth="70">
+                    <DataGridTemplateColumn Header="Що робити" Width="150">
                       <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Зараз → у папці" Binding="{Binding Detail}" Width="2*" MinWidth="220" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Файл" Binding="{Binding Note}" Width="*" MinWidth="70" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Файл" Binding="{Binding Note}" Width="*" MinWidth="160" IsReadOnly="True"/>
                   </DataGrid.Columns>
                 </DataGrid>
                 <WrapPanel Margin="0,10,0,0">
@@ -1118,9 +1146,13 @@
                 <DataGridTextColumn Header="Програма" Binding="{Binding Title}" Width="2*" MinWidth="220" IsReadOnly="True">
                   <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="ToolTip" Value="{Binding Detail}"/></Style></DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="Видавець" Binding="{Binding Group}" Width="*" MinWidth="140" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Звідки" Binding="{Binding Note}" Width="*" MinWidth="140" IsReadOnly="True"/>
-                <DataGridTemplateColumn Header="Примітка" Width="*" MinWidth="140">
+                <DataGridTextColumn Header="Видавець" Binding="{Binding Group}" Width="170" IsReadOnly="True">
+                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Звідки" Binding="{Binding Note}" Width="190" IsReadOnly="True">
+                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTemplateColumn Header="Примітка" Width="2*" MinWidth="300">
                   <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding Color}" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
               </DataGrid.Columns>
@@ -1342,7 +1374,7 @@
       <!-- ================= Журнал ================= -->
       <TabItem Uid="history" Header="Журнал змін" Tag="&#xE81C;" Background="#A2845E">
         <Grid Margin="20,0,20,0">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <WrapPanel>
             <Button x:Name="BtnUndo" Style="{StaticResource Primary}" Content="Відкотити вибрану сесію" Margin="0,0,8,6"/>
             <Button x:Name="BtnRefreshSessions" Content="Оновити" Margin="0,0,8,6"/>
@@ -1354,12 +1386,19 @@
           <Border Grid.Row="2" Style="{StaticResource Panel}" Margin="0,0,0,12">
             <DataGrid x:Name="SessionGrid">
               <DataGrid.Columns>
-                <DataGridTextColumn Header="Коли" Binding="{Binding Title}" Width="*" MinWidth="70" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Що застосовано" Binding="{Binding Detail}" Width="3*" MinWidth="300" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Коли" Binding="{Binding Title}" Width="150" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Що застосовано" Binding="{Binding Detail}" Width="*" MinWidth="360" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Змін" Binding="{Binding Number}" Width="80" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Стан" Binding="{Binding Status}" Width="*" MinWidth="70" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Стан" Binding="{Binding Status}" Width="190" IsReadOnly="True"/>
               </DataGrid.Columns>
             </DataGrid>
+          </Border>
+          <!-- Що саме змінила вибрана сесія і що не вдалося -->
+          <Border x:Name="SessionDetailPanel" Grid.Row="3" Style="{StaticResource Panel}" Margin="0,0,0,12" Padding="16,12" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock x:Name="SessionDetailTitle" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/>
+              <TextBox x:Name="SessionDetailBox" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240" VerticalScrollBarVisibility="Auto" BorderThickness="0" Background="Transparent" FontSize="13.5" Margin="0,6,0,0"/>
+            </StackPanel>
           </Border>
         </Grid>
       </TabItem>

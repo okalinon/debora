@@ -209,7 +209,7 @@ function Show-D9GuideDialog {
 function New-D9GuideWindow {
     param($Owner, [string]$Title, [string]$Details, [string[]]$Steps, [object[]]$Links, [switch]$Resolvable)
     $w = New-Object Windows.Window
-    $w.Title = T-D9 'Як виправити'; $w.Width = 680; $w.SizeToContent = 'Height'; $w.MaxHeight = 720
+    $w.Title = 'Debora'; $w.Width = 680; $w.SizeToContent = 'Height'; $w.MaxHeight = 720
     if ($Owner -and $Owner.IsLoaded) { $w.Owner = $Owner }
     $w.WindowStartupLocation = 'CenterOwner'; $w.FontFamily = 'Segoe UI Variable Text, Segoe UI'; $w.FontSize = 14
     if ($Owner) { $w.Resources = $Owner.Resources; $w.Background = $Owner.Background; $w.Foreground = $Owner.Foreground }
@@ -258,7 +258,7 @@ function New-D9GuideWindow {
 $script:D9DarkColors = [ordered]@{
     '#F2F2F7' = '#1C1C1E'; '#E9E9EE' = '#232325'; '#DCDCE1' = '#3A3A3C'; '#1D1D1F' = '#F5F5F7'; '#6E6E73' = '#98989D'
     '#E3E3E8' = '#38383A'; '#E5E5EA' = '#3A3A3C'; '#D1D1D6' = '#48484A'; '#C7C7CC' = '#636366'; '#007AFF' = '#0A84FF'
-    '#DCEBFF' = '#1C3A5E'; '#248A3D' = '#30D158'; '#B25000' = '#FF9F0A'; '#D70015' = '#FF453A'; '#FF9500' = '#FF9F0A'
+    '#DCEBFF' = '#1C3A5E'; '#FFF4E5' = '#3A2A12'; '#248A3D' = '#30D158'; '#B25000' = '#FF9F0A'; '#D70015' = '#FF453A'; '#FF9500' = '#FF9F0A'
 }
 $script:D9DarkCard = '#2C2C2E'
 $script:D9Theme = 'auto'   # auto | light | dark
@@ -345,14 +345,17 @@ function Show-D9Gui {
         foreach ($k in $script:D9DarkColors.Keys) { [D9Row]::ColorMap[$k] = $script:D9DarkColors[$k] }
     }
     $win = [Windows.Markup.XamlReader]::Parse($xamlText)
+    # Ноутбуки 1366×768: типовий розмір 1340×900 не вміщається в робочу область — тоді відкриваємо розгорнутим
+    $wa = [Windows.SystemParameters]::WorkArea
+    if ($wa.Height -lt $win.Height -or $wa.Width -lt $win.Width) { $win.Width = [math]::Min($win.Width, $wa.Width); $win.Height = [math]::Min($win.Height, $wa.Height); $win.WindowState = 'Maximized' }
     $ui = @{}
     foreach ($n in 'TitleText', 'SystemLine', 'AdminBadge', 'ScoreRing', 'StatusText', 'Progress', 'LogBox', 'LogExpander', 'Tabs',
-                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'FindingsTitle', 'ScoreExplain',
+                   'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'StaleBanner', 'StaleText', 'BtnStaleRescan', 'FindingsTitle', 'ScoreExplain',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DebloatSummary', 'DebloatGrid', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
-                   'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
+                   'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
@@ -641,6 +644,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $state.CategoryNames = @{}; foreach ($c in $categories) { $state.CategoryNames[$c.id] = Get-D9Text $c.name }
         Set-D9Items $ui.CategoryList @($cats)
         & $showFindings $null
+        if ($updateStale) { & $updateStale }
     }
     # Знахідки: усі або однієї категорії (клік по категорії) — з поясненням, з чого склалась оцінка
     $showFindings = {
@@ -684,6 +688,21 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $showFindings $(if ($row) { [string]$row.Id } else { $null })
     })
     $ui.BtnAllFindings.Add_Click({ & $showFindings $null })
+
+    # Банер «результат застарів»: після сканування застосовано зміни (сесії журналу) або минуло понад добу
+    $updateStale = {
+        $scan = $state.Scan
+        if (-not $scan) { $ui.StaleBanner.Visibility = 'Collapsed'; return }
+        $t = try { [datetime]$scan.time } catch { $null }
+        if (-not $t) { $ui.StaleBanner.Visibility = 'Collapsed'; return }
+        $after = @(Get-D9SessionList | Where-Object { try { [datetime]$_.Started -gt $t } catch { $false } }).Count
+        $age = ((Get-Date) - $t).TotalHours
+        if (-not $after -and $age -lt 24) { $ui.StaleBanner.Visibility = 'Collapsed'; return }
+        $ui.StaleText.Text = (T-D9 'Результат сканування від {0}.' $t.ToString('dd.MM.yyyy HH:mm')) + ' ' +
+            $(if ($after) { T-D9 'Після нього застосовано змін: {0} — оцінка й знахідки можуть бути неточними.' $after } else { T-D9 'Він старший за добу — стан ПК міг змінитися.' })
+        $ui.StaleBanner.Visibility = 'Visible'
+    }
+    $ui.BtnStaleRescan.Add_Click({ $ui.BtnScan.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent))) })
 
     # ---------- Приховані знахідки ----------
     $updateHiddenLink = {
@@ -835,8 +854,10 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
         $state.TweakRows = @($rows)
         Set-D9Items $ui.TweakGrid $state.TweakRows
+        $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.TweakGrid.ItemsSource)
+        if ($view -and $view.CanGroup) { $view.GroupDescriptions.Clear(); $view.GroupDescriptions.Add((New-Object Windows.Data.PropertyGroupDescription 'Group')) }
         $applied = @($states | Where-Object { $_.State -eq 'applied' -and @($own.id) -contains $_.Id }).Count
-        $ui.TweaksSummary.Text = (T-D9 'Налаштувань: {0}, застосовано: {1}. Галочками відмічено незастосоване з профілю «{2}». Наведіть мишку на назву, щоб побачити пояснення.' $own.Count $applied (Get-D9Text $preset.name)) + ' ' + (T-D9 'Деблоат (застосунки, реклама, телеметрія, служби) — на вкладці «Деблоат», очищення диска — в «Обслуговуванні».')
+        $ui.TweaksSummary.Text = (T-D9 'Налаштувань: {0}, застосовано: {1}. Галочками відмічено незастосоване з профілю «{2}».' $own.Count $applied (Get-D9Text $preset.name)) + ' ' + (T-D9 'Деблоат (застосунки, реклама, телеметрія, служби) — на вкладці «Деблоат», очищення диска — в «Обслуговуванні».')
     }
     $loadTweakStates = {
         & $startJob (T-D9 'Перевірка стану налаштувань') {
@@ -847,10 +868,11 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         } @{ Catalog = $Catalog; Sys = $SystemInfo } { param($r) & $fillTweaks @($r) }
     }
     $fillSessions = {
+        if ($updateStale) { & $updateStale }
         Set-D9Items $ui.SessionGrid @(Get-D9SessionList | ForEach-Object {
             $when = try { ([datetime]$_.Started).ToString('dd.MM.yyyy HH:mm') } catch { $_.Started }
             $status = if ($_.Undone) { T-D9 'відкочено' } elseif ($_.Errors) { T-D9 'помилок: {0}' $_.Errors } else { T-D9 'застосовано' }
-            New-D9Row @{ Id = $_.Id; Title = $when; Detail = $_.Selection; Number = [int]$_.Changed; Status = $status }
+            New-D9Row @{ Id = $_.Id; Title = $when; Detail = (Format-D9SessionSelection $_.Selection); Number = [int]$_.Changed; Status = $status }
         })
     }
     # ---------- Деблоат ----------
@@ -1428,6 +1450,15 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
 
     # ---------- кнопки: Журнал ----------
     $ui.BtnRefreshSessions.Add_Click({ & $fillSessions })
+    # Вибір сесії — показати, що саме змінено і що не вдалося
+    $ui.SessionGrid.Add_SelectionChanged({
+        $row = $ui.SessionGrid.SelectedItem
+        if (-not $row) { $ui.SessionDetailPanel.Visibility = 'Collapsed'; return }
+        $lines = @(try { Get-D9SessionDetails -Id $row.Id -Catalog $Catalog } catch { })
+        $ui.SessionDetailTitle.Text = "$($row.Title) · $($row.Detail) · $($row.Status)"
+        $ui.SessionDetailBox.Text = if ($lines) { $lines -join "`r`n" } else { T-D9 'Змін у цій сесії немає.' }
+        $ui.SessionDetailPanel.Visibility = 'Visible'
+    })
     $ui.BtnSystemRestore.Add_Click({ Start-Process rstrui.exe })
     $ui.BtnDiagnostics.Add_Click({
         $ui.LogExpander.IsExpanded = $true
@@ -1903,7 +1934,6 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                 $scan = ConvertFrom-Json ([IO.File]::ReadAllText($lastScan.FullName, [Text.Encoding]::UTF8))
                 $state.Categories = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
                 & $fillOverview $scan $state.Categories
-                $ui.CountsText.Text += "`n" + (T-D9 '(результат попереднього сканування — натисніть «Сканувати», щоб оновити)')
             } catch { }
         }
         & $refreshMaintenance
@@ -1924,6 +1954,23 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($ui.Tabs.SelectedItem.Uid -eq 'drivers' -and $null -eq $state.Devices) { & $driverReport }
         if ($ui.Tabs.SelectedItem.Uid -eq 'setup' -and -not $state.SetupLoaded) { & $loadSetup }
     })
+    # Перший запуск: коротко «з чого почати» (один раз; позначка — HKCU:\Software\Debora\Welcomed)
+    $win.Add_ContentRendered({
+        if ($state.WelcomeChecked -or $state.NoWelcome) { return }
+        $state.WelcomeChecked = $true
+        $key = 'HKCU:\Software\Debora'
+        if ((Get-ItemProperty $key -Name Welcomed -ErrorAction SilentlyContinue).Welcomed) { return }
+        $steps = @(
+            (T-D9 'Запускайте Debora через run.bat — з правами адміністратора. Без них можна лише дивитися, але не змінювати.')
+            (T-D9 '«Огляд» → «Лише сканувати»: Debora перевірить ПК і нічого не змінить. «Сканувати й виправити все» одразу виконає безпечні виправлення.')
+            (T-D9 'Кожну знахідку можна виправити окремо («Виправити»), прочитати покрокову інструкцію («Як виправити») або прийняти й приховати.')
+            (T-D9 'Перед змінами Debora створює точку відновлення, а кожну зміну можна відкотити на вкладці «Журнал змін».')
+            (T-D9 'Щойно встановили Windows? Вкладка «З нуля» зробить драйвери, деблоат, налаштування й програми за один прохід.')
+        )
+        Show-D9GuideDialog $win (T-D9 'З чого почати') (T-D9 'Debora перевіряє, прибирає й налаштовує Windows. Кілька порад на початок:') $steps @() | Out-Null
+        try { if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }; Set-ItemProperty $key -Name Welcomed -Value 1 -Type DWord } catch { }
+    })
+    $state.NoWelcome = [bool]$TestAction   # тести й самоперевірка: без модальних вікон
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job) {
             if ([Windows.MessageBox]::Show($win, (T-D9 'Зараз виконується операція. Закрити програму все одно?'), 'Debora', 'YesNo', 'Warning') -ne 'Yes') { $e.Cancel = $true }

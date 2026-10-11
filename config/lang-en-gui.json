@@ -428,6 +428,23 @@
     "Приховано: {0}": "Hidden: {0}",
     "Знову показується: {0}": "Shown again: {0}",
     "Перевірка: {0}": "Checking: {0}",
-    "Не вдалося зберегти список прихованого: {0}": "Couldn't save the hidden list: {0}"
+    "Не вдалося зберегти список прихованого: {0}": "Couldn't save the hidden list: {0}",
+    "Налаштувань: {0}, застосовано: {1}. Галочками відмічено незастосоване з профілю «{2}».": "Settings: {0}, applied: {1}. Checked items are the ones from the “{2}” profile that aren’t applied yet.",
+    "Результат сканування від {0}.": "Scan result from {0}.",
+    "Після нього застосовано змін: {0} — оцінка й знахідки можуть бути неточними.": "Changes applied since then: {0} — the score and findings may be out of date.",
+    "Він старший за добу — стан ПК міг змінитися.": "It is more than a day old — the PC may have changed.",
+    "служба {0}: {1}": "service {0}: {1}",
+    "застосунок {0}": "app {0}",
+    "завдання {0}": "task {0}",
+    "(помилка: {0})": "(error: {0})",
+    "({0})": "({0})",
+    "Змін у цій сесії немає.": "No changes in this session.",
+    "Запускайте Debora через run.bat — з правами адміністратора. Без них можна лише дивитися, але не змінювати.": "Start Debora with run.bat — with administrator rights. Without them you can only look, not change anything.",
+    "«Огляд» → «Лише сканувати»: Debora перевірить ПК і нічого не змінить. «Сканувати й виправити все» одразу виконає безпечні виправлення.": "Overview → “Scan only”: Debora checks the PC and changes nothing. “Scan and fix everything” also applies the safe fixes right away.",
+    "Кожну знахідку можна виправити окремо («Виправити»), прочитати покрокову інструкцію («Як виправити») або прийняти й приховати.": "Each finding can be fixed on its own (“Fix”), explained step by step (“How to fix”) or acknowledged and hidden.",
+    "Перед змінами Debora створює точку відновлення, а кожну зміну можна відкотити на вкладці «Журнал змін».": "Debora creates a restore point before changes, and every change can be undone on the Change history tab.",
+    "Щойно встановили Windows? Вкладка «З нуля» зробить драйвери, деблоат, налаштування й програми за один прохід.": "Just installed Windows? The “From scratch” tab does drivers, debloat, settings and apps in one go.",
+    "З чого почати": "Getting started",
+    "Debora перевіряє, прибирає й налаштовує Windows. Кілька порад на початок:": "Debora checks, cleans up and tunes Windows. A few tips to start with:"
   }
 }

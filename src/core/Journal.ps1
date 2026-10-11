@@ -68,6 +68,40 @@ function Get-D9SessionList {
     }
 }
 
+# Людська назва сесії (старі сесії мали службовий префікс «checklist: »)
+function Format-D9SessionSelection {
+    param([string]$Selection)
+    if ($Selection -like 'checklist: *') { return (T-D9 'Виправлення: {0}' $Selection.Substring(11)) }
+    $Selection
+}
+
+# Що саме змінила сесія: рядок на кожну дію (✓ / ✗ з причиною / пропущено). Для «Журналу змін».
+function Get-D9SessionDetails {
+    param([Parameter(Mandatory)][string]$Id, $Catalog)
+    $file = Get-ChildItem (Get-D9SessionDir) -Filter '*.json' | Where-Object { $_.BaseName -eq $Id -or $_.Name -like "$Id*" } | Select-Object -First 1
+    if (-not $file) { return @() }
+    $s = ConvertFrom-Json ([IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8))
+    foreach ($e in @($s.entries | Where-Object { $_ })) {
+        $tw = if ($Catalog -and $e.tweak) { Get-D9Tweak $Catalog ([string]$e.tweak) } else { $null }
+        $name = if ($tw) { Get-D9Text $tw.name } elseif ("$($e.tweak)" -like 'fix:*') { "$($e.tweak)".Substring(4) } else { [string]$e.tweak }
+        $a = $e.action
+        $what = if ($a.label) { Get-D9Text $a.label } else {
+            switch ([string]$a.type) {
+                'registry'      { "$($a.path)\$($a.name) = $($a.value)" }
+                'service'       { T-D9 'служба {0}: {1}' $a.name $(if ($a.startup) { $a.startup } else { 'stop' }) }
+                'appx'          { T-D9 'застосунок {0}' $a.package }
+                'scheduledTask' { T-D9 'завдання {0}' $a.path }
+                default         { [string]$a.type }
+            }
+        }
+        $mark = switch ([string]$e.result) { 'ok' { '✓' } 'error' { '✗' } default { '·' } }
+        $line = "$mark $name — $what"
+        if ($e.result -eq 'error' -and $e.message) { $line += '  ' + (T-D9 '(помилка: {0})' $e.message) }
+        elseif ($e.result -notin 'ok', 'error' -and $e.result) { $line += '  ' + (T-D9 '({0})' $e.result) }
+        $line
+    }
+}
+
 # ---------- Історія тривалості операцій (оцінка «минулого разу ≈ …» на панелі «Зараз виконується») ----------
 # durations.json: ключ операції → останні 5 тривалостей у секундах. Оцінка — медіана.
 function Get-D9DurationsPath { Join-Path (Get-D9DataRoot) 'durations.json' }

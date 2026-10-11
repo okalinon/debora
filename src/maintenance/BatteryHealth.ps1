@@ -80,9 +80,28 @@ function Get-D9BatteryHealth {
 }
 
 # Де ввімкнути обмеження заряду на ноутбуці цього виробника (config/battery-charge-limit.json)
-function Get-D9ChargeLimitTip {
-    param([string]$Manufacturer)
+# Платформа ноутбука (ODM) за ID пристроїв: бренди на кшталт Dream Machines чи XMG продають і Clevo, і Uniwill,
+# а утиліти й налаштування заряду в них різні. $null — не визначено.
+function Get-D9LaptopPlatform {
+    param([string[]]$DeviceIds)
     if (-not $script:D9ChargeLimit) { $script:D9ChargeLimit = ConvertFrom-Json (Get-D9ConfigText 'battery-charge-limit.json') }
+    if ($null -eq $DeviceIds) {
+        # Запит до WMI займає кілька секунд, а залізо за сеанс не змінюється
+        if ($script:D9LaptopPlatformCache) { return $script:D9LaptopPlatformCache.Value }
+        $script:D9LaptopPlatformCache = @{ Value = (Get-D9LaptopPlatform -DeviceIds @(try { Get-CimInstance Win32_PnPEntity -Filter "PNPDeviceID LIKE 'ACPI\\%'" -ErrorAction Stop | ForEach-Object { $_.PNPDeviceID } } catch { })) }
+        return $script:D9LaptopPlatformCache.Value
+    }
+    foreach ($p in @($script:D9ChargeLimit.platforms)) {
+        if (@($DeviceIds | Where-Object { $_ -match $p.pnp }).Count) { return $p }
+    }
+    $null
+}
+
+function Get-D9ChargeLimitTip {
+    param([string]$Manufacturer, [string[]]$DeviceIds)
+    if (-not $script:D9ChargeLimit) { $script:D9ChargeLimit = ConvertFrom-Json (Get-D9ConfigText 'battery-charge-limit.json') }
+    $platform = if ($PSBoundParameters.ContainsKey('DeviceIds')) { Get-D9LaptopPlatform $DeviceIds } else { Get-D9LaptopPlatform }
+    if ($platform) { return (Get-D9Text $platform.tip) }
     $rule = @($script:D9ChargeLimit.rules) | Where-Object { $Manufacturer -match $_.match } | Select-Object -First 1
     Get-D9Text $(if ($rule) { $rule.tip } else { $script:D9ChargeLimit.default })
 }

@@ -393,6 +393,9 @@
     "Вибрано: {0} ({1})": "Selected: {0} ({1})",
     "Зніміть галочки з того, що ще потрібне. Вибране буде перенесено в Кошик — звідти файл можна відновити.": "Untick anything you still need. The selected items will be moved to the Recycle Bin, where they can be restored.",
     "У Кошик": "Move to Recycle Bin",
-    "у Кошик: {0}": "to the Recycle Bin: {0}"
+    "у Кошик: {0}": "to the Recycle Bin: {0}",
+    "Вирішено — рахувати лише нові події": "Resolved — count only new events",
+    "Знахідка рахує події журналу Windows за останні дні. Якщо ви вже усунули причину, Debora відтепер рахуватиме лише нові події.": "This finding counts Windows event log entries from recent days. If you have already fixed the cause, Debora will count only new events from now on.",
+    "Позначено вирішеним: {0}. Наступні сканування рахуватимуть лише нові події.": "Marked as resolved: {0}. Next scans will count only new events."
   }
 }

@@ -94,7 +94,7 @@ function Get-D9Events {
 function Test-D9EventRule {
     param($Check, $Ctx)
     $p = $Check.params
-    $filter = @{ LogName = $p.log; StartTime = $Ctx.Now.AddDays(-[int]$p.days) }
+    $filter = @{ LogName = $p.log; StartTime = (Get-D9EventSince $Check $Ctx ([int]$p.days)) }
     if ($p.providers) { $filter.ProviderName = @($p.providers) }
     if ($p.ids)       { $filter.Id = @($p.ids | ForEach-Object { [int]$_ }) }
     if ($p.levels)    { $filter.Level = @($p.levels | ForEach-Object { [int]$_ }) }

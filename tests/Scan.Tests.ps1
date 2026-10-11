@@ -608,3 +608,38 @@ Describe 'Помилки диска: пошкоджені блоки окрем�
         $b2.details | Should -Match 'SMART'
     }
 }
+
+Describe 'Позначки «виправлено»: після виправлення рахуються лише нові події' {
+    It 'вікно подій починається з позначки, якщо вона пізніша' {
+        $now = [datetime]'2026-10-11T18:00:00'
+        $check = [pscustomobject]@{ id = 'upd.failures' }
+        (Get-D9EventSince $check ([pscustomobject]@{ Now = $now; FixMarks = @{} }) 30) | Should -Be $now.AddDays(-30)
+        (Get-D9EventSince $check ([pscustomobject]@{ Now = $now; FixMarks = @{ 'upd.failures' = '2026-10-11T17:00:00' } }) 30) | Should -Be ([datetime]'2026-10-11T17:00:00')
+        (Get-D9EventSince $check ([pscustomobject]@{ Now = $now; FixMarks = @{ 'upd.failures' = '2026-01-01T00:00:00' } }) 30) | Should -Be $now.AddDays(-30)
+    }
+    It 'Set-D9FixMark / Get-D9FixMarks зберігають дату; контекст сканування її бачить' {
+        Set-D9FixMark 'stab.crashes' -At ([datetime]'2026-10-11T12:00:00')
+        (Get-D9FixMarks)['stab.crashes'] | Should -Be '2026-10-11T12:00:00'
+        (New-D9ScanContext -Catalog $catalog -SystemInfo (New-TestSystemInfo) -ScanConfig $scanConfig).FixMarks['stab.crashes'] | Should -Be '2026-10-11T12:00:00'
+    }
+    It 'правило подій рахує лише події після позначки' {
+        $script:filters = @()
+        Mock Get-D9Events { $script:filters += $Filter; @() }
+        $rule = $scanConfig.Checks.checks | Where-Object id -eq 'upd.failures'
+        $ctx = [pscustomobject]@{ Now = [datetime]'2026-10-11T18:00:00'; FixMarks = @{ 'upd.failures' = '2026-10-11T17:30:00' } }
+        [void](Test-D9EventRule $rule $ctx)
+        $script:filters[0].StartTime | Should -Be ([datetime]'2026-10-11T17:30:00')
+    }
+    It 'виконаний крок чекліста позначає свої перевірки; ручні знахідки з подій можна позначити вирішеними' {
+        $fx = New-TestFinding 'upd.failures' 'updates' 'warning' @{ type = 'maintenance'; action = 'wuReset' }
+        $list = New-D9Checklist -Scan (New-TestScan @($fx)) -Catalog $catalog
+        $step = $list.items | Where-Object { $_.action.action -eq 'wuReset' }
+        $step.checkIds | Should -Be @('upd.failures')
+        Mock Invoke-D9WindowsUpdateReset { [pscustomobject]@{ Done = $true; RebootRecommended = $false } }
+        [void](Invoke-D9ChecklistStep -Checklist $list -Item $step -Context ([pscustomobject]@{ Catalog = $catalog; System = (New-TestSystemInfo) }) -NoSave)
+        (Get-D9FixMarks)['upd.failures'] | Should -Not -BeNullOrEmpty
+        Test-D9EventBasedCheck 'sec.failed-logons' $scanConfig.Checks | Should -BeTrue
+        Test-D9EventBasedCheck 'stab.disk-errors' $scanConfig.Checks | Should -BeTrue
+        Test-D9EventBasedCheck 'sec.tpm' $scanConfig.Checks | Should -BeFalse
+    }
+}

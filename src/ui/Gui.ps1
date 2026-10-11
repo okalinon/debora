@@ -196,13 +196,16 @@ function New-D9FilesWindow {
 }
 
 # «Як виправити»: опис знахідки, нумеровані кроки й посилання-кнопки (ms-settings:, .exe, сайти)
+# Повертає $true, якщо натиснуто «Вирішено» (для знахідок з подій журналу: далі рахуються лише нові події)
 function Show-D9GuideDialog {
-    param($Owner, [string]$Title, [string]$Details, [string[]]$Steps, [object[]]$Links)
-    [void](New-D9GuideWindow $Owner $Title $Details $Steps $Links).ShowDialog()
+    param($Owner, [string]$Title, [string]$Details, [string[]]$Steps, [object[]]$Links, [switch]$Resolvable)
+    $w = New-D9GuideWindow $Owner $Title $Details $Steps $Links -Resolvable:$Resolvable
+    [void]$w.ShowDialog()
+    $w.Tag -eq 'resolved'
 }
 
 function New-D9GuideWindow {
-    param($Owner, [string]$Title, [string]$Details, [string[]]$Steps, [object[]]$Links)
+    param($Owner, [string]$Title, [string]$Details, [string[]]$Steps, [object[]]$Links, [switch]$Resolvable)
     $w = New-Object Windows.Window
     $w.Title = T-D9 'Як виправити'; $w.Width = 680; $w.SizeToContent = 'Height'; $w.MaxHeight = 720
     if ($Owner -and $Owner.IsLoaded) { $w.Owner = $Owner }
@@ -234,6 +237,12 @@ function New-D9GuideWindow {
     if ($wrap.Children.Count) { [void]$body.Children.Add($wrap) }
     $sv = New-Object Windows.Controls.ScrollViewer; $sv.VerticalScrollBarVisibility = 'Auto'; $sv.Content = $body
     [void]$dock.Children.Add($sv)
+    if ($Resolvable) {
+        $res = New-Object Windows.Controls.Button; $res.Content = (T-D9 'Вирішено — рахувати лише нові події'); $res.Margin = '0,0,8,0'
+        $res.ToolTip = T-D9 'Знахідка рахує події журналу Windows за останні дні. Якщо ви вже усунули причину, Debora відтепер рахуватиме лише нові події.'
+        $res.Add_Click({ param($s) $win = [Windows.Window]::GetWindow($s); $win.Tag = 'resolved'; $win.DialogResult = $true })
+        [void]$buttons.Children.Add($res)
+    }
     $ok = New-Object Windows.Controls.Button; $ok.Content = (T-D9 'Закрити'); $ok.Margin = '0'; $ok.IsDefault = $true; $ok.IsCancel = $true
     if ($Owner) { $ok.Style = $Owner.FindResource('Primary') }
     $ok.Add_Click({ param($s) [Windows.Window]::GetWindow($s).DialogResult = $true })
@@ -540,7 +549,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $f = $b.Tag.Tag
         if (-not $f) { return }
         if ($b.Name -eq 'BtnFindingGuide' -or (Get-D9FindingFixKind $f -Config $state.ChecksConfig) -ne 'fix') {
-            Show-D9GuideDialog $win $f.title $f.details @(Get-D9FindingGuide $f $state.ChecksConfig) @($f.links)
+            $resolvable = Test-D9EventBasedCheck $f.checkId $state.ChecksConfig
+            if ((Show-D9GuideDialog $win $f.title $f.details @(Get-D9FindingGuide $f $state.ChecksConfig) @($f.links) -Resolvable:$resolvable) -and $state.Scan) {
+                Set-D9FixMark @($f.checkId)
+                [void](Update-D9ScanFindings -Scan $state.Scan -Categories $state.Categories -CheckIds @($f.checkId) -Fresh @())
+                try { [void](Save-D9Scan $state.Scan) } catch { }
+                $cat = $state.FindingsCategory
+                & $fillOverview $state.Scan $state.Categories
+                if ($cat -and $null -ne $state.Scan.score.categories.$cat) { & $showFindings $cat }
+                & $log (T-D9 'Позначено вирішеним: {0}. Наступні сканування рахуватимуть лише нові події.' $f.title)
+            }
             return
         }
         if ($state.Job) { [void][Windows.MessageBox]::Show($win, (T-D9 'Зачекайте, поки завершиться поточна операція.'), 'Debora'); return }

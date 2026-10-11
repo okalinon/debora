@@ -462,6 +462,7 @@
     "Зробіть резервну копію важливих файлів.": "Back up your important files.",
     "Debora перевірить файлову систему (chkdsk) і, якщо треба, виправить її під час перезавантаження.": "Debora will check the file system (chkdsk) and, if needed, repair it during a restart.",
     "Помилки файлової системи на системному диску: {0} за {1} днів (остання {2})": "File system errors on the system drive: {0} in {1} days (last {2})",
-    "SMART диска поки чистий (невиправних помилок 0): можливо, це збої зв'язку з диском — оновіть прошивку й драйвер накопичувача і стежте, чи події повторюються.": "The drive's SMART is clean so far (0 uncorrectable errors): these may be communication glitches with the drive — update the drive firmware and storage driver and watch whether the events repeat."
+    "SMART диска поки чистий (невиправних помилок 0): можливо, це збої зв'язку з диском — оновіть прошивку й драйвер накопичувача і стежте, чи події повторюються.": "The drive's SMART is clean so far (0 uncorrectable errors): these may be communication glitches with the drive — update the drive firmware and storage driver and watch whether the events repeat.",
+    "Не вдалося зберегти позначку виправлення: {0}": "Couldn't save the fix mark: {0}"
   }
 }

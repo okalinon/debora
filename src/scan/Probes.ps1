@@ -481,7 +481,7 @@ function Test-D9NtfsEventOnSystem {
 function Test-D9DiskErrors {
     param($Check, $Ctx)
     $days = $Check.thresholds.days
-    $since = $Ctx.Now.AddDays(-$days)
+    $since = Get-D9EventSince $Check $Ctx $days
     # Лише помилки й попередження: Ntfs 98 з рівнем «Відомості» означає «том справний»
     $events = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = @('disk', 'Ntfs', 'Microsoft-Windows-Ntfs'); Id = @(7, 51, 55, 98, 153); Level = @(1, 2, 3); StartTime = $since })
     if (-not $events.Count) { return }

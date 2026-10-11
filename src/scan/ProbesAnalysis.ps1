@@ -47,7 +47,7 @@ function ConvertTo-D9CrashFix {
 function Test-D9Crashes {
     param($Check, $Ctx)
     $days = $Check.thresholds.days
-    $since = $Ctx.Now.AddDays(-$days)
+    $since = Get-D9EventSince $Check $Ctx $days
     $bsod  = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-WER-SystemErrorReporting'; Id = 1001; StartTime = $since })
     $power = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 41; StartTime = $since })
     $links = @((New-D9Link (T-D9 'Перевірка пам''яті Windows') 'mdsched.exe'))
@@ -97,7 +97,7 @@ function Get-D9CrashModuleClass {
 
 function Test-D9AppCrashes {
     param($Check, $Ctx)
-    $events = Get-D9Events @{ LogName = 'Application'; ProviderName = @('Application Error', 'Application Hang'); Id = @(1000, 1002); StartTime = $Ctx.Now.AddDays(-$Check.thresholds.days) }
+    $events = Get-D9Events @{ LogName = 'Application'; ProviderName = @('Application Error', 'Application Hang'); Id = @(1000, 1002); StartTime = (Get-D9EventSince $Check $Ctx $Check.thresholds.days) }
     if (-not $events) { return }
     $min = $Check.thresholds.min
     $apps = @($events | ForEach-Object { $_.Properties[0].Value } | Group-Object | Where-Object Count -ge $min | Sort-Object Count -Descending)

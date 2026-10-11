@@ -286,7 +286,7 @@ function Test-D9PrintSpooler {
 
 function Test-D9ServiceFailures {
     param($Check, $Ctx)
-    $events = Get-D9Events @{ LogName = 'System'; ProviderName = 'Service Control Manager'; Id = @(7000, 7009, 7023, 7031, 7034); StartTime = $Ctx.Now.AddDays(-$Check.thresholds.days) }
+    $events = Get-D9Events @{ LogName = 'System'; ProviderName = 'Service Control Manager'; Id = @(7000, 7009, 7023, 7031, 7034); StartTime = (Get-D9EventSince $Check $Ctx $Check.thresholds.days) }
     if (-not $events) { return }
     # Вимкнені служби (зокрема вимкнені самим Debora) — не збій: Windows лише пише, що не змогла їх запустити
     $disabled = @{}

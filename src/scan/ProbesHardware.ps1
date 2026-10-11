@@ -120,7 +120,7 @@ function Test-D9CpuLimits {
 
 function Test-D9Thermal {
     param($Check, $Ctx)
-    $since = $Ctx.Now.AddDays(-$Check.thresholds.days)
+    $since = Get-D9EventSince $Check $Ctx $Check.thresholds.days
     $events = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-Kernel-Processor-Power'; Id = 37; StartTime = $since })
     if ($events.Count -ge $Check.thresholds.minEvents) {
         # На ноутбуках прошивка регулярно обмежує частоту при живленні від батареї — це не завжди проблема
@@ -131,7 +131,7 @@ function Test-D9Thermal {
 
 function Test-D9HardwareErrors {
     param($Check, $Ctx)
-    $since = $Ctx.Now.AddDays(-$Check.thresholds.days)
+    $since = Get-D9EventSince $Check $Ctx $Check.thresholds.days
     $whea = @(Get-D9EventCount @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-WHEA-Logger'; Level = @(1, 2, 3); StartTime = $since })
     if ($whea.Count) {
         $fatal = @($whea | Where-Object { $_.Level -le 2 -and $_.Id -in 1, 18, 20, 46 })

@@ -23,7 +23,51 @@ function New-D9ScanContext {
         Lifecycle      = $ScanConfig.Lifecycle
         KnownBloat     = $ScanConfig.KnownBloat
         Config         = $ScanConfig.Checks
+        FixMarks       = Get-D9FixMarks
     }
+}
+
+# Позначки «виправлено» (fix-marks.json: checkId → дата). Перевірки, що рахують події журналу Windows за останні
+# N днів, після виправлення рахують лише нові події — інакше знахідка висіла б до місяця після того, як проблему усунуто.
+$script:D9EventProbes = @('Test-D9EventRule', 'Test-D9DiskErrors', 'Test-D9Crashes', 'Test-D9AppCrashes', 'Test-D9HardwareErrors', 'Test-D9Thermal', 'Test-D9ServiceFailures')
+
+function Get-D9FixMarksPath { Join-Path (Get-D9DataRoot) 'fix-marks.json' }
+
+function Get-D9FixMarks {
+    $h = @{}
+    $path = Get-D9FixMarksPath
+    if (Test-Path $path) {
+        try { $j = ConvertFrom-Json ([IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)); foreach ($p in $j.PSObject.Properties) { $h[$p.Name] = [string]$p.Value } } catch { }
+    }
+    $h
+}
+
+function Set-D9FixMark {
+    param([Parameter(Mandatory)][string[]]$CheckIds, [datetime]$At = (Get-Date))
+    $h = Get-D9FixMarks
+    foreach ($id in @($CheckIds | Where-Object { $_ })) { $h[$id] = $At.ToString('s') }
+    $path = Get-D9FixMarksPath
+    $dir = Split-Path $path
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    try { [IO.File]::WriteAllText($path, (ConvertTo-Json ([pscustomobject]$h)), (New-Object Text.UTF8Encoding $false)) }
+    catch { Write-D9Log (T-D9 'Не вдалося зберегти позначку виправлення: {0}' $_.Exception.Message) Warn }
+}
+
+# Початок вікна подій для перевірки: останні $Days днів, але не раніше позначки «виправлено»
+function Get-D9EventSince {
+    param($Check, $Ctx, [double]$Days)
+    $since = $Ctx.Now.AddDays(-$Days)
+    $mark = if ($Ctx.FixMarks) { $Ctx.FixMarks[[string]$Check.id] } else { $null }
+    if ($mark) { try { $m = [datetime]$mark; if ($m -gt $since) { $since = $m } } catch { } }
+    $since
+}
+
+# Чи рахує перевірка події журналу (тоді знахідку можна позначити вирішеною — далі рахуються лише нові події)
+function Test-D9EventBasedCheck {
+    param([string]$CheckId, $Config)
+    if (-not $Config) { $Config = ConvertFrom-Json (Get-D9ConfigText 'checks.json') }
+    $c = @($Config.checks) | Where-Object id -eq $CheckId | Select-Object -First 1
+    [bool]($c -and $script:D9EventProbes -contains [string]$c.probe)
 }
 
 # Оцінка: кожна категорія 100 мінус штрафи; загальна — зважене середнє;

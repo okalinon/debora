@@ -23,6 +23,7 @@ function New-D9ChecklistItem {
         auto       = ($Action.type -ne 'manual')
         verify     = $Verify
         dependsOn  = @($DependsOn | Where-Object { $_ })
+        checkIds   = @()          # перевірки, знахідки яких виправляє крок (для позначок «виправлено»)
         status     = 'pending'
         executedAt = $null
         doneAt     = $null
@@ -36,7 +37,8 @@ function New-D9Checklist {
     $used  = @{}
     $f = @($Scan.findings | Where-Object { $_.severity -ne 'info' })   # відомості в чекліст не потрапляють
     $free = { @($f | Where-Object { -not $used[$_.key] }) }
-    $use  = { param($list) foreach ($x in @($list)) { $used[$x.key] = $true } }
+    # Знахідки, використані щойно доданим кроком: позначаємо як використані й записуємо їхні перевірки в крок
+    $use  = { param($list) foreach ($x in @($list)) { $used[$x.key] = $true }; if ($items.Count) { $last = $items[$items.Count - 1]; $last.checkIds = @(@($last.checkIds) + @($list | ForEach-Object { $_.checkId }) | Where-Object { $_ } | Sort-Object -Unique) } }
     $add  = { param($item) [void]$items.Add($item); $item }
     $checkVerify = { param($finding) @{ type = 'check'; checkId = $finding.checkId; key = $finding.key } }
     $manual = { param([int]$group, $x) [void]$items.Add((New-D9ChecklistItem $group $x.key $x.title $x.details $x.links @{ type = 'manual' } (& $checkVerify $x))); $used[$x.key] = $true }
@@ -141,7 +143,7 @@ function New-D9Checklist {
         $fs = @(& $free | Where-Object { $_.fix.type -eq 'maintenance' -and $_.fix.action -eq $name })
         if (-not $fs) { continue }
         $existing = $items | Where-Object { $_.action.type -eq 'maintenance' -and $_.action.action -eq $name } | Select-Object -First 1
-        if ($existing) { $existing.why += ' · ' + (($fs | ForEach-Object { $_.title }) -join ' · '); & $use $fs; continue }
+        if ($existing) { $existing.why += ' · ' + (($fs | ForEach-Object { $_.title }) -join ' · '); foreach ($x in $fs) { $used[$x.key] = $true }; $existing.checkIds = @(@($existing.checkIds) + @($fs.checkId) | Sort-Object -Unique); continue }
         $m = $script:D9MaintenanceActions[$name]
         $title = if ($fs.Count -eq 1 -and $name -in 'wingetUpgrade', 'repairSystem') { $fs[0].title } else { Get-D9MaintenanceTitle $name }
         $why = if ($fs.Count -eq 1) { "$($fs[0].title). $($fs[0].details)" } else { ($fs | ForEach-Object { $_.title }) -join ' · ' }
@@ -311,6 +313,8 @@ function Invoke-D9ChecklistStep {
         }
     }
     $Item.executedAt = (Get-Date).ToString('s')
+    # Події журналу до цього моменту вже не рахуються проти цих перевірок
+    if (@($Item.checkIds).Count) { Set-D9FixMark @($Item.checkIds) }
     if (-not $NoSave) { Save-D9Checklist $Checklist }
     return $true
 }
@@ -338,6 +342,7 @@ function New-D9ChecklistItemForFinding {
     if (-not $action) { return $null }
     $item = New-D9ChecklistItem 0 $f.key $f.title $f.details $f.links $action @{ type = 'check'; checkId = $f.checkId; key = $f.key }
     $item.number = 1
+    $item.checkIds = @($f.checkId)
     $item
 }
 

@@ -494,6 +494,8 @@
     "Прийнятих і прихованих: {0}. Вони не показуються й не знижують оцінку.": "Acknowledged and hidden: {0}. They are not shown and don't lower the score.",
     "Немає прихованих знахідок.": "No hidden findings.",
     "Зміна застосується після завершення поточної задачі — перезапустіть Debora.": "The change applies after the current task finishes — restart Debora.",
-    "Приховані знахідки повернуто: {0}. Вони з'являться після наступного сканування.": "Hidden findings restored: {0}. They will appear after the next scan."
+    "Приховані знахідки повернуто: {0}. Вони з'являться після наступного сканування.": "Hidden findings restored: {0}. They will appear after the next scan.",
+    "змін: {0}": "changes: {0}",
+    "встановлено {0}": "installed {0}"
   }
 }

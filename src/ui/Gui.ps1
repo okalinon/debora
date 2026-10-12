@@ -50,6 +50,11 @@ public class D9Row : INotifyPropertyChanged {
 '@
 }
 
+# Другий рядок у дворядкових списках: непорожні частини через « · »
+function Join-D9RowHint {
+    (@($args | ForEach-Object { "$_".Trim() } | Where-Object { $_ -and $_ -ne '—' }) -join ' · ')
+}
+
 # base64 PNG → заморожене зображення WPF (для іконок програм)
 function ConvertTo-D9Image {
     param([string]$Base64)
@@ -1062,7 +1067,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         Set-D9Items $ui.SessionGrid @(Get-D9SessionList | ForEach-Object {
             $when = try { ([datetime]$_.Started).ToString('dd.MM.yyyy HH:mm') } catch { $_.Started }
             $status = if ($_.Undone) { T-D9 'відкочено' } elseif ($_.Errors) { T-D9 'помилок: {0}' $_.Errors } else { T-D9 'застосовано' }
-            New-D9Row @{ Id = $_.Id; Title = $when; Detail = (Format-D9SessionSelection $_.Selection); Number = [int]$_.Changed; Status = $status }
+            $what = Format-D9SessionSelection $_.Selection
+            New-D9Row @{ Id = $_.Id; Title = $what; Detail = $what; Note = $when; Hint = (Join-D9RowHint $when (T-D9 'змін: {0}' ([int]$_.Changed))); Number = [int]$_.Changed; Status = $status
+                         Color = $(if ($_.Undone) { '#6E6E73' } elseif ($_.Errors) { '#D70015' } else { '#248A3D' }) }
         })
     }
     # ---------- Деблоат ----------
@@ -1161,7 +1168,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             if ($d.HardwareId) { $tip += "ID: $($d.HardwareId)" }
             $tip += $d.InstanceId
             New-D9Row @{ Group = $d.ClassName; Title = $(if ($d.Count -gt 1) { "$($d.Name)  ×$($d.Count)" } else { $d.Name })
-                         Status = $d.Version; Detail = $d.DateText; Note = $d.Provider; Kind = $kind; Id = ($tip -join "`n")
+                         Status = $d.Version; Detail = $d.DateText; Note = $d.Provider; Kind = $kind; Id = ($tip -join "`n"); Hint = (Join-D9RowHint $d.ClassName $d.Provider)
                          Color = $(if ($old) { '#B25000' } else { $deviceColors[$d.Status] }) }
         }
         Set-D9Items $ui.DriverInstalledGrid @($rows)
@@ -1215,7 +1222,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $cur = @($_.Current | ForEach-Object { $_.version } | Where-Object { $_ } | Sort-Object -Unique) -join ', '
             $date = if ($_.Package.Inf.Date) { $_.Package.Inf.Date.ToString('dd.MM.yyyy') } else { '?' }
             New-D9Row @{ Title = $_.Name; Kind = $statusUi[$_.Status][0]; Color = $statusUi[$_.Status][1]
-                         Detail = "$(if ($cur) { $cur } else { T-D9 'немає' }) → $($_.Package.Inf.Version) ($date)"; Note = (Split-Path $_.Package.Inf.Path -Leaf)
+                         Note = (Split-Path $_.Package.Inf.Path -Leaf); Detail = $_.Package.Inf.Path
+                         Hint = (Join-D9RowHint "$(if ($cur) { $cur } else { T-D9 'немає' }) → $($_.Package.Inf.Version) ($date)" (Split-Path $_.Package.Inf.Path -Leaf))
                          Selected = ($_.Status -ne 'current'); Tag = $_ }
         })
         $ui.BtnInstallDrivers.IsEnabled = [bool]$state.Packages
@@ -1423,8 +1431,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $kind = if ($_.Status -eq 'missing') { @((T-D9 'встановити'), '#D70015') } elseif ($_.Optional) { @((T-D9 'необов''язково'), '#6E6E73') } else { @((T-D9 'оновити'), '#007AFF') }
             $cur = if ($_.Device.Version) { "$($_.Device.Version)$(if ($_.Device.Date -and ([datetime]$_.Device.Date).Year -ge 2010) { ' (' + ([datetime]$_.Device.Date).ToString('dd.MM.yyyy') + ')' })" } else { T-D9 'немає драйвера' }
             $new = "$($_.Row.Version)$(if ($_.Row.Date) { ' (' + ([datetime]$_.Row.Date).ToString('dd.MM.yyyy') + ')' })"
-            New-D9Row @{ Title = $_.Device.Name; Id = $_.Row.Title; Kind = $kind[0]; Color = $kind[1]; Detail = "$cur → $new"
-                         Note = "$(Format-D9Size $_.Row.Size)$(if ($_.Recommended) { T-D9 ' · рекомендує Windows Update' } else { T-D9 ' · каталог Microsoft' })"
+            New-D9Row @{ Title = $_.Device.Name; Id = $_.Row.Title; Detail = $_.Row.Title; Kind = $kind[0]; Color = $kind[1]
+                         Hint = "$cur → $new · $(Format-D9Size $_.Row.Size)$(if ($_.Recommended) { T-D9 ' · рекомендує Windows Update' } else { T-D9 ' · каталог Microsoft' })"
                          Selected = -not $_.Optional; Tag = $_ }
         })
         $ui.BtnDriverOnlineInstall.IsEnabled = [bool]$state.OnlineCands
@@ -1520,7 +1528,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             $slow = @($state.BootCulprits | Where-Object { $_.Name -and ($_.Name -like "*$($i.Name)*" -or ($exe -and $_.Name -like "*$exe*") -or "$($i.Name)" -like "*$($_.Name)*") }) | Select-Object -First 1
             if ($slow) { $note = @(T-D9 'сповільнює запуск Windows ≈ на {0} с' $slow.Seconds) + $note; if ($color -eq '#6E6E73') { $color = '#B25000' } }
             New-D9Row @{ Selected = [bool]$i.Enabled; Title = (Format-D9StartupName $i.Name); Detail = "$($i.Name)`n$($i.Command)"; Group = $(if ($i.Publisher) { $i.Publisher } else { '—' })
-                         Note = $i.Where; Status = ($note -join '; '); Color = $color; Tag = $i }
+                         Note = $i.Where; Hint = (Join-D9RowHint $i.Publisher $i.Where); Status = ($note -join '; '); Color = $color; Tag = $i }
         })
         Set-D9Items $ui.StartupGrid $state.StartupRows
         if ($updateSelCounts) { & $updateSelCounts }
@@ -1748,7 +1756,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $row = $ui.SessionGrid.SelectedItem
         if (-not $row) { $ui.SessionDetailPanel.Visibility = 'Collapsed'; return }
         $lines = @(try { Get-D9SessionDetails -Id $row.Id -Catalog $Catalog } catch { })
-        $ui.SessionDetailTitle.Text = "$($row.Title) · $($row.Detail) · $($row.Status)"
+        $ui.SessionDetailTitle.Text = "$($row.Note) · $($row.Title) · $($row.Status)"
         $ui.SessionDetailBox.Text = if ($lines) { $lines -join "`r`n" } else { T-D9 'Змін у цій сесії немає.' }
         $ui.SessionDetailPanel.Visibility = 'Visible'
     })
@@ -1765,7 +1773,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $row = $ui.SessionGrid.SelectedItem
         if (-not $row) { [void][Windows.MessageBox]::Show($win, (T-D9 'Виберіть сесію в таблиці.'), 'Debora'); return }
         if (-not (& $needAdmin)) { return }
-        if ([Windows.MessageBox]::Show($win, (T-D9 'Відкотити зміни сесії «{0}» ({1})?' $row.Detail $row.Title), 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
+        if ([Windows.MessageBox]::Show($win, (T-D9 'Відкотити зміни сесії «{0}» ({1})?' $row.Title $row.Note), 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
         & $startJob (T-D9 'Відкат змін') { param($a) Undo-D9Session -Id $a.Id } @{ Id = $row.Id } {
             param($report)
             $report = @($report)
@@ -1967,6 +1975,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
                     else { @('', '#6E6E73') }
             New-D9Row @{ Title = $_.Name; Detail = (T-D9 'Версія: {0}' "$($_.Version)") + $(if ($cmd) { T-D9 '; видалення: {0}' $(if ($cmd.Silent) { T-D9 'тихо' } else { T-D9 'з вікном деінсталятора' }) })
                          Group = $_.Publisher; Note = $(if ($_.Size) { Format-D9Size $_.Size } else { '' }); Kind = $(if ($_.InstallDate) { ([datetime]$_.InstallDate).ToString('dd.MM.yyyy') } else { '' })
+                         Hint = (Join-D9RowHint $_.Publisher $(if ($_.InstallDate) { T-D9 'встановлено {0}' ([datetime]$_.InstallDate).ToString('dd.MM.yyyy') }) "$($_.Version)")
                          Status = $note[0]; Color = $note[1]; Tag = $_; Number = [int]([long]$_.Size / 1MB) }
         })
         & $showUninst

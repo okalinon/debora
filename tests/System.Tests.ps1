@@ -22,6 +22,25 @@ Describe 'Відомості про систему' {
         $after.Type | Should -Be $before.Type
         $after.PartitionStyle | Should -Be $before.PartitionStyle
     }
+    It 'кеш до перезавантаження: другий запуск бере збережене, після перезавантаження — опитує знову' {
+        $saved = $env:LOCALAPPDATA
+        try {
+            $env:LOCALAPPDATA = Join-Path $TestDrive 'local'
+            $first = Get-D9SystemInfo -UseCache
+            $file = Join-Path $env:LOCALAPPDATA 'Debora\sysinfo.json'
+            $file | Should -Exist
+            $c = ConvertFrom-Json (Get-Content $file -Raw)
+            $c.Info.Model = 'з кешу'
+            [IO.File]::WriteAllText($file, (ConvertTo-Json $c -Depth 3))
+            $cached = Get-D9SystemInfo -UseCache
+            $cached.Model | Should -Be 'з кешу'
+            $cached.Build | Should -BeOfType [int]
+            $cached.RamGB | Should -Be $first.RamGB
+            $c.Boot = '2001-01-01T00:00'
+            [IO.File]::WriteAllText($file, (ConvertTo-Json $c -Depth 3))
+            (Get-D9SystemInfo -UseCache).Model | Should -Be $first.Model
+        } finally { $env:LOCALAPPDATA = $saved }
+    }
 }
 
 Describe 'Читання стану реальних об''єктів' {

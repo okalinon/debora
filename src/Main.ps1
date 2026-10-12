@@ -273,12 +273,14 @@ $script:D9ConfigDir    = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'confi
 $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowledge'
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
+Add-D9BootMark 'modules'
 
 $script:D9Version  = '0.37.1-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен
 Initialize-D9LogFile -Path $LogPath -Mode $PSCmdlet.ParameterSetName
+Add-D9BootMark 'log'
 
 $ExitCodes = @{ Ok = 0; Partial = 1; BadArgs = 2; NotAdmin = 3; Cancelled = 4; Reboot = 10 }
 
@@ -377,6 +379,7 @@ function Save-D9HtmlReport {
 
 # ---------------------------------------------------------------------
 $catalog = Import-D9Catalog
+Add-D9BootMark 'catalog'
 # Зібраний файл уже перевірено під час збірки (Compile.ps1, крок 1) — повторна перевірка лише сповільнює запуск
 $catalogErrors = if ($script:D9Embedded) { @() } else { Test-D9Catalog $catalog }
 if ($catalogErrors.Count) {
@@ -385,8 +388,10 @@ if ($catalogErrors.Count) {
     exit $ExitCodes.BadArgs
 }
 
-$sys = Get-D9SystemInfo
+$sys = Get-D9SystemInfo -UseCache
+Add-D9BootMark 'sysinfo'
 $recommendation = Get-D9RecommendedPreset $sys
+Add-D9BootMark 'preset'
 
 switch ($PSCmdlet.ParameterSetName) {
 
@@ -397,6 +402,7 @@ switch ($PSCmdlet.ParameterSetName) {
             try {
                 $r = Show-D9Gui -Catalog $catalog -SystemInfo $sys -Recommendation $recommendation -ReportDir (Join-Path $base 'Звіти') -DriverDir (Join-Path $base 'Драйвери') -TestAction { T-D9 'вікно побудовано: вкладок {0}' "$($ui.Tabs.Items.Count)" }
                 Write-D9Log (T-D9 'Самоперевірка інтерфейсу: {0}' "$r") Ok
+                Write-Host (Get-D9BootReport)
                 exit $ExitCodes.Ok
             } catch { Write-D9Log (T-D9 'Самоперевірка інтерфейсу не пройшла: {0}' $_.Exception.Message) Error; exit $ExitCodes.Partial }
         }

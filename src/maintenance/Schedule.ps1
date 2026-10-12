@@ -191,16 +191,17 @@ function Unregister-D9MaintenanceTask {
     }
 }
 
+# Через COM Schedule.Service (Get-D9RegisteredTask): Get-ScheduledTask вантажить модуль CIM і забирав ≈4,8 с запуску вікна
 function Get-D9MaintenanceTask {
-    $name = $script:D9TaskName
-    $t = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
-    if (-not $t) { $name = $script:D9LegacyTaskName; $t = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue }
+    $t = Get-D9RegisteredTask "\$($script:D9TaskName)"
+    if (-not $t) { $t = Get-D9RegisteredTask "\$($script:D9LegacyTaskName)" }
     if (-not $t) { return $null }
-    $info = Get-ScheduledTaskInfo -TaskName $name -ErrorAction SilentlyContinue
+    $next = try { [datetime]$t.NextRunTime } catch { $null }
+    $last = try { [datetime]$t.LastRunTime } catch { $null }
     [pscustomobject]@{
-        State   = [string]$t.State
-        LastRun = $(if ($info.LastRunTime -and $info.LastRunTime.Year -gt 2000) { $info.LastRunTime } else { $null })
-        NextRun = $info.NextRunTime
-        Result  = $info.LastTaskResult
+        State   = $(switch ([int]$t.State) { 1 { 'Disabled' } 2 { 'Queued' } 3 { 'Ready' } 4 { 'Running' } default { 'Unknown' } })
+        LastRun = $(if ($last -and $last.Year -gt 2000) { $last } else { $null })
+        NextRun = $(if ($next -and $next.Year -gt 2000) { $next } else { $null })
+        Result  = $t.LastTaskResult
     }
 }

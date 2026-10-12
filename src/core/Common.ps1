@@ -27,25 +27,40 @@ function Format-D9Elapsed {
     if ($s.TotalHours -ge 1) { '{0}:{1:00}:{2:00}' -f [int][math]::Floor($s.TotalHours), $s.Minutes, $s.Seconds } else { '{0}:{1:00}' -f $s.Minutes, $s.Seconds }
 }
 
+# Рядок лише у файл журналу (без показу у вікні чи консолі)
+function Write-D9LogFileLine {
+    param([string]$Message, [string]$Level = 'Detail')
+    if (-not $script:D9LogPath) { return }
+    # Спільний доступ (інший потік, антивірус, програма перегляду журналу) і кілька спроб — щоб рядки
+    # не губились мовчки; якщо файл так і не відкрився, пропускаємо рядок, а не ламаємо операцію
+    $bytes = [Text.Encoding]::UTF8.GetBytes(("{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}`r`n" -f (Get-Date), $Level, $Message))
+    for ($try = 0; $try -lt 5; $try++) {
+        try {
+            $fs = [IO.File]::Open($script:D9LogPath, 'Append', 'Write', 'ReadWrite, Delete')
+            try { $fs.Write($bytes, 0, $bytes.Length) } finally { $fs.Dispose() }
+            break
+        } catch [UnauthorizedAccessException] { break }
+        catch { Start-Sleep -Milliseconds (20 * ($try + 1)) }
+    }
+}
+
+# Позначки часу запуску (мс від старту процесу): куди йде час до появи вікна. Пишуться в журнал
+# одним рядком «startup: …» і виводяться самоперевіркою (-Gui -SelfTest)
+$script:D9BootMarks = New-Object 'System.Collections.Generic.List[string]'
+function Add-D9BootMark {
+    param([string]$Name)
+    try { $ms = [int]((Get-Date) - [Diagnostics.Process]::GetCurrentProcess().StartTime).TotalMilliseconds } catch { return }
+    $script:D9BootMarks.Add("$Name $ms")
+}
+function Get-D9BootReport { 'startup ms: ' + ($script:D9BootMarks -join ' | ') }
+
 function Write-D9Log {
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string]$Message,
         [ValidateSet('Info', 'Ok', 'Warn', 'Error', 'Detail')][string]$Level = 'Info'
     )
     # Файл — першим, щоб у нього потрапляли й повідомлення фонових завдань вікна (там $D9OnLog)
-    if ($script:D9LogPath) {
-        # Спільний доступ (інший потік, антивірус, програма перегляду журналу) і кілька спроб — щоб рядки
-        # не губились мовчки; якщо файл так і не відкрився, пропускаємо рядок, а не ламаємо операцію
-        $bytes = [Text.Encoding]::UTF8.GetBytes(("{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}`r`n" -f (Get-Date), $Level, $Message))
-        for ($try = 0; $try -lt 5; $try++) {
-            try {
-                $fs = [IO.File]::Open($script:D9LogPath, 'Append', 'Write', 'ReadWrite, Delete')
-                try { $fs.Write($bytes, 0, $bytes.Length) } finally { $fs.Dispose() }
-                break
-            } catch [UnauthorizedAccessException] { break }
-            catch { Start-Sleep -Milliseconds (20 * ($try + 1)) }
-        }
-    }
+    Write-D9LogFileLine $Message $Level
     if ($script:D9OnLog) { & $script:D9OnLog $Message $Level; return }
     $color = @{ Info = 'Gray'; Ok = 'Green'; Warn = 'Yellow'; Error = 'Red'; Detail = 'DarkGray' }[$Level]
     Write-Host $Message -ForegroundColor $color

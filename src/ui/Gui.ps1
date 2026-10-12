@@ -463,6 +463,7 @@ function Show-D9Gui {
         [scriptblock]$TestAction
     )
     Initialize-D9GuiTypes
+    Add-D9BootMark 'gui-types'
     $script:D9IsDark = Test-D9DarkTheme
     $xamlText = Convert-D9XamlLanguage (Get-D9UiText 'MainWindow.xaml')
     [D9Row]::ColorMap.Clear()
@@ -470,7 +471,9 @@ function Show-D9Gui {
         $xamlText = Convert-D9XamlTheme $xamlText
         foreach ($k in $script:D9DarkColors.Keys) { [D9Row]::ColorMap[$k] = $script:D9DarkColors[$k] }
     }
+    Add-D9BootMark 'xaml-text'
     $win = [Windows.Markup.XamlReader]::Parse($xamlText)
+    Add-D9BootMark 'xaml-parse'
     # Ноутбуки 1366×768: типовий розмір 1340×900 не вміщається в робочу область — тоді відкриваємо розгорнутим
     $wa = [Windows.SystemParameters]::WorkArea
     if ($wa.Height -lt $win.Height -or $wa.Width -lt $win.Width) { $win.Width = [math]::Min($win.Width, $wa.Width); $win.Height = [math]::Min($win.Height, $wa.Height); $win.WindowState = 'Maximized' }
@@ -518,12 +521,19 @@ function Show-D9Gui {
     # ---------- фонове виконання ----------
     $sync = [hashtable]::Synchronized(@{ Log = New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'; Progress = $null
                                           Stages = New-Object 'System.Collections.Concurrent.ConcurrentQueue[object]'; Cancel = $false })
-    $iss = [Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-    foreach ($f in (Get-ChildItem function: | Where-Object { $_.Name -like '*-D9*' })) {
-        $iss.Commands.Add((New-Object Management.Automation.Runspaces.SessionStateFunctionEntry $f.Name, $f.Definition))
-    }
-    foreach ($v in (Get-Variable -Scope Script -Name 'D9*' -ErrorAction SilentlyContinue)) {
-        $iss.Variables.Add((New-Object Management.Automation.Runspaces.SessionStateVariableEntry $v.Name, $v.Value, ''))
+    # Середовище фонових задач (усі функції D9 і змінні $D9*) — при першій задачі, а не до показу вікна (≈0,35 с)
+    $getIss = {
+        if (-not $state.Iss) {
+            $iss = [Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+            foreach ($f in (Get-ChildItem function: | Where-Object { $_.Name -like '*-D9*' })) {
+                $iss.Commands.Add((New-Object Management.Automation.Runspaces.SessionStateFunctionEntry $f.Name, $f.Definition))
+            }
+            foreach ($v in (Get-Variable -Scope Script -Name 'D9*' -ErrorAction SilentlyContinue)) {
+                $iss.Variables.Add((New-Object Management.Automation.Runspaces.SessionStateVariableEntry $v.Name, $v.Value, ''))
+            }
+            $state.Iss = $iss
+        }
+        $state.Iss
     }
     $prelude = @'
 param($sync, $work, $arg)
@@ -566,7 +576,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $setBusy $true $spec.Title
         $sync.Progress = $null; $sync.Cancel = $false
         $st = $null; while ($sync.Stages.TryDequeue([ref]$st)) { }
-        $rs = [runspacefactory]::CreateRunspace($iss); $rs.Open()
+        $rs = [runspacefactory]::CreateRunspace((& $getIss)); $rs.Open()
         $ps = [powershell]::Create(); $ps.Runspace = $rs
         [void]$ps.AddScript($prelude).AddArgument($sync).AddArgument($spec.Work.ToString()).AddArgument($spec.Arg)
         $state.Job = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); Done = $spec.Done; Title = $spec.Title; Context = $spec.Context
@@ -1789,9 +1799,15 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
 
     # ---------- Програми (winget) ----------
     $hasWinget = [bool](Get-D9WingetPath)
-    $appCatalog = Import-D9AppCatalog
+    # Каталог програм (apps.json, ≈0,23 с розбору) — при першому відкритті «Програм» або «З нуля»
     $appCats = [ordered]@{}
-    foreach ($c in $appCatalog.categories) { $appCats[[string]$c.id] = Get-D9Text $c.name }
+    $getAppCatalog = {
+        if (-not $state.AppCatalog) {
+            $state.AppCatalog = Import-D9AppCatalog
+            foreach ($c in $state.AppCatalog.categories) { $appCats[[string]$c.id] = Get-D9Text $c.name }
+        }
+        $state.AppCatalog
+    }
     $state.AppUpgrades = @{}
     $state.AppFilter = 'popular'
     # Картки з іконками (567 програм) будуються при першому відкритті вкладки ($buildApps нижче),
@@ -1850,6 +1866,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($state.AppsBuilt) { return }
         $state.AppsBuilt = $true
         $appIcons = Get-D9AppIconData
+        $appCatalog = & $getAppCatalog
+        & $buildBundles $appCatalog
         $state.AppRows = @($appCatalog.apps | ForEach-Object {
             New-D9Row @{ Id = $_.id; Title = $_.name; Group = $appCats[[string]$_.category]; Note = (Get-D9Text $_.description); Status = ''; Color = '#6E6E73'; Tag = $_
                          Icon = (ConvertTo-D9Image $appIcons[$_.id]); Initial = ([string]$_.name).Substring(0, 1).ToUpper() }
@@ -1869,18 +1887,21 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     # Клік по галочці в будь-якій картці (подія Click спливає від CheckBox до списку)
     $ui.AppCards.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateAppSelection })
-    foreach ($b in @($appCatalog.bundles)) {
-        $btn = New-Object Windows.Controls.Button
-        $btn.Style = $win.FindResource('Chip'); $btn.Padding = '11,3'; $btn.FontSize = 12.5; $btn.Margin = '0,0,6,6'
-        $btn.Content = Get-D9Text $b.name; $btn.ToolTip = Get-D9Text $b.description; $btn.Tag = @($b.apps)
-        $btn.Add_Click({
-            param($sender, $e)
-            $ids = @($sender.Tag)
-            foreach ($r in $state.AppRows) { if ($ids -contains $r.Id -and $r.Enabled) { $r.Selected = $true } }
-            $state.AppFilter = 'selected'
-            & $fillAppCategories; & $showApps; & $updateAppSelection
-        })
-        [void]$ui.AppBundles.Children.Add($btn)
+    $buildBundles = {
+        param($appCatalog)
+        foreach ($b in @($appCatalog.bundles)) {
+            $btn = New-Object Windows.Controls.Button
+            $btn.Style = $win.FindResource('Chip'); $btn.Padding = '11,3'; $btn.FontSize = 12.5; $btn.Margin = '0,0,6,6'
+            $btn.Content = Get-D9Text $b.name; $btn.ToolTip = Get-D9Text $b.description; $btn.Tag = @($b.apps)
+            $btn.Add_Click({
+                param($sender, $e)
+                $ids = @($sender.Tag)
+                foreach ($r in $state.AppRows) { if ($ids -contains $r.Id -and $r.Enabled) { $r.Selected = $true } }
+                $state.AppFilter = 'selected'
+                & $fillAppCategories; & $showApps; & $updateAppSelection
+            })
+            [void]$ui.AppBundles.Children.Add($btn)
+        }
     }
     $ui.BtnAppsClear.Add_Click({ foreach ($r in $state.AppRows) { $r.Selected = $false }; if ($state.AppFilter -eq 'selected') { & $showApps }; & $updateAppSelection })
 
@@ -2121,7 +2142,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $state.SetupProfile = $p
         foreach ($k in $suSteps.Keys) { $ui[$suSteps[$k]].IsChecked = [bool]($p.steps -contains $k) }
         $ui.SuPresetBox.SelectedIndex = if ($p.preset -and $p.preset -ne 'Recommended') { [math]::Max(0, [array]::IndexOf(@($Catalog.Presets.id), [string]$p.preset) + 1) } else { 0 }
-        Set-D9Items $ui.SuBundles @(foreach ($b in $appCatalog.bundles) { New-D9Row @{ Id = [string]$b.id; Title = (Get-D9Text $b.name); Detail = (Get-D9Text $b.description); Selected = [bool]($p.bundles -contains $b.id) } })
+        Set-D9Items $ui.SuBundles @(foreach ($b in (& $getAppCatalog).bundles) { New-D9Row @{ Id = [string]$b.id; Title = (Get-D9Text $b.name); Detail = (Get-D9Text $b.description); Selected = [bool]($p.bundles -contains $b.id) } })
         $ui.SuAppsBox.Text = ($p.apps -join ', ')
         $ui.SuNameBox.Text = $p.name
         $ui.ChkSuReboot.IsChecked = [bool]$p.reboot
@@ -2245,22 +2266,35 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
 
     # ---------- старт ----------
-    $win.Add_Loaded({
-        $timer.Start()
-        & $fillSessions
-        $prev = Get-D9Checklist
-        if ($prev) { & $fillChecklist $prev }
-        $lastScan = Get-ChildItem (Get-D9ScanDir) -Filter '*.json' -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
-        if ($lastScan) {
-            try {
-                $scan = ConvertFrom-Json ([IO.File]::ReadAllText($lastScan.FullName, [Text.Encoding]::UTF8))
-                $state.Categories = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
-                & $fillOverview $scan $state.Categories
-            } catch { }
+    # Вікно з'являється одразу, а дані підвантажуються після першого малювання — кроками з пріоритетом
+    # Background, щоб між ними вікно перемальовувалось і відповідало (раніше все це йшло в Loaded до показу)
+    $win.Add_Loaded({ Add-D9BootMark 'loaded'; $timer.Start() })
+    $startupSteps = @(
+        {
+            $lastScan = Get-ChildItem (Get-D9ScanDir) -Filter '*.json' -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+            if ($lastScan) {
+                try {
+                    $scan = ConvertFrom-Json ([IO.File]::ReadAllText($lastScan.FullName, [Text.Encoding]::UTF8))
+                    $state.Categories = (ConvertFrom-Json (Get-D9ConfigText 'checks.json')).categories
+                    & $fillOverview $scan $state.Categories
+                } catch { }
+            }
+            Add-D9BootMark 'overview'
         }
-        & $refreshMaintenance
-        & $refreshSchedule
-        & $loadTweakStates
+        { & $loadTweakStates; Add-D9BootMark 'tweaks-job' }
+        { $prev = Get-D9Checklist; if ($prev) { & $fillChecklist $prev }; & $fillSessions; Add-D9BootMark 'sessions' }
+        { & $refreshMaintenance; & $refreshSchedule; Add-D9BootMark 'maintenance' }
+        {
+            Add-D9BootMark 'ready'; Write-D9LogFileLine (Get-D9BootReport)
+            # Замір швидкості запуску (розробка): D9_BOOT_EXIT=1 — закрити вікно, щойно все завантажено
+            if ($env:D9_BOOT_EXIT) { $win.Close() }
+        }
+    )
+    $win.Add_ContentRendered({
+        if ($state.StartupQueued) { return }
+        $state.StartupQueued = $true
+        Add-D9BootMark 'rendered'
+        foreach ($step in $startupSteps) { [void]$win.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [action]$step) }
     })
     # Список автозавантаження читаємо при першому відкритті вкладки (щоб не займати фоновий потік на старті)
     $ui.Tabs.Add_SelectionChanged({
@@ -2279,6 +2313,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     # Перший запуск: коротко «з чого почати» (один раз; позначка — HKCU:\Software\Debora\Welcomed)
     $win.Add_ContentRendered({
+        if ($env:D9_BOOT_EXIT) { return }
         if ($state.WelcomeChecked -or $state.NoWelcome) { return }
         $state.WelcomeChecked = $true
         $key = 'HKCU:\Software\Debora'
@@ -2313,11 +2348,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     }
     $state.NoWelcome = [bool]$TestAction   # тести й самоперевірка: без модальних вікон
     $win.Add_Closing({ param($sender, $e)
-        if ($state.Job) {
+        if ($state.Job -and -not $env:D9_BOOT_EXIT) {
             if ([Windows.MessageBox]::Show($win, (T-D9 'Зараз виконується операція. Закрити програму все одно?'), 'Debora', 'YesNo', 'Warning') -ne 'Yes') { $e.Cancel = $true }
         }
     })
     $win.Add_Closed({ $timer.Stop() })
+    Add-D9BootMark 'handlers'
+    if ($env:D9_BOOT_EXIT) { $win.WindowStartupLocation = 'Manual'; $win.WindowState = 'Normal'; $win.Left = -20000; $win.ShowActivated = $false; $win.ShowInTaskbar = $false }
     if ($TestAction) { return (. $TestAction) }
     # Необроблена помилка в обробнику закривала вікно без сліду (ні в журналі, ні в подіях Windows) —
     # тепер її записуємо з місцем у коді, показуємо й продовжуємо роботу

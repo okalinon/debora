@@ -30,7 +30,39 @@ function Get-D9SystemDisk {
     return $result
 }
 
+# Час останнього завантаження Windows з точністю до хвилини — без звернення до CIM.
+# Environment.TickCount (мс від завантаження) — int32, після ~25 днів стає від'ємним, тому доводимо до uint32.
+function Get-D9BootStamp {
+    $ms = [long][Environment]::TickCount
+    if ($ms -lt 0) { $ms += 4294967296 }
+    (Get-Date).AddMilliseconds(-$ms).ToString('yyyy-MM-ddTHH:mm')
+}
+
+# -UseCache: відомості про залізо між перезавантаженнями не змінюються — зберігаємо їх у
+# %LOCALAPPDATA%\Debora\sysinfo.json і до наступного перезавантаження не опитуємо CIM (≈1–1,5 с запуску)
 function Get-D9SystemInfo {
+    param([switch]$UseCache)
+    if ($UseCache) {
+        $file = Join-Path $env:LOCALAPPDATA 'Debora\sysinfo.json'
+        $stamp = Get-D9BootStamp
+        try {
+            $c = ConvertFrom-Json ([IO.File]::ReadAllText($file, [Text.Encoding]::UTF8))
+            # Хвилина може «перескочити» між запусками — допускаємо розбіжність до 2 хв
+            if ($c.Boot -and $c.Version -eq 1 -and [math]::Abs(([datetime]$c.Boot - [datetime]$stamp).TotalMinutes) -le 2 -and $c.Info.OsName) {
+                $i = $c.Info
+                return [pscustomobject]@{ OsName = [string]$i.OsName; OsFamily = [string]$i.OsFamily; Build = [int]$i.Build; DisplayVersion = [string]$i.DisplayVersion
+                                          Manufacturer = [string]$i.Manufacturer; Model = [string]$i.Model; Cpu = [string]$i.Cpu; Cores = [int]$i.Cores; RamGB = [double]$i.RamGB
+                                          SystemDisk = [string]$i.SystemDisk; HasBattery = [bool]$i.HasBattery; Firmware = [string]$i.Firmware; PartitionStyle = [string]$i.PartitionStyle }
+            }
+        } catch { }
+        $info = Get-D9SystemInfo
+        try {
+            $dir = Split-Path $file
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            [IO.File]::WriteAllText($file, (ConvertTo-Json @{ Version = 1; Boot = $stamp; Info = $info } -Depth 3), (New-Object Text.UTF8Encoding $false))
+        } catch { }
+        return $info
+    }
     $os    = Get-CimInstance Win32_OperatingSystem
     $cs    = Get-CimInstance Win32_ComputerSystem
     # Назва процесора — з реєстру, з CIM лише кількість ядер: повний Win32_Processor триває понад секунду

@@ -121,9 +121,11 @@ function Get-D9DeviceQueries {
 
 # Пристрої, для яких шукаємо оновлення, з поточним драйвером
 function Get-D9UpdatableDevices {
+    $query = Start-D9CimQuery Win32_PnPSignedDriver   # паралельно з читанням пристроїв
+    $entities = @(Get-D9PnpEntities | Where-Object { $_.Present -ne $false -and $_.HardwareID })
     $signed = @{}
-    foreach ($d in @(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue)) { if ($d.DeviceID) { $signed[$d.DeviceID.ToUpper()] = $d } }
-    foreach ($e in @(Get-D9PnpEntities | Where-Object { $_.Present -ne $false -and $_.HardwareID })) {
+    foreach ($d in @(Receive-D9CimQuery $query)) { if ($d.DeviceID) { $signed[$d.DeviceID.ToUpper()] = $d } }
+    foreach ($e in $entities) {
         $problem = [int]$e.ConfigManagerErrorCode -notin 0, 22, 45
         if (-not $problem -and [string]$e.PNPClass -notin $script:D9UpdateClasses) { continue }
         $queries = @(Get-D9DeviceQueries @($e.HardwareID))

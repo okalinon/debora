@@ -21,9 +21,25 @@ $script:D9PnpCacheTime = [datetime]::MinValue
 
 function Clear-D9PnpCache { $script:D9PnpCache = $null }
 
+# Лише потрібні властивості: Manufacturer сам додає ≈1,5 с до ≈1,5 с решти (виробника беремо з Win32_PnPSignedDriver)
+$script:D9PnpProps = @('Name', 'PNPClass', 'ConfigManagerErrorCode', 'DeviceID', 'PNPDeviceID', 'HardwareID', 'CompatibleID', 'Present', 'Status')
+
+# Запит CIM в окремому runspace, щоб два повільні запити (пристрої й драйвери, по 1,5–2,3 с) ішли паралельно
+function Start-D9CimQuery {
+    param([Parameter(Mandatory)][string]$ClassName, [string[]]$Property)
+    $ps = [powershell]::Create()
+    [void]$ps.AddCommand('Get-CimInstance').AddParameter('ClassName', $ClassName).AddParameter('ErrorAction', 'SilentlyContinue')
+    if ($Property) { [void]$ps.AddParameter('Property', $Property) }
+    @{ PS = $ps; Handle = $ps.BeginInvoke() }
+}
+function Receive-D9CimQuery {
+    param([Parameter(Mandatory)]$Query)
+    try { @($Query.PS.EndInvoke($Query.Handle)) } catch { @() } finally { $Query.PS.Dispose() }
+}
+
 function Get-D9PnpEntities {
     if (-not $script:D9PnpCache -or ((Get-Date) - $script:D9PnpCacheTime).TotalSeconds -gt 60) {
-        $script:D9PnpCache = @(Get-CimInstance Win32_PnPEntity -ErrorAction SilentlyContinue)
+        $script:D9PnpCache = @(Get-CimInstance Win32_PnPEntity -Property $script:D9PnpProps -ErrorAction SilentlyContinue)
         $script:D9PnpCacheTime = Get-Date
     }
     return $script:D9PnpCache

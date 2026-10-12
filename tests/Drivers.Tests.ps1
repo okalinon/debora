@@ -7,13 +7,13 @@ AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 Describe 'Перелік усіх пристроїв' {
     BeforeAll {
         function New-Entity($Id, $Name, $Class, [int]$Code = 0, $Hw) { [pscustomobject]@{ DeviceID = $Id; Name = $Name; PNPClass = $Class; ConfigManagerErrorCode = $Code; HardwareID = @($Hw); Manufacturer = 'M' } }
-        Mock Get-CimInstance -ParameterFilter { $ClassName -eq 'Win32_PnPSignedDriver' } {
+        $script:drivers = @(
             [pscustomobject]@{ DeviceID = 'PCI\VEN_8086&DEV_51F0\1'; DriverVersion = '23.150.0.4'; DriverDate = [datetime]'2025-12-06'; DriverProviderName = 'Intel'; InfName = 'oem50.inf'; IsSigned = $true }
             [pscustomobject]@{ DeviceID = 'PCI\VEN_10EC&DEV_8125\1'; DriverVersion = '10.54'; DriverDate = [datetime]'2021-11-11'; DriverProviderName = 'Realtek'; InfName = 'oem7.inf'; IsSigned = $true }
             [pscustomobject]@{ DeviceID = 'ACPI\GENUINEINTEL\0'; DriverVersion = '10.0.26100.1'; DriverDate = [datetime]'2006-06-21'; DriverProviderName = 'Microsoft'; InfName = 'cpu.inf'; IsSigned = $true }
             [pscustomobject]@{ DeviceID = 'ACPI\GENUINEINTEL\1'; DriverVersion = '10.0.26100.1'; DriverDate = [datetime]'2006-06-21'; DriverProviderName = 'Microsoft'; InfName = 'cpu.inf'; IsSigned = $true }
             [pscustomobject]@{ DeviceID = 'STORAGE\VOLUME\1'; DriverVersion = '10.0.26100.1'; DriverDate = [datetime]'2006-06-21'; DriverProviderName = 'Microsoft'; InfName = 'volume.inf'; IsSigned = $true }
-        }
+        )
         $script:entities = @(
             (New-Entity 'PCI\VEN_8086&DEV_51F0\1' 'Intel(R) Wi-Fi 6 AX201' 'Net' 0 'PCI\VEN_8086&DEV_51F0&SUBSYS_00748086')
             (New-Entity 'PCI\VEN_10EC&DEV_8125\1' 'Realtek 2.5GbE' 'Net' 0 'PCI\VEN_10EC&DEV_8125')
@@ -22,7 +22,7 @@ Describe 'Перелік усіх пристроїв' {
             (New-Entity 'STORAGE\VOLUME\1' 'Volume' 'Volume')
             (New-Entity 'USB\VID_0BDA&PID_0001\1' 'Камера' 'Camera' 28 'USB\VID_0BDA&PID_0001')
         )
-        $script:inv = @(Get-D9DeviceInventory -Entities $entities -Now ([datetime]'2026-10-11'))
+        $script:inv = @(Get-D9DeviceInventory -Entities $entities -Drivers $drivers -Now ([datetime]'2026-10-11'))
     }
     It 'кожен пристрій з драйвером, класом, станом і віком' {
         $inv.Count | Should -Be 6

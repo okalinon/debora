@@ -2291,7 +2291,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
     )
     $win.Add_ContentRendered({
-        if ($state.StartupQueued) { return }
+        if ($state.StartupQueued -or $state.NoWelcome) { return }   # тести показують вікно самі й керують задачами
         $state.StartupQueued = $true
         Add-D9BootMark 'rendered'
         foreach ($step in $startupSteps) { [void]$win.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [action]$step) }
@@ -2348,7 +2348,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     }
     $state.NoWelcome = [bool]$TestAction   # тести й самоперевірка: без модальних вікон
     $win.Add_Closing({ param($sender, $e)
-        if ($state.Job -and -not $env:D9_BOOT_EXIT) {
+        if ($state.Job -and -not $env:D9_BOOT_EXIT -and -not $state.NoWelcome) {
             if ([Windows.MessageBox]::Show($win, (T-D9 'Зараз виконується операція. Закрити програму все одно?'), 'Debora', 'YesNo', 'Warning') -ne 'Yes') { $e.Cancel = $true }
         }
     })

@@ -3,11 +3,36 @@
 # NSIS (/S) → звичайний деінсталятор з вікном. Після запуску перевіряємо, що запис справді зник.
 # Відкату немає (повернути — встановити знову, наприклад з вкладки «Програми»), тому перед видаленням — точка відновлення.
 
-$script:D9UninstallRoots = @(
-    'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
-    'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
-    'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
-)
+# Записи «Програм і засобів» (64- і 32-розрядні та поточного користувача) одним проходом через .NET.
+# Get-ChildItem + Get-ItemProperty на кожен ключ повільні: ≈1 с на ~300 записів, а пошук програм з GitHub
+# перебирав так реєстр для кожної програми (≈5 с). Об'єкти — як від Get-ItemProperty: значення + PSPath, PSChildName.
+function Get-D9UninstallEntries {
+    $views = @(
+        @{ Hive = 'LocalMachine'; Root = 'HKEY_LOCAL_MACHINE'; Path = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' }
+        @{ Hive = 'LocalMachine'; Root = 'HKEY_LOCAL_MACHINE'; Path = 'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' }
+        @{ Hive = 'CurrentUser'; Root = 'HKEY_CURRENT_USER'; Path = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' }
+    )
+    foreach ($v in $views) {
+        $base = $null; $root = $null
+        try {
+            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]$v.Hive, [Microsoft.Win32.RegistryView]::Registry64)
+            $root = $base.OpenSubKey($v.Path)
+            if (-not $root) { continue }
+            foreach ($name in $root.GetSubKeyNames()) {
+                $k = $null
+                try {
+                    $k = $root.OpenSubKey($name)
+                    if (-not $k) { continue }
+                    $h = [ordered]@{}
+                    foreach ($vn in $k.GetValueNames()) { if ($vn) { $h[$vn] = $k.GetValue($vn) } }
+                    $h['PSPath'] = "Microsoft.PowerShell.Core\Registry::$($v.Root)\$($v.Path)\$name"
+                    $h['PSChildName'] = $name
+                    [pscustomobject]$h
+                } catch { } finally { if ($k) { $k.Dispose() } }
+            }
+        } catch { } finally { if ($root) { $root.Dispose() }; if ($base) { $base.Dispose() } }
+    }
+}
 # Компоненти, від яких залежать інші програми — видаляти не радимо
 $script:D9KeepPatterns = @('Microsoft Visual C++*', 'Microsoft .NET*', 'Microsoft Windows Desktop Runtime*', 'Microsoft ASP.NET*', 'Microsoft Edge WebView2*',
     'Microsoft Edge', 'Microsoft Update Health Tools', 'Windows SDK*', 'Windows Software Development Kit*', '*Driver*', '*Chipset*', 'Intel(R) Management Engine*',
@@ -28,27 +53,24 @@ function Get-D9UninstallList {
     param($KnownBloat)
     if (-not $KnownBloat) { $KnownBloat = ConvertFrom-Json (Get-D9ConfigText 'known-bloat.json') }
     $seen = @{}
-    foreach ($root in $script:D9UninstallRoots) {
-        foreach ($k in @(Get-ChildItem $root -ErrorAction SilentlyContinue)) {
-            $p = Get-ItemProperty -LiteralPath $k.PSPath -ErrorAction SilentlyContinue
-            if (-not $p.DisplayName -or $p.SystemComponent -eq 1 -or $p.ParentKeyName -or $p.ReleaseType -in 'Update', 'Hotfix', 'Security Update') { continue }
-            if (-not $p.UninstallString -and -not $p.QuietUninstallString) { continue }
-            $id = "$($p.DisplayName)|$($p.DisplayVersion)"
-            if ($seen.ContainsKey($id)) { continue }
-            $seen[$id] = $true
-            $bloat = $KnownBloat.programs | Where-Object { $p.DisplayName -like $_.pattern } | Select-Object -First 1
-            $keep = [bool]($script:D9KeepPatterns | Where-Object { $p.DisplayName -like $_ })
-            $date = $null
-            if ($p.InstallDate -match '^\d{8}$') { $date = try { [datetime]::ParseExact($p.InstallDate, 'yyyyMMdd', $null) } catch { $null } }
-            [pscustomobject]@{
-                Name = [string]$p.DisplayName; Version = [string]$p.DisplayVersion; Publisher = [string]$p.Publisher
-                Size = $(if ($p.EstimatedSize) { [long]$p.EstimatedSize * 1KB } else { 0 }); InstallDate = $date
-                Key = $k.PSPath; KeyName = $k.PSChildName
-                UninstallString = [string]$p.UninstallString; QuietUninstallString = [string]$p.QuietUninstallString
-                IsMsi = ($p.WindowsInstaller -eq 1 -and $k.PSChildName -match '^\{[0-9A-F-]{36}\}$')
-                Bloat = $(if ($bloat) { Get-D9Text $bloat.reason } else { $null }); Keep = $keep
-                Folder = (Get-D9ProgramFolder $p); SizeEstimated = $false
-            }
+    foreach ($p in @(Get-D9UninstallEntries)) {
+        if (-not $p.DisplayName -or $p.SystemComponent -eq 1 -or $p.ParentKeyName -or $p.ReleaseType -in 'Update', 'Hotfix', 'Security Update') { continue }
+        if (-not $p.UninstallString -and -not $p.QuietUninstallString) { continue }
+        $id = "$($p.DisplayName)|$($p.DisplayVersion)"
+        if ($seen.ContainsKey($id)) { continue }
+        $seen[$id] = $true
+        $bloat = $KnownBloat.programs | Where-Object { $p.DisplayName -like $_.pattern } | Select-Object -First 1
+        $keep = [bool]($script:D9KeepPatterns | Where-Object { $p.DisplayName -like $_ })
+        $date = $null
+        if ($p.InstallDate -match '^\d{8}$') { $date = try { [datetime]::ParseExact($p.InstallDate, 'yyyyMMdd', $null) } catch { $null } }
+        [pscustomobject]@{
+            Name = [string]$p.DisplayName; Version = [string]$p.DisplayVersion; Publisher = [string]$p.Publisher
+            Size = $(if ($p.EstimatedSize) { [long]$p.EstimatedSize * 1KB } else { 0 }); InstallDate = $date
+            Key = $p.PSPath; KeyName = $p.PSChildName
+            UninstallString = [string]$p.UninstallString; QuietUninstallString = [string]$p.QuietUninstallString
+            IsMsi = ($p.WindowsInstaller -eq 1 -and $p.PSChildName -match '^\{[0-9A-F-]{36}\}$')
+            Bloat = $(if ($bloat) { Get-D9Text $bloat.reason } else { $null }); Keep = $keep
+            Folder = (Get-D9ProgramFolder $p); SizeEstimated = $false
         }
     }
 }

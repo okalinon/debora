@@ -250,7 +250,7 @@ Describe 'Вікно' {
             function Pump { $f = New-Object Windows.Threading.DispatcherFrame; [void][Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvoke([Action]{ $f.Continue = $false }, [Windows.Threading.DispatcherPriority]::Background); [Windows.Threading.Dispatcher]::PushFrame($f) }
             function Get-Boxes($dep) { $out = @(); for ($i = 0; $i -lt [Windows.Media.VisualTreeHelper]::GetChildrenCount($dep); $i++) { $c = [Windows.Media.VisualTreeHelper]::GetChild($dep, $i); if ($c -is [Windows.Controls.CheckBox]) { $out += $c }; $out += Get-Boxes $c }; $out }
             $win.ShowActivated = $false; $win.Left = -10000; $win.Show()
-            # Loaded запускає фонову перевірку стану й таймер — зупиняємо, щоб вони не перезаповнили таблицю й не тримали Close()
+            # Loaded запускає таймер (стартові кроки в тестах вимкнено) — зупиняємо, щоб задачі не перезаповнили таблицю й не тримали Close()
             $timer.Stop()
             if ($state.Job) { try { $state.Job.PS.Stop() } catch { }; $state.Job.PS.Dispose(); $state.Job.RS.Dispose(); $state.Job = $null }
             $ui.Tabs.SelectedItem = @($ui.Tabs.Items | Where-Object Uid -eq 'settings')[0]; Pump

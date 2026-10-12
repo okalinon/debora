@@ -60,14 +60,11 @@ function Get-D9GithubAssetHash {
 
 # Встановлена версія (з «Програм і засобів») або $null
 function Get-D9GithubAppVersion {
-    param([Parameter(Mandatory)]$App)
-    $roots = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall', 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
+    param([Parameter(Mandatory)]$App, [object[]]$Entries)   # Entries — готовий Get-D9UninstallEntries (для кількох програм)
+    if ($null -eq $Entries) { $Entries = @(Get-D9UninstallEntries) }
     $pattern = if ($App.match) { [string]$App.match } else { '^' + [regex]::Escape([string]$App.name) + '$' }
-    foreach ($root in $roots) {
-        foreach ($k in @(Get-ChildItem $root -ErrorAction SilentlyContinue)) {
-            $p = Get-ItemProperty -LiteralPath $k.PSPath -ErrorAction SilentlyContinue
-            if ($p.DisplayName -and $p.DisplayName -match $pattern) { return [string]$(if ($p.DisplayVersion) { $p.DisplayVersion } else { '?' }) }
-        }
+    foreach ($p in $Entries) {
+        if ($p.DisplayName -and $p.DisplayName -match $pattern) { return [string]$(if ($p.DisplayVersion) { $p.DisplayVersion } else { '?' }) }
     }
     return $null
 }
@@ -115,7 +112,8 @@ function Install-D9GithubApp {
 function Get-D9GithubInstalled {
     param([object[]]$Apps = @((Import-D9AppCatalog).apps | Where-Object source -eq 'github'))
     $result = @{}
-    foreach ($a in $Apps) { $v = Get-D9GithubAppVersion $a; if ($v) { $result[$a.id] = $v } }
+    $entries = @(Get-D9UninstallEntries | Where-Object { $_.DisplayName })   # реєстр — один раз на всі програми
+    foreach ($a in $Apps) { $v = Get-D9GithubAppVersion $a -Entries $entries; if ($v) { $result[$a.id] = $v } }
     $result
 }
 

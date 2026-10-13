@@ -39,10 +39,15 @@ function Test-D9VirtualDevice {
 # Усі пристрої ПК з драйверами: тип, назва, виробник, версія/дата/постачальник/INF драйвера, підпис, стан,
 # ідентифікатор обладнання. $Entities — уже прочитаний Win32_PnPEntity (читання триває кілька секунд).
 function Get-D9DeviceInventory {
-    param([object[]]$Entities, [object[]]$Drivers, [datetime]$Now = (Get-Date))
-    $query = if (-not $Drivers) { Start-D9CimQuery Win32_PnPSignedDriver }   # паралельно з читанням пристроїв
+    param([object[]]$Entities, [object[]]$Drivers, [hashtable]$Manufacturers, [datetime]$Now = (Get-Date))
+    # Драйвери й виробники пристроїв — паралельно з читанням пристроїв. Виробника беремо окремим запитом:
+    # у Win32_PnPSignedDriver він буває іншим (аудіо NVIDIA → «Microsoft»), а в загальному запиті коштує ≈1,5 с
+    $query = if (-not $Drivers) { Start-D9CimQuery Win32_PnPSignedDriver }
+    $mquery = if (-not $Manufacturers -and -not @($Entities | Where-Object { $_.Manufacturer }).Count) { Start-D9ManufacturerQuery }
     if (-not $Entities) { $Entities = @(Get-D9PnpEntities) }
     if ($query) { $Drivers = Receive-D9CimQuery $query }
+    if ($mquery) { $Manufacturers = Receive-D9ManufacturerQuery $mquery }
+    if (-not $Manufacturers) { $Manufacturers = @{} }
     $byDevice = @{}
     foreach ($d in @($Drivers)) { if ($d.DeviceID) { $byDevice[[string]$d.DeviceID] = $d } }
     foreach ($e in $Entities) {
@@ -63,7 +68,7 @@ function Get-D9DeviceInventory {
             ClassName   = Get-D9DeviceClassName $class
             Name        = $(if ($e.Name) { [string]$e.Name } else { Get-D9DeviceDisplayName $info $null })
             Recognized  = $(if ($info -and ($info.Name -or $info.Vendor)) { Get-D9DeviceDisplayName $info $null })
-            Manufacturer = $(if ($e.Manufacturer) { [string]$e.Manufacturer } else { [string]$d.Manufacturer })
+            Manufacturer = $(if ($e.Manufacturer) { [string]$e.Manufacturer } elseif ($Manufacturers.ContainsKey([string]$e.DeviceID)) { [string]$Manufacturers[[string]$e.DeviceID] } else { [string]$d.Manufacturer })
             Provider    = $provider
             Version     = [string]$d.DriverVersion
             Date        = $date
@@ -133,6 +138,7 @@ function Get-D9DriverReport {
     param([Parameter(Mandatory)]$SystemInfo)
     $oem = Get-D9OemSupport $SystemInfo
     $query = Start-D9CimQuery Win32_PnPSignedDriver
+    $mquery = Start-D9ManufacturerQuery
     $entities = @(Get-D9PnpEntities)
     $problems = @($entities | Where-Object { $_.ConfigManagerErrorCode -ne 0 } |
         Where-Object { $_.ConfigManagerErrorCode -notin 22, 45 } | ForEach-Object {
@@ -147,7 +153,7 @@ function Get-D9DriverReport {
                 Links    = @(Get-D9DriverLinks $info $oem)
             }
         })
-    $devices = @(Get-D9DeviceInventory -Entities $entities -Drivers (Receive-D9CimQuery $query))
+    $devices = @(Get-D9DeviceInventory -Entities $entities -Drivers (Receive-D9CimQuery $query) -Manufacturers (Receive-D9ManufacturerQuery $mquery))
     # Важливі встановлені драйвери (коротка таблиця для командного рядка): відео, мережа, звук… від виробників
     $important = @($devices | Where-Object {
             $_.Version -and $script:D9KeyDriverClasses.ContainsKey($_.Class) -and $_.ThirdParty -and $_.InstanceId -match '^(PCI|HDAUDIO|ACPI|USB)\\'

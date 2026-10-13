@@ -33,6 +33,14 @@ Describe 'Перелік усіх пристроїв' {
         ($inv | Where-Object Name -eq 'Volume').Virtual | Should -BeTrue
         ($inv | Where-Object Name -like 'Realtek*').AgeYears | Should -BeGreaterThan 4.5
     }
+    It 'виробник пристрою — з Win32_PnPEntity, а не з драйвера (аудіо NVIDIA: драйвер каже «Microsoft»)' {
+        $e = @([pscustomobject]@{ DeviceID = 'HDAUDIO\FUNC_01&VEN_10DE\1'; Name = 'NVIDIA High Definition Audio'; PNPClass = 'MEDIA'; ConfigManagerErrorCode = 0; HardwareID = @('HDAUDIO\FUNC_01&VEN_10DE&DEV_00A0') })
+        $d = @([pscustomobject]@{ DeviceID = 'HDAUDIO\FUNC_01&VEN_10DE\1'; Manufacturer = 'Microsoft'; DriverProviderName = 'NVIDIA Corporation'; DriverVersion = '1.4.0.1' })
+        $r = @(Get-D9DeviceInventory -Entities $e -Drivers $d -Manufacturers @{ 'HDAUDIO\FUNC_01&VEN_10DE\1' = 'NVIDIA' })
+        $r[0].Manufacturer | Should -Be 'NVIDIA'
+        # Без даних про виробника пристрою — запасний варіант із драйвера
+        @(Get-D9DeviceInventory -Entities $e -Drivers $d -Manufacturers @{ x = 'y' })[0].Manufacturer | Should -Be 'Microsoft'
+    }
     It 'фільтри, пошук, згортання однакових, підсумок' {
         @(Select-D9DeviceInventory $inv 'hardware').Count | Should -Be 5
         @(Select-D9DeviceInventory $inv 'all').Count | Should -Be 6

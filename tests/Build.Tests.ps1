@@ -40,9 +40,9 @@ Describe 'Збірка' {
         foreach ($f in 'run.bat', 'run-menu.bat', 'Інструкція.txt') { Test-Path (Join-Path $out $f) | Should -BeTrue -Because $f }
     }
     It 'вбудована база пристроїв працює в зібраному файлі' {
-        $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $file -Drivers -Language uk 2>&1 | Out-String
+        $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $file -Drivers -Language en 2>&1 | Out-String   # en: прихований процес псує кирилицю в консолі
         $LASTEXITCODE | Should -Be 0
-        $output | Should -Match 'Важливі драйвери'
+        $output | Should -Match 'Important drivers'
     }
     It 'зібраний файл виводить каталог у дочірньому процесі' {
         $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $file -ListTweaks 2>&1 | Out-String

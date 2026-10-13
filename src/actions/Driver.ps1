@@ -37,6 +37,15 @@ function Receive-D9CimQuery {
     try { @($Query.PS.EndInvoke($Query.Handle)) } catch { @() } finally { $Query.PS.Dispose() }
 }
 
+# Виробник пристрою (Win32_PnPEntity.Manufacturer) окремим запитом у фоні: DeviceID → виробник
+function Start-D9ManufacturerQuery { Start-D9CimQuery Win32_PnPEntity -Property 'DeviceID', 'Manufacturer' }
+function Receive-D9ManufacturerQuery {
+    param([Parameter(Mandatory)]$Query)
+    $map = @{}
+    foreach ($m in @(Receive-D9CimQuery $Query)) { if ($m.DeviceID) { $map[[string]$m.DeviceID] = [string]$m.Manufacturer } }
+    $map
+}
+
 function Get-D9PnpEntities {
     if (-not $script:D9PnpCache -or ((Get-Date) - $script:D9PnpCacheTime).TotalSeconds -gt 60) {
         $script:D9PnpCache = @(Get-CimInstance Win32_PnPEntity -Property $script:D9PnpProps -ErrorAction SilentlyContinue)

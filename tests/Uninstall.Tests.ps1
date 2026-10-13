@@ -153,6 +153,31 @@ Describe 'Записи без деінсталятора й порожні ар�
     }
 }
 
+Describe 'Швидке читання «Програм і засобів» (.NET)' {
+    It 'ті самі записи й значення, що й Get-ChildItem + Get-ItemProperty; шлях придатний для Test-Path' {
+        $key = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\zzDeboraFast'
+        try {
+            New-Item -Path $key -Force | Out-Null
+            Set-ItemProperty $key -Name DisplayName -Value 'Debora Fast Test'
+            Set-ItemProperty $key -Name EstimatedSize -Value 1234 -Type DWord
+            Set-ItemProperty $key -Name UninstallString -Value '%SystemRoot%\x.exe' -Type ExpandString
+            $fast = @(Get-D9UninstallEntries | Where-Object PSChildName -eq 'zzDeboraFast')
+            $fast.Count | Should -Be 1
+            $slow = Get-ItemProperty -LiteralPath (Get-Item $key).PSPath
+            $fast[0].DisplayName | Should -Be $slow.DisplayName
+            $fast[0].EstimatedSize | Should -Be $slow.EstimatedSize
+            $fast[0].UninstallString | Should -Be $slow.UninstallString   # розгорнуто, як у Get-ItemProperty
+            $fast[0].PSPath | Should -Be (Get-Item $key).PSPath
+            Test-Path -LiteralPath $fast[0].PSPath | Should -BeTrue
+            # Набір ключів поточного користувача — такий самий, як у Get-ChildItem
+            $root = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
+            $a = @(Get-ChildItem $root | ForEach-Object PSChildName | Sort-Object)
+            $b = @(Get-D9UninstallEntries | Where-Object { $_.PSPath -like '*HKEY_CURRENT_USER*' } | ForEach-Object PSChildName | Sort-Object)
+            ($b -join '|') | Should -Be ($a -join '|')
+        } finally { [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\zzDeboraFast', $false) }
+    }
+}
+
 Describe 'Записи від видалених програм у реєстрі' {
     It 'App Paths на неіснуючий exe — знаходиться й прибирається з копією .reg' {
         $key = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\zzdeboratest.exe'

@@ -85,28 +85,38 @@ foreach ($m in $modules) {
     [void]$sb.AppendLine((Read-Utf8 $m).TrimEnd())
 }
 # Вбудована конфігурація — після модулів, бо Catalog.ps1 ініціалізує $script:D9Embedded
+# Стиснено (gzip + base64, «назва NUL вміст NUL …»): ≈880 КБ JSON і розмітки PowerShell розбирав і передавав
+# на перевірку антивірусу (AMSI) на кожному запуску (≈0,1 с); розпакування — ≈20 мс
 [void]$sb.AppendLine('# ----- config -----')
-[void]$sb.AppendLine('$script:D9Embedded = @{')
+$pack = New-Object Text.StringBuilder
 foreach ($name in $configFiles) {
     $json = Read-Utf8 (Join-Path $config $name)
-    if ($json -match "(?m)^'@") { throw "$name містить рядок, що починається з '@ — це зламає here-string" }
-    [void]$sb.AppendLine("    '$name' = @'")
-    [void]$sb.AppendLine($json.TrimEnd())
-    [void]$sb.AppendLine("'@")
+    [void]$pack.Append($name).Append([char]0).Append($json.TrimEnd()).Append([char]0)
 }
 foreach ($name in 'MainWindow.xaml') {
     $xaml = Read-Utf8 (Join-Path $src "ui\$name")
-    if ($xaml -match "(?m)^'@") { throw "$name містить рядок, що починається з '@" }
     [xml]$xaml | Out-Null   # розмітка має бути коректним XML
-    [void]$sb.AppendLine("    '$name' = @'")
-    [void]$sb.AppendLine($xaml.TrimEnd())
-    [void]$sb.AppendLine("'@")
+    [void]$pack.Append($name).Append([char]0).Append($xaml.TrimEnd()).Append([char]0)
 }
-[void]$sb.AppendLine('}')
+$bytes = [Text.Encoding]::UTF8.GetBytes($pack.ToString())
+$ms = New-Object IO.MemoryStream
+$gz = New-Object IO.Compression.GZipStream $ms, ([IO.Compression.CompressionLevel]::Optimal)
+$gz.Write($bytes, 0, $bytes.Length); $gz.Dispose()
+$b64 = [Convert]::ToBase64String($ms.ToArray())
+[void]$sb.AppendLine('$script:D9Embedded = @{}')
+[void]$sb.AppendLine('& {')
+[void]$sb.AppendLine("    `$text = '" + (([regex]::Matches($b64, '.{1,120}') | ForEach-Object Value) -join "`n") + "'")
+[void]$sb.AppendLine('    $packed = [Convert]::FromBase64String(($text -replace ''\s'', ''''))')
+[void]$sb.AppendLine(@'
+    $gz = New-Object IO.Compression.GZipStream (New-Object IO.MemoryStream (, $packed)), ([IO.Compression.CompressionMode]::Decompress)
+    $parts = (New-Object IO.StreamReader $gz, ([Text.Encoding]::UTF8)).ReadToEnd().Split([char]0)
+    for ($i = 0; $i + 1 -lt $parts.Count; $i += 2) { $script:D9Embedded[$parts[$i]] = $parts[$i + 1] }
+}
+'@)
 [void]$sb.AppendLine('#endregion D9-COMPILED')
 
-# Великі бази — у коментарі в кінці файлу (читає Get-D9TrailingBlob): як рядкові константи вони
-# сповільнювали кожен запуск на ~3 с, а коментар PowerShell лише розбирає
+# Великі бази — в окремому файлі Debora.dat (читає Get-D9TrailingBlob): як рядкові константи вони
+# сповільнювали кожен запуск на ~3 с, а коментарем у кінці Debora.ps1 — ще на ≈0,14 с (розбір і AMSI)
 $data = New-Object Text.StringBuilder
 [void]$data.AppendLine('<#D9-DATA')
 # Іконки програм (knowledge/app-icons/*.png, збирає build\Update-AppIcons.ps1): «id<TAB>base64» у gzip
@@ -131,7 +141,7 @@ foreach ($name in $knowledgeFiles) {
 [void]$data.AppendLine('D9-DATA#>')
 
 $compiled = [regex]::Replace($main, $pattern, { param($m) $sb.ToString().TrimEnd() })
-$compiled = $compiled.TrimEnd() + "`r`n`r`n" + $data.ToString()
+$compiled = $compiled.TrimEnd() + "`r`n"
 if ($Version) {
     $compiled = $compiled -replace "\`$script:D9Version\s*=\s*'[^']*'", "`$script:D9Version  = '$Version'"
 }
@@ -141,17 +151,31 @@ Write-Host "4/5 Запис..." -ForegroundColor Cyan
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
 $outFile = Join-Path $OutDir 'Debora.ps1'
 [IO.File]::WriteAllText($outFile, $compiled, $utf8Bom)
+$datFile = Join-Path $OutDir 'Debora.dat'
+[IO.File]::WriteAllText($datFile, $data.ToString(), (New-Object Text.UTF8Encoding $false))
 Copy-Item (Join-Path $PSScriptRoot 'run.bat') (Join-Path $OutDir 'run.bat') -Force
 Copy-Item (Join-Path $PSScriptRoot 'run-menu.bat') (Join-Path $OutDir 'run-menu.bat') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Інструкція.txt') (Join-Path $OutDir 'Інструкція.txt') -Force
 $hash = (Get-FileHash $outFile -Algorithm SHA256).Hash.ToLower()
-[IO.File]::WriteAllText((Join-Path $OutDir 'SHA256SUMS'), "$hash  Debora.ps1`n", (New-Object Text.UTF8Encoding $false))
+$datHash = (Get-FileHash $datFile -Algorithm SHA256).Hash.ToLower()
+[IO.File]::WriteAllText((Join-Path $OutDir 'SHA256SUMS'), "$hash  Debora.ps1`n$datHash  Debora.dat`n", (New-Object Text.UTF8Encoding $false))
 
 # 5. Перевірка результату парсером
 Write-Host "5/5 Перевірка парсером..." -ForegroundColor Cyan
 $parseErrors = $null
 [void][Management.Automation.Language.Parser]::ParseFile($outFile, [ref]$null, [ref]$parseErrors)
 if ($parseErrors) { $parseErrors | ForEach-Object { Write-Host "  $($_.Message) @ $($_.Extent.StartLineNumber)" -ForegroundColor Red }; throw "Зібраний файл не розбирається" }
+# Самоперевірка вікна в окремому процесі (без показу): ловить помилки, яких парсер не бачить
+# (наприклад, вбудована конфігурація не розпакувалась) — до того, як збірка потрапить у Live\
+$selfLog = Join-Path ([IO.Path]::GetTempPath()) "d9-selftest-$PID.log"
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $outFile -Gui -SelfTest -LogPath $selfLog *> $null
+$selfCode = $LASTEXITCODE
+if ($selfCode -ne 0) {
+    $tail = if (Test-Path $selfLog) { (Get-Content $selfLog -Tail 3 -Encoding UTF8) -join "`n" } else { '' }
+    throw "Самоперевірка зібраного файлу не пройшла (код $selfCode):`n$tail"
+}
+if (Test-Path $selfLog) { [IO.File]::Delete($selfLog) }
+Write-Host "    самоперевірка вікна: OK"
 
 $size = [math]::Round((Get-Item $outFile).Length / 1KB, 1)
 Write-Host ""

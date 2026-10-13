@@ -14,7 +14,9 @@ function Get-D9TrailingBlob {
     param([Parameter(Mandatory)][string]$Name)
     if ($null -eq $script:D9TrailingData) {
         $script:D9TrailingData = @{}
+        # Debora.dat поруч зі скриптом (0.39.0+); у старіших збірках — коментар у кінці самого Debora.ps1
         $path = $script:D9ScriptPath
+        if ($path) { $dat = [IO.Path]::ChangeExtension($path, '.dat'); if (Test-Path -LiteralPath $dat) { $path = $dat } }
         if ($path -and (Test-Path -LiteralPath $path)) {
             $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
             $start = $text.LastIndexOf('<#D9-DATA')

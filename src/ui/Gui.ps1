@@ -55,6 +55,59 @@ function Join-D9RowHint {
     (@($args | ForEach-Object { "$_".Trim() } | Where-Object { $_ -and $_ -ne '—' }) -join ' · ')
 }
 
+# Ярлик, що відкриває вікно одразу з правами адміністратора: powershell.exe з Debora.ps1 і позначкою
+# «Запуск від імені адміністратора» (біт 0x20 у байті 0x15 файлу .lnk). Через run.bat запуск довший на ≈0,5 с:
+# cmd, перевірка прав і ще один PowerShell лише для того, щоб попросити підвищення.
+function Set-D9DesktopShortcut {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Script)
+    $sc = (New-Object -ComObject WScript.Shell).CreateShortcut($Path)
+    $sc.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $sc.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Script`" -Gui"
+    $sc.WorkingDirectory = Split-Path $Script
+    $sc.WindowStyle = 7   # згорнуто: консоль не блимає до -WindowStyle Hidden
+    $sc.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"
+    $sc.Description = 'Debora'
+    $sc.Save()
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $bytes[0x15] = $bytes[0x15] -bor 0x20
+    [IO.File]::WriteAllBytes($Path, $bytes)
+}
+
+# Розігрів WPF у фоновому STA-потоці одразу після завантаження модулів: перше розбирання розмітки
+# (завантаження й JIT коду WPF) триває ≈170 мс, повторне — ≈40 мс. Поки потік розбирає копію розмітки,
+# основний читає журнал, каталог і відомості про систему; потім вікно будується вже «теплим» WPF.
+function Start-D9GuiWarmup {
+    try {
+        Initialize-D9GuiTypes
+        Add-Type -AssemblyName System.Xaml
+        $refs = @([Windows.Markup.XamlReader], [System.Xaml.XamlType], [Windows.DependencyObject], [Windows.UIElement]) | ForEach-Object { $_.Assembly.Location }
+        Add-D9CachedType 'D9Warmup' @'
+using System.Threading;
+public static class D9Warmup {
+    public static void Start(string xaml) {
+        var t = new Thread(() => { try { System.Windows.Markup.XamlReader.Parse(xaml); } catch { } });
+        t.IsBackground = true;
+        t.SetApartmentState(ApartmentState.STA);
+        t.Start();
+    }
+}
+'@ -References $refs
+        [D9Warmup]::Start((Get-D9UiText 'MainWindow.xaml'))
+    } catch { }   # розігрів необов'язковий
+}
+
+# Старий ярлик Debora на run.bat (до 0.39.0) — переробити на швидкий прямий запуск
+function Update-D9DesktopShortcut {
+    if (-not $script:D9ScriptPath) { return }
+    $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Debora.lnk'
+    if (-not (Test-Path -LiteralPath $lnk)) { return }
+    try {
+        $target = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk).TargetPath
+        $bat = Join-Path (Split-Path $script:D9ScriptPath) 'run.bat'
+        if ($target -and [string]::Equals($target, $bat, [StringComparison]::OrdinalIgnoreCase)) { Set-D9DesktopShortcut $lnk $script:D9ScriptPath }
+    } catch { }
+}
+
 # base64 PNG → заморожене зображення WPF (для іконок програм)
 function ConvertTo-D9Image {
     param([string]$Base64)
@@ -462,6 +515,8 @@ function Show-D9Gui {
         # Для тестів: виконується всередині функції замість показу вікна (доступ до $ui, $state, $fill…)
         [scriptblock]$TestAction
     )
+    # Збій до початку роботи вікна: закриваємо вже показане вікно й передаємо помилку далі (Main відкриє меню)
+    trap { if (-not $TestAction -and $win -and $win.IsVisible) { $win.Close() }; break }
     Initialize-D9GuiTypes
     Add-D9BootMark 'gui-types'
     $script:D9IsDark = Test-D9DarkTheme
@@ -498,6 +553,7 @@ function Show-D9Gui {
     }
     $isAdmin = Test-D9IsAdmin
     $state = @{ Job = $null; Scan = $null; Checklist = $null; ReportPath = $null; Categories = $null; Oem = $null; Packages = $null; TweakRows = $null }
+    $state.NoWelcome = [bool]$TestAction   # тести й самоперевірка: без модальних вікон і стартових кроків
 
     # ---------- шапка ----------
     $s = $SystemInfo
@@ -517,6 +573,17 @@ function Show-D9Gui {
         } catch { [void][Windows.MessageBox]::Show($win, (T-D9 'Права адміністратора не надано — Debora лишається в режимі перегляду.'), 'Debora') }
     })
     $ui.DriverFolder.Text = $DriverDir
+
+    # ---------- показ ----------
+    # Вікно показуємо одразу після шапки, а обробники вкладок (≈0,45 с першого виконання коду) підключаємо вже
+    # при видимому вікні; цикл повідомлень — PushFrame у кінці функції (замість ShowDialog), тож обробники
+    # й далі бачать змінні цієї функції. Збій під час підключення закриває вікно (Main покаже текстове меню).
+    if (-not $TestAction) {
+        if ($env:D9_BOOT_EXIT) { $win.WindowStartupLocation = 'Manual'; $win.WindowState = 'Normal'; $win.Left = -20000; $win.ShowActivated = $false; $win.ShowInTaskbar = $false }
+        $win.Show()
+        $win.Dispatcher.Invoke([action]{ }, [Windows.Threading.DispatcherPriority]::Background)   # перше малювання
+        Add-D9BootMark 'shown'
+    }
 
     # ---------- фонове виконання ----------
     $sync = [hashtable]::Synchronized(@{ Log = New-Object 'System.Collections.Concurrent.ConcurrentQueue[string]'; Progress = $null
@@ -2266,9 +2333,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
 
     # ---------- старт ----------
-    # Вікно з'являється одразу, а дані підвантажуються після першого малювання — кроками з пріоритетом
-    # Background, щоб між ними вікно перемальовувалось і відповідало (раніше все це йшло в Loaded до показу)
-    $win.Add_Loaded({ Add-D9BootMark 'loaded'; $timer.Start() })
+    # Що підвантажити після показу вікна (запускаються в кінці функції)
     $startupSteps = @(
         {
             $lastScan = Get-ChildItem (Get-D9ScanDir) -Filter '*.json' -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
@@ -2283,19 +2348,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         }
         { & $loadTweakStates; Add-D9BootMark 'tweaks-job' }
         { $prev = Get-D9Checklist; if ($prev) { & $fillChecklist $prev }; & $fillSessions; Add-D9BootMark 'sessions' }
-        { & $refreshMaintenance; & $refreshSchedule; Add-D9BootMark 'maintenance' }
+        { & $refreshMaintenance; & $refreshSchedule; Update-D9DesktopShortcut; Add-D9BootMark 'maintenance' }
         {
             Add-D9BootMark 'ready'; Write-D9LogFileLine (Get-D9BootReport)
             # Замір швидкості запуску (розробка): D9_BOOT_EXIT=1 — закрити вікно, щойно все завантажено
             if ($env:D9_BOOT_EXIT) { $win.Close() }
         }
     )
-    $win.Add_ContentRendered({
-        if ($state.StartupQueued -or $state.NoWelcome) { return }   # тести показують вікно самі й керують задачами
-        $state.StartupQueued = $true
-        Add-D9BootMark 'rendered'
-        foreach ($step in $startupSteps) { [void]$win.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [action]$step) }
-    })
     # Список автозавантаження читаємо при першому відкритті вкладки (щоб не займати фоновий потік на старті)
     $ui.Tabs.Add_SelectionChanged({
         param($sender, $e)
@@ -2312,16 +2371,14 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if ($ui.Tabs.SelectedItem.Uid -eq 'prefs') { & $fillPrefs }
     })
     # Перший запуск: коротко «з чого почати» (один раз; позначка — HKCU:\Software\Debora\Welcomed)
-    $win.Add_ContentRendered({
+    $checkWelcome = {
         if ($env:D9_BOOT_EXIT) { return }
-        if ($state.WelcomeChecked -or $state.NoWelcome) { return }
-        $state.WelcomeChecked = $true
         $key = 'HKCU:\Software\Debora'
         if ((Get-ItemProperty $key -Name Welcomed -ErrorAction SilentlyContinue).Welcomed) { return }
         & $showWelcome
         try { if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }; Set-ItemProperty $key -Name Welcomed -Value 1 -Type DWord } catch { }
         & $offerShortcut
-    })
+    }
     $showWelcome = {
         $steps = @(
             (T-D9 'Запускайте Debora через run.bat — з правами адміністратора. Без них можна лише дивитися, але не змінювати.')
@@ -2334,19 +2391,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         Show-D9GuideDialog $win (T-D9 'З чого почати') (T-D9 'Debora перевіряє, прибирає й налаштовує Windows. Кілька порад на початок:') $steps @() | Out-Null
     }
     $offerShortcut = {
-        # Ярлик на робочому столі (лише за згодою): запуск через run.bat, тобто одразу з правами адміністратора
+        # Ярлик на робочому столі (лише за згодою): одразу з правами адміністратора (Set-D9DesktopShortcut)
         if ($script:D9ScriptPath) {
             $bat = Join-Path (Split-Path $script:D9ScriptPath) 'run.bat'
             $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Debora.lnk'
             if ((Test-Path $bat) -and -not (Test-Path $lnk) -and [Windows.MessageBox]::Show($win, (T-D9 'Створити ярлик Debora на робочому столі?'), 'Debora', 'YesNo', 'Question') -eq 'Yes') {
-                try {
-                    $sc = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
-                    $sc.TargetPath = $bat; $sc.WorkingDirectory = (Split-Path $bat); $sc.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"; $sc.Save()
-                } catch { & $log (T-D9 'Не вдалося створити ярлик: {0}' $_.Exception.Message) }
+                try { Set-D9DesktopShortcut $lnk $script:D9ScriptPath }
+                catch { & $log (T-D9 'Не вдалося створити ярлик: {0}' $_.Exception.Message) }
             }
         }
     }
-    $state.NoWelcome = [bool]$TestAction   # тести й самоперевірка: без модальних вікон
     $win.Add_Closing({ param($sender, $e)
         if ($state.Job -and -not $env:D9_BOOT_EXIT -and -not $state.NoWelcome) {
             if ([Windows.MessageBox]::Show($win, (T-D9 'Зараз виконується операція. Закрити програму все одно?'), 'Debora', 'YesNo', 'Warning') -ne 'Yes') { $e.Cancel = $true }
@@ -2354,7 +2408,6 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     $win.Add_Closed({ $timer.Stop() })
     Add-D9BootMark 'handlers'
-    if ($env:D9_BOOT_EXIT) { $win.WindowStartupLocation = 'Manual'; $win.WindowState = 'Normal'; $win.Left = -20000; $win.ShowActivated = $false; $win.ShowInTaskbar = $false }
     if ($TestAction) { return (. $TestAction) }
     # Необроблена помилка в обробнику закривала вікно без сліду (ні в журналі, ні в подіях Windows) —
     # тепер її записуємо з місцем у коді, показуємо й продовжуємо роботу
@@ -2367,6 +2420,11 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         try { & $setBusy $false $null } catch { }
         [void][Windows.MessageBox]::Show($win, (T-D9 'Сталася помилка інтерфейсу: {0}. Подробиці — у журналі; програма продовжує роботу.' $ex.Message), 'Debora', 'OK', 'Error')
     })
-    try { [void]$win.ShowDialog() }
+    # Стартові дані — кроками з пріоритетом Background, щоб між ними вікно перемальовувалось і відповідало
+    $timer.Start()
+    foreach ($step in @($startupSteps) + @($checkWelcome)) { [void]$win.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [action]$step) }
+    $frame = New-Object Windows.Threading.DispatcherFrame
+    $win.Add_Closed({ $frame.Continue = $false })
+    try { if ($win.IsVisible) { [Windows.Threading.Dispatcher]::PushFrame($frame) } }
     catch { Write-D9Log (T-D9 'Збій інтерфейсу: {0}' "$($_.Exception.Message)`r`n$($_.ScriptStackTrace)") Error; throw }
 }

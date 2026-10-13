@@ -9,9 +9,17 @@
 AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 
 Describe 'Збірка' {
-    It 'створює один файл і SHA256SUMS' {
+    It 'створює Debora.ps1, бази в Debora.dat і SHA256SUMS для обох' {
         Test-Path $file | Should -BeTrue
-        Get-Content (Join-Path $out 'SHA256SUMS') | Should -Match '^[0-9a-f]{64}  Debora\.ps1$'
+        Test-Path (Join-Path $out 'Debora.dat') | Should -BeTrue
+        $sums = @(Get-Content (Join-Path $out 'SHA256SUMS'))
+        $sums[0] | Should -Match '^[0-9a-f]{64}  Debora\.ps1$'
+        $sums[1] | Should -Match '^[0-9a-f]{64}  Debora\.dat$'
+        Get-Content $file -Raw | Should -Not -Match '(?m)^<#D9-DATA\s*$'   # великі бази не сповільнюють розбір скрипта
+    }
+    It 'стиснена конфігурація розпаковується: усі JSON і розмітка на місці' {
+        $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ". { `$s = [IO.File]::ReadAllText('$file'); `$a = `$s.IndexOf('`$script:D9Embedded = @{}'); `$b = `$s.IndexOf('#endregion D9-COMPILED'); Invoke-Expression `$s.Substring(`$a, `$b - `$a); (`$script:D9Embedded.Keys | Sort-Object) -join ',' }" 2>&1 | Out-String
+        foreach ($n in 'tweaks.json', 'checks.json', 'apps.json', 'lang-en-gui.json', 'MainWindow.xaml') { $output | Should -Match ([regex]::Escape($n)) }
     }
     It 'файл у UTF-8 з BOM' {
         $bytes = [IO.File]::ReadAllBytes($file)[0..2]

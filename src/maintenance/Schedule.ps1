@@ -154,6 +154,8 @@ function Install-D9AppCopy {
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $dst = Join-Path $dir 'Debora.ps1'
     Copy-Item -LiteralPath $SourceScript -Destination $dst -Force
+    $dat = [IO.Path]::ChangeExtension($SourceScript, '.dat')   # бази пристроїв і значків
+    if (Test-Path -LiteralPath $dat) { Copy-Item -LiteralPath $dat -Destination (Join-Path $dir 'Debora.dat') -Force }
     # Спершу копія, потім замок: SYSTEM і адміністратори — повний доступ, користувачі — лише читання (успадковується файлом)
     $out = & icacls.exe $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' 2>&1
     if ($LASTEXITCODE -ne 0) { throw (T-D9 'Не вдалося захистити папку програми: {0}' "$out") }

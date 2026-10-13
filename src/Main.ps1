@@ -274,8 +274,9 @@ $script:D9KnowledgeDir = Join-Path (Split-Path $script:D9SrcRoot -Parent) 'knowl
 $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 #endregion D9-LOAD
 Add-D9BootMark 'modules'
+if ($PSCmdlet.ParameterSetName -eq 'Gui') { Start-D9GuiWarmup; Add-D9BootMark 'warmup' }   # паралельно з рештою підготовки
 
-$script:D9Version  = '0.38.0-dev'
+$script:D9Version  = '0.39.0-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен

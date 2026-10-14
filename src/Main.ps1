@@ -173,6 +173,10 @@ param(
     [Parameter(ParameterSetName = 'Debloat', Mandatory)]
     [switch]$Debloat,
 
+    # Що з ваших змін скасувала Windows (після оновлень); з -Yes — повернути без запитання
+    [Parameter(ParameterSetName = 'Guard', Mandatory)]
+    [switch]$Guard,
+
     [Parameter(ParameterSetName = 'Setup', Mandatory)]
     [switch]$Setup,
 
@@ -251,6 +255,7 @@ param(
     [Parameter(ParameterSetName = 'Uninstall')]
     [Parameter(ParameterSetName = 'Debloat')]
     [Parameter(ParameterSetName = 'Setup')]
+    [Parameter(ParameterSetName = 'Guard')]
     [switch]$Yes,
 
     [ValidateSet('auto', 'uk', 'en')]
@@ -276,7 +281,7 @@ $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 Add-D9BootMark 'modules'
 if ($PSCmdlet.ParameterSetName -eq 'Gui') { Start-D9GuiWarmup; Add-D9BootMark 'warmup' }   # паралельно з рештою підготовки
 
-$script:D9Version  = '0.39.1-dev'
+$script:D9Version  = '0.40.0-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен
@@ -657,6 +662,22 @@ switch ($PSCmdlet.ParameterSetName) {
         $worst = @($all | Where-Object { -not $_.Removable } | ForEach-Object { (Get-D9DiskVerdict $_).Level })
         if ($worst -contains 'bad') { Write-D9Log (T-D9 'Є несправний диск: негайно скопіюйте важливі файли й замініть диск.') Error; exit $ExitCodes.Partial }
         exit $ExitCodes.Ok
+    }
+
+    'Guard' {
+        Write-Host ""
+        $desired = @(Get-D9GuardDesired)
+        Write-Host (T-D9 'Зміни, які Debora тримає за журналом: {0}' $desired.Count) -ForegroundColor Cyan
+        $items = @(Find-D9GuardDrift -Catalog $catalog -Desired $desired)
+        try { Save-D9GuardStatus -SystemInfo $sys -Drift $items.Count } catch { }
+        if (-not $items) { Write-D9Log (T-D9 'Усі ваші зміни на місці — Windows нічого не повернула.') Ok; exit $ExitCodes.Ok }
+        Write-Host (T-D9 'Windows скасувала: {0}' $items.Count) -ForegroundColor Yellow
+        foreach ($i in $items) { Write-Host "  - $($i.Text)" }
+        if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
+        if (-not (Confirm-D9 (T-D9 'Повернути {0} змін?' $items.Count))) { exit $ExitCodes.Cancelled }
+        $r = Restore-D9GuardDrift -Items $items -SystemInfo $sys
+        Write-D9Log (T-D9 'Повернуто: {0} з {1}. Відкат: -Undo {2}' $r.Fixed $items.Count $r.Session.id) $(if ($r.Failed) { 'Warn' } else { 'Ok' })
+        exit $(if ($r.Failed) { $ExitCodes.Partial } else { $ExitCodes.Ok })
     }
 
     'Debloat' {

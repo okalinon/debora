@@ -496,6 +496,15 @@
     "Зміна застосується після завершення поточної задачі — перезапустіть Debora.": "The change applies after the current task finishes — restart Debora.",
     "Приховані знахідки повернуто: {0}. Вони з'являться після наступного сканування.": "Hidden findings restored: {0}. They will appear after the next scan.",
     "змін: {0}": "changes: {0}",
-    "встановлено {0}": "installed {0}"
+    "встановлено {0}": "installed {0}",
+    "Windows скасувала ваші зміни: {0} (наприклад: {1}). Так буває після оновлень Windows.": "Windows undid {0} of your changes (for example: {1}). This happens after Windows updates.",
+    "Більше не повертати: {0}": "No longer restoring: {0}",
+    "Не вдалося зберегти вибір: {0}": "Could not save the choice: {0}",
+    "Не вдалося повернути: {0}": "Could not restore: {0}",
+    "Перевірка змін після оновлень Windows": "Checking changes after Windows updates",
+    "Повернення змін, скасованих Windows": "Restoring changes undone by Windows",
+    "Повернути": "Restore",
+    "Повернути зміни": "Restore changes",
+    "Ці зміни ви застосували через Debora, а Windows (зазвичай після оновлення) повернула їх назад. Позначене Debora поверне окремою сесією — її можна відкотити в «Журналі змін». З чого знімете галочку, Debora більше не повертатиме.": "You applied these changes with Debora, and Windows (usually after an update) reverted them. Debora will restore the checked ones as a separate session that you can undo in the Change log. Unchecked items will no longer be restored."
   }
 }

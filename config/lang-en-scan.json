@@ -464,6 +464,8 @@
     "Помилки файлової системи на системному диску: {0} за {1} днів (остання {2})": "File system errors on the system drive: {0} in {1} days (last {2})",
     "SMART диска поки чистий (невиправних помилок 0): можливо, це збої зв'язку з диском — оновіть прошивку й драйвер накопичувача і стежте, чи події повторюються.": "The drive's SMART is clean so far (0 uncorrectable errors): these may be communication glitches with the drive — update the drive firmware and storage driver and watch whether the events repeat.",
     "Не вдалося зберегти позначку виправлення: {0}": "Couldn't save the fix mark: {0}",
-    "приховано вами: {0}": "hidden by you: {0}"
+    "приховано вами: {0}": "hidden by you: {0}",
+    "Windows скасувала ваші зміни: {0}": "Windows undid your changes: {0}",
+    "Ці зміни ви застосували через Debora, а Windows (зазвичай після оновлення) або сама програма повернула їх назад: {0}. Debora поверне їх (окремою сесією в «Журналі змін»).": "You applied these changes with Debora, and Windows (usually after an update) or the program itself reverted them: {0}. Debora will restore them (as a separate session in the Change log)."
   }
 }

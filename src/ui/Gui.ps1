@@ -542,11 +542,11 @@ function Show-D9Gui {
                    'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'PrefLanguage', 'PrefTheme', 'PrefHiddenText', 'BtnPrefShowHidden', 'BtnPrefUnhideAll', 'BtnPrefWelcome', 'PrefToasts', 'PrefAbout', 'BtnPrefData', 'BtnPrefLogs', 'BtnPrefReports', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
-                   'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
+                   'ChkMtGuard', 'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid', 'StartupSelText',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
                    'BtnDisksRefresh', 'DisksState', 'DisksList', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset',
-                   'UndoBar', 'UndoText', 'BtnUndoLast', 'BtnUndoClose', 'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
+                   'GuardBar', 'GuardText', 'BtnGuardShow', 'BtnGuardClose', 'UndoBar', 'UndoText', 'BtnUndoLast', 'BtnUndoClose', 'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
                    'ChkSuDrivers', 'ChkSuDebloat', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'BtnSuPickApps', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
@@ -818,6 +818,44 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if (-not $id) { return }
         $state.UndoId = $null; $ui.UndoBar.Visibility = 'Collapsed'
         & $startJob (T-D9 'Відкат змін') { param($a) Undo-D9Session -Id $a.Id } @{ Id = $id } { & $fillSessions; & $loadTweakStates; [void][Windows.MessageBox]::Show($win, (T-D9 'Зміни відкочено.'), 'Debora') }
+    })
+    # ---------- Зміни, які скасувала Windows (Guard.ps1) ----------
+    # Перевірка — у фоні після запуску, коли змінилась збірка Windows, минула доба або минулого разу щось знайшлось
+    $showGuardBar = {
+        $items = @($state.GuardItems)
+        if ($items.Count) {
+            $ui.GuardText.Text = T-D9 'Windows скасувала ваші зміни: {0} (наприклад: {1}). Так буває після оновлень Windows.' $items.Count $items[0].Text
+            $ui.GuardBar.Visibility = 'Visible'
+        } else { $ui.GuardBar.Visibility = 'Collapsed' }
+    }
+    $checkGuard = {
+        & $startJob (T-D9 'Перевірка змін після оновлень Windows') { param($a) @(Find-D9GuardDrift -Catalog $a.Catalog) } @{ Catalog = $Catalog } {
+            param($r)
+            $state.GuardItems = @($r | Where-Object { $_ -and $_.Key })
+            try { Save-D9GuardStatus -SystemInfo $SystemInfo -Drift @($state.GuardItems).Count } catch { }
+            & $showGuardBar
+        } -Kind 'guard'
+    }
+    $ui.BtnGuardClose.Add_Click({ $ui.GuardBar.Visibility = 'Collapsed' })
+    $ui.BtnGuardShow.Add_Click({
+        $items = @($state.GuardItems)
+        if (-not $items) { return }
+        if (-not (& $needAdmin)) { return }
+        $rows = @($items | ForEach-Object { @{ Id = $_.Key; Text = $_.Text; Checked = $true } })
+        $w = New-D9CheckListWindow $win (T-D9 'Повернути зміни') (T-D9 'Ці зміни ви застосували через Debora, а Windows (зазвичай після оновлення) повернула їх назад. Позначене Debora поверне окремою сесією — її можна відкотити в «Журналі змін». З чого знімете галочку, Debora більше не повертатиме.') $rows (T-D9 'Повернути')
+        if (-not $w.ShowDialog()) { return }
+        $keep = @($w.Tag | Where-Object { $_.IsChecked } | ForEach-Object { [string]$_.Tag })
+        $restore = @($items | Where-Object { $keep -contains $_.Key })
+        $skip = @($items | Where-Object { $keep -notcontains $_.Key })
+        if ($skip) { try { Add-D9GuardIgnore -Items $skip; & $log (T-D9 'Більше не повертати: {0}' (($skip | ForEach-Object Text) -join '; ')) } catch { & $log (T-D9 'Не вдалося зберегти вибір: {0}' $_.Exception.Message) } }
+        $state.GuardItems = @(); & $showGuardBar
+        if (-not $restore) { return }
+        & $startJob (T-D9 'Повернення змін, скасованих Windows') { param($a) (Restore-D9GuardDrift -Items $a.Items -SystemInfo $a.Sys).Session } @{ Items = $restore; Sys = $SystemInfo } {
+            param($session)
+            & $fillSessions; & $loadTweakStates
+            $left = @($session.entries | Where-Object result -eq 'error')
+            if ($left) { & $log (T-D9 'Не вдалося повернути: {0}' $left.Count); $ui.LogExpander.IsExpanded = $true }
+        } -Kind 'guard:restore'
     })
     # Кнопки панелі задач
     $ui.BtnTaskStop.Add_Click({
@@ -2148,7 +2186,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     # ---------- Автоматичне обслуговування ----------
     $dayNames = [ordered]@{ Monday = (T-D9 'понеділок'); Tuesday = (T-D9 'вівторок'); Wednesday = (T-D9 'середа'); Thursday = (T-D9 'четвер'); Friday = (T-D9 'п''ятниця'); Saturday = (T-D9 'субота'); Sunday = (T-D9 'неділя') }
     foreach ($d in $dayNames.Values) { [void]$ui.MtDay.Items.Add($d) }
-    $mtBoxes = [ordered]@{ cleanup = 'ChkMtCleanup'; defender = 'ChkMtDefender'; apps = 'ChkMtApps'; drivers = 'ChkMtDrivers'; windowsUpdate = 'ChkMtWindows' }
+    $mtBoxes = [ordered]@{ guard = 'ChkMtGuard'; cleanup = 'ChkMtCleanup'; defender = 'ChkMtDefender'; apps = 'ChkMtApps'; drivers = 'ChkMtDrivers'; windowsUpdate = 'ChkMtWindows' }
     $readSchedule = {
         [pscustomobject]@{
             Steps = @($mtBoxes.Keys | Where-Object { $ui[$mtBoxes[$_]].IsChecked })
@@ -2349,6 +2387,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         { & $loadTweakStates; Add-D9BootMark 'tweaks-job' }
         { $prev = Get-D9Checklist; if ($prev) { & $fillChecklist $prev }; & $fillSessions; Add-D9BootMark 'sessions' }
         { & $refreshMaintenance; & $refreshSchedule; Update-D9DesktopShortcut; Add-D9BootMark 'maintenance' }
+        { $st = Get-D9GuardStatus; if ((Test-D9GuardDue $SystemInfo) -or ($st -and $st.drift -gt 0)) { & $checkGuard } }
         {
             Add-D9BootMark 'ready'; Write-D9LogFileLine (Get-D9BootReport)
             # Замір швидкості запуску (розробка): D9_BOOT_EXIT=1 — закрити вікно, щойно все завантажено

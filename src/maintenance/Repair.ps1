@@ -7,6 +7,7 @@
 $script:D9MaintenanceActions = [ordered]@{
     chkdskScan     = @{ Group = 12; Fn = 'Invoke-D9DiskCheck';          Title = 'Перевірити файлову систему диска' }
     enableRestore  = @{ Group = 19; Fn = 'Enable-D9SystemRestore';      Title = 'Увімкнути захист системи (точки відновлення)' }
+    guardRestore   = @{ Group = 24; Fn = 'Invoke-D9GuardRestoreStep';   Title = 'Повернути зміни, які скасувала Windows' }
     driverUpdate   = @{ Group = 29; Fn = 'Invoke-D9DriverUpdateStep';   Title = 'Знайти й встановити драйвери з інтернету (Microsoft Update Catalog)' }
     defenderUpdate = @{ Group = 43; Fn = 'Invoke-D9DefenderRepair';     Title = 'Увімкнути Захисник Windows і оновити антивірусні бази' }
     defenderScan   = @{ Group = 44; Fn = 'Invoke-D9DefenderScan';       Title = 'Перевірити комп''ютер Захисником Windows' }

@@ -280,6 +280,11 @@
     "Служба {0}: немає в системі": "Service {0}: not present",
     ", зупинити": ", stop",
     ", запустити": ", start",
-    "Служба {0}: {1} -> {2}{3}": "Service {0}: {1} -> {2}{3}"
+    "Служба {0}: {1} -> {2}{3}": "Service {0}: {1} -> {2}{3}",
+    "Windows скасувала: {0}": "Undone by Windows: {0}",
+    "Зміни, які Debora тримає за журналом: {0}": "Changes Debora keeps from its journal: {0}",
+    "Повернути {0} змін?": "Restore {0} changes?",
+    "Повернуто: {0} з {1}. Відкат: -Undo {2}": "Restored: {0} of {1}. Undo: -Undo {2}",
+    "Усі ваші зміни на місці — Windows нічого не повернула.": "All your changes are in place — Windows did not undo anything."
   }
 }

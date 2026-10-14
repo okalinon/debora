@@ -359,6 +359,18 @@ function Test-D9OtherDrivesSpace {
     New-D9Finding $Check suggestion (T-D9 'Майже заповнені диски: {0}' $list) (T-D9 'На заповненому диску не вистачає місця для нових файлів, а NTFS працює повільніше. Знайти, що займає місце, допоможуть WinDirStat чи WizTree (вкладка «Програми» → «Утиліти»).') @{ type = 'manual' }
 }
 
+# ======================= Зміни, які скасувала Windows =======================
+
+# Після оновлень Windows повертає Copilot, рекламу, застосунки, політики: порівнюємо журнал Debora з поточним станом
+function Test-D9GuardReverted {
+    param($Check, $Ctx)
+    $items = @(Find-D9GuardDrift -Catalog $Ctx.Catalog)
+    try { Save-D9GuardStatus -SystemInfo $Ctx.System -Drift $items.Count } catch { }
+    if (-not $items) { return }
+    $names = ($items | Select-Object -First 8 | ForEach-Object { $_.Text }) -join '; '
+    New-D9Finding $Check warning (T-D9 'Windows скасувала ваші зміни: {0}' $items.Count) (T-D9 'Ці зміни ви застосували через Debora, а Windows (зазвичай після оновлення) або сама програма повернула їх назад: {0}. Debora поверне їх (окремою сесією в «Журналі змін»).' $names) @{ type = 'maintenance'; action = 'guardRestore' }
+}
+
 # ======================= Записи від видалених програм =======================
 
 function Test-D9OrphanEntries {

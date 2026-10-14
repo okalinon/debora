@@ -265,6 +265,9 @@
     "Дані й про програму": "Data and about",
     "Папка даних": "Data folder",
     "Журнали": "Logs",
-    "Звіти": "Reports"
+    "Звіти": "Reports",
+    "Пізніше": "Later",
+    "Переглянути й повернути": "Review and restore",
+    "Повертати зміни, які скасувала Windows (після оновлень)": "Restore changes undone by Windows (after updates)"
   }
 }

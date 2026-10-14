@@ -7,6 +7,7 @@ $script:D9TaskName = 'Debora Maintenance'
 # Так завдання називалось до перейменування програми (до 0.19.0): прибираємо під час увімкнення/вимкнення
 $script:D9LegacyTaskName = 'Debloater9 Maintenance'
 $script:D9MaintenanceSteps = [ordered]@{
+    guard         = 'Повернення змін, які скасувала Windows (після оновлень)'
     cleanup       = 'Очищення диска (тимчасові файли, кеш оновлень, залишки інсталяторів)'
     defender      = 'Антивірусні бази Захисника'
     apps          = 'Оновлення програм (winget)'
@@ -24,7 +25,7 @@ function Get-D9MaintenanceStepName {
 function Get-D9MaintenanceConfigPath { Join-Path (Get-D9DataRoot) 'maintenance.json' }
 
 function Get-D9MaintenanceConfig {
-    $cfg = [ordered]@{ Steps = @('cleanup', 'defender', 'apps', 'drivers'); Day = 'Sunday'; Time = '12:00' }
+    $cfg = [ordered]@{ Steps = @('guard', 'cleanup', 'defender', 'apps', 'drivers'); Day = 'Sunday'; Time = '12:00' }
     $path = Get-D9MaintenanceConfigPath
     if (Test-Path $path) {
         try {
@@ -58,6 +59,10 @@ function Invoke-D9MaintenanceStep {
             [void](Invoke-D9Plan -Plan (New-D9Plan -Catalog $cat -TweakIds @($cat.Tweaks.id) -SystemInfo $SystemInfo) -SystemInfo $SystemInfo -Selection (T-D9 'автообслуговування: очищення') -NoRestorePoint)
             $freed = [math]::Max(0, (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID = '$env:SystemDrive'").FreeSpace - $before)
             return (T-D9 'звільнено {0}' (Format-D9Size $freed))
+        }
+        'guard' {
+            $r = Invoke-D9GuardRestoreStep
+            return $(if ($r.Fixed) { T-D9 'повернуто змін: {0}' $r.Fixed } else { T-D9 'усе на місці' })
         }
         'defender' { [void](Invoke-D9DefenderRepair); return (T-D9 'бази оновлено') }
         'apps' {

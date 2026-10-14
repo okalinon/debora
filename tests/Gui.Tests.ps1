@@ -429,3 +429,20 @@ Describe 'Кільце оцінки' {
         [math]::Round((Get-D9RingGeometry 75 118 11).Bounds.Width) | Should -Be 107
     }
 }
+
+Describe 'Смуга «Windows скасувала ваші зміни»' {
+    It 'з''являється з кількістю й прикладом, ховається, коли повертати нічого; розклад має галочку' {
+        $r = Invoke-InGui {
+            $state.GuardItems = @([pscustomobject]@{ Key = 'k1'; Tweak = 'a'; Text = 'Copilot — увімкнено' }, [pscustomobject]@{ Key = 'k2'; Tweak = 'b'; Text = 'реклама' })
+            & $showGuardBar
+            $shown = @{ Vis = [string]$ui.GuardBar.Visibility; Text = $ui.GuardText.Text }
+            $state.GuardItems = @(); & $showGuardBar
+            @{ Shown = $shown; After = [string]$ui.GuardBar.Visibility; Box = [bool]$ui.ChkMtGuard }
+        }
+        $r.Shown.Vis | Should -Be 'Visible'
+        $r.Shown.Text | Should -Match '2'
+        $r.Shown.Text | Should -Match 'Copilot'
+        $r.After | Should -Be 'Collapsed'
+        $r.Box | Should -BeTrue
+    }
+}

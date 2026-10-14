@@ -1328,6 +1328,7 @@
               <StackPanel>
                 <TextBlock Style="{StaticResource RowNote}" Margin="0,0,0,10"
                            Text="Раз на тиждень Debora сама створить точку відновлення й виконає вибране, потім просканує ПК і покаже сповіщення з підсумком. Працює, коли ви увійшли в Windows; пропущений запуск виконається при наступному вході."/>
+                <CheckBox x:Name="ChkMtGuard" Content="Повертати зміни, які скасувала Windows (після оновлень)" Margin="0,3"/>
                 <CheckBox x:Name="ChkMtCleanup" Content="Очищення диска (тимчасові файли, кеш оновлень, залишки інсталяторів)" Margin="0,3"/>
                 <CheckBox x:Name="ChkMtDefender" Content="Антивірусні бази Захисника" Margin="0,3"/>
                 <CheckBox x:Name="ChkMtApps" Content="Оновлення програм (winget)" Margin="0,3"/>
@@ -1495,8 +1496,18 @@
       </TabItem>
     </TabControl>
 
+    <!-- Смуги над журналом: повернуте Windows, швидкий відкат, поточна задача (одна під одною) -->
+    <StackPanel Grid.Row="1" Grid.Column="1">
+    <!-- Windows повернула зміни, які ви застосували (після оновлення): переглянути й повернути -->
+    <Border x:Name="GuardBar" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,10" Visibility="Collapsed" Background="#FFF4E5">
+      <DockPanel>
+        <Button x:Name="BtnGuardClose" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Пізніше" Margin="14,0,0,0" VerticalAlignment="Center"/>
+        <Button x:Name="BtnGuardShow" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Переглянути й повернути" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="GuardText" VerticalAlignment="Center" TextWrapping="Wrap"/>
+      </DockPanel>
+    </Border>
     <!-- Щойно застосовано зміни: швидкий відкат (зникає за хвилину або з новою задачею) -->
-    <Border x:Name="UndoBar" Grid.Row="1" Grid.Column="1" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,10" Visibility="Collapsed">
+    <Border x:Name="UndoBar" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,10" Visibility="Collapsed">
       <DockPanel>
         <Button x:Name="BtnUndoClose" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Закрити" Margin="14,0,0,0" VerticalAlignment="Center"/>
         <Button x:Name="BtnUndoLast" DockPanel.Dock="Right" Content="Відкотити" Margin="12,0,0,0" VerticalAlignment="Center"/>
@@ -1504,7 +1515,7 @@
       </DockPanel>
     </Border>
     <!-- Зараз виконується: назва, крок, шкала, таймер, оцінка часу; черга наступних задач -->
-    <Border x:Name="TaskPanel" Grid.Row="1" Grid.Column="1" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,12,18,12" Visibility="Collapsed">
+    <Border x:Name="TaskPanel" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,12,18,12" Visibility="Collapsed">
       <StackPanel>
         <DockPanel>
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
@@ -1538,6 +1549,7 @@
         </StackPanel>
       </StackPanel>
     </Border>
+    </StackPanel>
 
     <!-- Журнал виконання під вмістом -->
     <Expander x:Name="LogExpander" Grid.Row="2" Grid.Column="1" Header="Журнал виконання" Margin="40,0,40,8">

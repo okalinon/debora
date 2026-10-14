@@ -8,7 +8,7 @@ AfterAll { Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue }
 Describe 'Налаштування автообслуговування' {
     It 'типові: очищення, Захисник, програми, драйвери; неділя 12:00' {
         $c = Get-D9MaintenanceConfig
-        $c.Steps | Should -Be @('cleanup', 'defender', 'apps', 'drivers')
+        $c.Steps | Should -Be @('guard', 'cleanup', 'defender', 'apps', 'drivers')
         $c.Day | Should -Be 'Sunday'
         $c.Time | Should -Be '12:00'
     }

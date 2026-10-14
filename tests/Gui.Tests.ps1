@@ -347,6 +347,28 @@ Describe 'Вікно' {
         $r.N | Should -Be 1
     }
 
+    It '«Деблоат»: кнопки рівнів відмічають свій рівень і нижчі; лічильник показує, що щось перестане працювати' {
+        $r = Invoke-InGui {
+            $rows = @(
+                (New-D9Row @{ Title = 'Candy Crush'; Badge = 'a'; Enabled = $true; Tag = [pscustomobject]@{ Level = 'safe' } })
+                (New-D9Row @{ Title = 'Teams'; Badge = 'a'; Enabled = $true; Hint = 'чат'; Tag = [pscustomobject]@{ Level = 'recommended' } })
+                (New-D9Row @{ Title = 'Xbox'; Badge = 'a'; Enabled = $true; Hint = 'ігри'; Tag = [pscustomobject]@{ Level = 'max' } })
+                (New-D9Row @{ Title = 'Зроблено'; Badge = 'a'; Enabled = $false; Tag = [pscustomobject]@{ Level = 'safe' } })
+            )
+            Set-D9Items $ui.DebloatGrid $rows
+            $sel = { @($ui.DebloatGrid.ItemsSource | Where-Object Selected | ForEach-Object Title) -join ',' }
+            & $selectDebloatLevel 'safe'; $a = & $sel
+            & $selectDebloatLevel 'recommended'; $b = & $sel; $txt = $ui.DebloatSelText.Text
+            $ui.BtnDebloatMax.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent))); $c = & $sel
+            @{ A = $a; B = $b; C = $c; Txt = $txt; Level = $state.DebloatLevel }
+        }
+        $r.A | Should -Be 'Candy Crush'
+        $r.B | Should -Be 'Candy Crush,Teams'
+        $r.C | Should -Be 'Candy Crush,Teams,Xbox'
+        $r.Txt | Should -Match '2.*1'
+        $r.Level | Should -Be 'max'
+    }
+
     It 'загальний пошук: збіги за назвою, вибір повертає вкладку й запит' {
         $r = Invoke-InGui {
             $w = New-D9SearchWindow $win @([pscustomobject]@{ Text = 'Вимкнути телеметрію'; Sub = 'Деблоат'; Tab = 'debloat'; Query = 'телеметр' }, [pscustomobject]@{ Text = 'Google Chrome'; Sub = 'Програми'; Tab = 'apps'; Query = 'Chrome' })

@@ -396,6 +396,12 @@
     "усе на місці": "everything in place",
     "Повернути зміни, які скасувала Windows": "Restore changes undone by Windows",
     "Повернення змін, які скасувала Windows (після оновлень)": "Restoring changes undone by Windows (after updates)",
-    "Автозавантаження": "Startup"
+    "Автозавантаження": "Startup",
+    "Обережно": "Careful",
+    "Рекомендовано": "Recommended",
+    "Максимально": "Maximum",
+    "Перестане працювати: {0}": "Will stop working: {0}",
+    "рівень «{0}» з вкладки «Деблоат»": "level “{0}” from the Debloat tab",
+    "рівень «{0}»: застосунків {1}, налаштувань {2}": "level “{0}”: {1} apps, {2} settings"
   }
 }

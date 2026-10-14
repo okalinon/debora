@@ -9,6 +9,36 @@ function Get-D9DebloatConfig {
     $script:D9DebloatConfig
 }
 
+# Рівні деблоату: накопичуються («Рекомендовано» містить усе з «Обережно»). Поле level у debloat.json;
+# loses — що перестане працювати (показується в рядку й перед застосуванням).
+$script:D9DebloatLevels = [ordered]@{ safe = 1; recommended = 2; max = 3 }
+$script:D9DebloatLevelNames = @{ safe = 'Обережно'; recommended = 'Рекомендовано'; max = 'Максимально' }
+
+function Get-D9DebloatLevel {
+    param($Entry)
+    $l = [string]$Entry.level
+    if ($script:D9DebloatLevels.Contains($l)) { return $l }
+    if ($Entry.recommended) { 'recommended' } else { 'max' }   # старий формат (до 0.41.0)
+}
+
+function Get-D9DebloatLevelName {
+    param([string]$Level)
+    $n = $script:D9DebloatLevelNames[$Level]
+    if ($n) { T-D9 $n } else { $Level }
+}
+
+# Чи входить пункт рівня $Level у вибраний рівень $Target
+function Test-D9DebloatInLevel {
+    param([string]$Level, [string]$Target)
+    $a = $script:D9DebloatLevels[$Level]; $b = $script:D9DebloatLevels[$Target]
+    [bool]($a -and $b -and $a -le $b)
+}
+
+function Get-D9DebloatLoses {
+    param($Entry)
+    if ($Entry.loses) { Get-D9Text $Entry.loses } else { '' }
+}
+
 function Get-D9DebloatGroupName {
     param([string]$Id)
     $g = @((Get-D9DebloatConfig).groups) | Where-Object id -eq $Id | Select-Object -First 1
@@ -30,7 +60,9 @@ function Get-D9DebloatApps {
             Group       = [string]$a.group
             GroupName   = Get-D9DebloatGroupName $a.group
             GroupOrder  = $order[[string]$a.group]
-            Recommended = [bool]$a.recommended
+            Level       = (Get-D9DebloatLevel $a)
+            Loses       = (Get-D9DebloatLoses $a)
+            Recommended = (Test-D9DebloatInLevel (Get-D9DebloatLevel $a) 'recommended')
             Present     = $present
             Found       = @(@($state.installed) + @($state.provisioned) | ForEach-Object { ($_ -split '_')[0] } | Sort-Object -Unique)
         }
@@ -88,8 +120,8 @@ function Get-D9DebloatFeatures {
     param([Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo)
     $admin = Test-D9IsAdmin
     $sources = @(
-        @((Get-D9DebloatConfig).features) | ForEach-Object { [pscustomobject]@{ Tweak = (Get-D9Tweak $Catalog $_.id); Section = $_.section; Recommended = [bool]$_.recommended; Kind = 'tweak' } }
-        @((Get-D9DebloatConfig).items) | ForEach-Object { [pscustomobject]@{ Tweak = (ConvertTo-D9DebloatTweak $_); Section = $_.section; Recommended = [bool]$_.recommended; Kind = 'item' } }
+        @((Get-D9DebloatConfig).features) | ForEach-Object { [pscustomobject]@{ Tweak = (Get-D9Tweak $Catalog $_.id); Section = $_.section; Level = (Get-D9DebloatLevel $_); Loses = (Get-D9DebloatLoses $_); Kind = 'tweak' } }
+        @((Get-D9DebloatConfig).items) | ForEach-Object { [pscustomobject]@{ Tweak = (ConvertTo-D9DebloatTweak $_); Section = $_.section; Level = (Get-D9DebloatLevel $_); Loses = (Get-D9DebloatLoses $_); Kind = 'item' } }
     )
     foreach ($src in $sources) {
         $t = $src.Tweak
@@ -110,7 +142,9 @@ function Get-D9DebloatFeatures {
             Risk         = [string]$t.risk
             State        = $state
             Reason       = (Test-D9Applicable $t.requires $SystemInfo).Reason
-            Recommended  = $src.Recommended
+            Level        = $src.Level
+            Loses        = $src.Loses
+            Recommended  = (Test-D9DebloatInLevel $src.Level 'recommended')
         }
     }
 }
@@ -132,15 +166,27 @@ function New-D9DebloatCatalog {
     $tweaks += @($TweakIds | Where-Object { $_ } | ForEach-Object { Get-D9Tweak $Catalog $_ } | Where-Object { $_ })
     [pscustomobject]@{ Tweaks = $tweaks; Presets = @() }
 }
-# Рекомендований деблоат: рекомендовані застосунки, що є на ПК, і рекомендовані ще не застосовані налаштування
-function Get-D9DebloatRecommended {
-    param([Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo, [object[]]$Apps, [object[]]$Features)
+# Деблоат рівня $Level: застосунки цього й нижчих рівнів, що є на ПК, і ще не застосовані налаштування.
+# Loses — що перестане працювати (без повторів), Level — сам рівень.
+function Get-D9DebloatSelection {
+    param([Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo, [string]$Level = 'recommended', [object[]]$Apps, [object[]]$Features)
+    $Level = "$Level".ToLower(); if (-not $script:D9DebloatLevels.Contains($Level)) { $Level = 'recommended' }   # старий профіль без рівня
     if ($null -eq $Apps) { $Apps = @(Get-D9DebloatApps) }
     if ($null -eq $Features) { $Features = @(Get-D9DebloatFeatures $Catalog $SystemInfo) }
+    $a = @($Apps | Where-Object { $_.Present -and (Test-D9DebloatInLevel $_.Level $Level) })
+    $f = @($Features | Where-Object { $_.State -in 'notApplied', 'partial' -and (Test-D9DebloatInLevel $_.Level $Level) })
     [pscustomobject]@{
-        Packages = @($Apps | Where-Object { $_.Recommended -and $_.Present } | ForEach-Object Package)
-        TweakIds = @($Features | Where-Object { $_.Recommended -and $_.State -in 'notApplied', 'partial' } | ForEach-Object Id)
+        Level    = $Level
+        Packages = @($a | ForEach-Object Package)
+        TweakIds = @($f | ForEach-Object Id)
+        Loses    = @(@($a) + @($f) | ForEach-Object { $_.Loses } | Where-Object { $_ } | Select-Object -Unique)
     }
+}
+
+# Рекомендований деблоат (рівень «Рекомендовано»)
+function Get-D9DebloatRecommended {
+    param([Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo, [object[]]$Apps, [object[]]$Features)
+    Get-D9DebloatSelection -Catalog $Catalog -SystemInfo $SystemInfo -Level recommended -Apps $Apps -Features $Features
 }
 
 function Invoke-D9Debloat {

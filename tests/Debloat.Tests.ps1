@@ -30,8 +30,33 @@ Describe 'Конфіг деблоату' {
         @(Test-D9Catalog ([pscustomobject]@{ Tweaks = $tweaks; Presets = @() })) | Should -BeNullOrEmpty
         @($cfg.items).Count | Should -BeGreaterOrEqual 45
     }
-    It 'Xbox і «корисні» не рекомендовані (за замовчуванням не видаляються)' {
-        @((Get-D9DebloatConfig).apps | Where-Object { $_.group -in 'xbox', 'optional' -and $_.recommended }).Count | Should -Be 0
+    It 'Xbox (крім застарілого Companion) і «корисні» — лише на рівні «Максимально»' {
+        @((Get-D9DebloatConfig).apps | Where-Object { $_.group -in 'xbox', 'optional' -and $_.package -ne 'Microsoft.XboxApp' -and (Get-D9DebloatLevel $_) -ne 'max' }).Count | Should -Be 0
+    }
+    It 'рівні: кожен пункт має коректний рівень; «Рекомендовано» й «Максимально» з утратами пояснюють, що перестане працювати' {
+        $cfg = Get-D9DebloatConfig
+        $all = @($cfg.apps) + @($cfg.features) + @($cfg.items)
+        foreach ($e in $all) {
+            $who = "$($e.package)$($e.id)"
+            [string]$e.level | Should -BeIn @('safe', 'recommended', 'max') -Because $who
+            $e.PSObject.Properties['recommended'] | Should -BeNullOrEmpty -Because "$who — замість recommended тепер level"
+            if ($e.level -eq 'max') { $e.loses | Should -Not -BeNullOrEmpty -Because "$who — на «Максимально» людина має знати, що втрачає" }
+            if ($e.loses) {
+                $e.loses.uk | Should -Not -BeNullOrEmpty -Because $who
+                $e.loses.en | Should -Not -Match '[А-Яа-яІіЇїЄєҐґ]' -Because "$who — англійський текст без кирилиці"
+            }
+            if ($e.level -eq 'safe') { $e.loses | Should -BeNullOrEmpty -Because "$who — «Обережно» нічого корисного не забирає" }
+        }
+        foreach ($l in 'safe', 'recommended', 'max') { @($all | Where-Object level -eq $l).Count | Should -BeGreaterThan 10 -Because $l }
+    }
+    It 'рівні накопичуються; старий формат (recommended) розуміється' {
+        Test-D9DebloatInLevel 'safe' 'recommended' | Should -BeTrue
+        Test-D9DebloatInLevel 'recommended' 'safe' | Should -BeFalse
+        Test-D9DebloatInLevel 'max' 'max' | Should -BeTrue
+        Test-D9DebloatInLevel 'max' 'recommended' | Should -BeFalse
+        Get-D9DebloatLevel ([pscustomobject]@{ recommended = $true }) | Should -Be 'recommended'
+        Get-D9DebloatLevel ([pscustomobject]@{ recommended = $false }) | Should -Be 'max'
+        Get-D9DebloatLevelName 'safe' | Should -Be 'Обережно'
     }
 }
 
@@ -57,13 +82,30 @@ Describe 'Застосунки й рекомендації' {
     }
     It 'рекомендоване: Spotify і Clipchamp, без Xbox і Будильників; лише незастосовані налаштування' {
         $features = @(
-            [pscustomobject]@{ Id = 'privacy.ads-tips'; Recommended = $true; State = 'notApplied' }
-            [pscustomobject]@{ Id = 'privacy.telemetry'; Recommended = $true; State = 'applied' }
-            [pscustomobject]@{ Id = 'apps.remove-onedrive'; Recommended = $false; State = 'notApplied' }
+            [pscustomobject]@{ Id = 'privacy.ads-tips'; Level = 'safe'; State = 'notApplied' }
+            [pscustomobject]@{ Id = 'privacy.telemetry'; Level = 'safe'; State = 'applied' }
+            [pscustomobject]@{ Id = 'apps.remove-onedrive'; Level = 'max'; Loses = 'OneDrive'; State = 'notApplied' }
         )
         $r = Get-D9DebloatRecommended $catalog $sys $apps $features
         $r.Packages | Should -Be @('*Spotify*', 'Clipchamp.Clipchamp')
         $r.TweakIds | Should -Be @('privacy.ads-tips')
+        $r.Loses | Should -Match 'Clipchamp'
+    }
+    It 'рівні: «Обережно» — лише Spotify; «Максимально» — усе, з переліком утрат без повторів' {
+        $features = @(
+            [pscustomobject]@{ Id = 'privacy.ads-tips'; Level = 'safe'; State = 'notApplied' }
+            [pscustomobject]@{ Id = 'apps.remove-onedrive'; Level = 'max'; Loses = 'OneDrive'; State = 'notApplied' }
+        )
+        $s = Get-D9DebloatSelection -Catalog $catalog -SystemInfo $sys -Level safe -Apps $apps -Features $features
+        $s.Packages | Should -Be @('*Spotify*')
+        @($s.Loses).Count | Should -Be 0
+        $m = Get-D9DebloatSelection -Catalog $catalog -SystemInfo $sys -Level max -Apps $apps -Features $features
+        @($m.Packages).Count | Should -Be 4
+        $m.TweakIds | Should -Be @('privacy.ads-tips', 'apps.remove-onedrive')
+        $m.Loses | Should -Contain 'OneDrive'
+        @($m.Loses | Where-Object { $_ -match 'Game Bar' }).Count | Should -Be 1
+        # Невідомий рівень (старий профіль майстра) — як «Рекомендовано»
+        (Get-D9DebloatSelection -Catalog $catalog -SystemInfo $sys -Level '' -Apps $apps -Features $features).Level | Should -Be 'recommended'
     }
 }
 

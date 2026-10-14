@@ -173,6 +173,11 @@ param(
     [Parameter(ParameterSetName = 'Debloat', Mandatory)]
     [switch]$Debloat,
 
+    # Рівень деблоату: Safe («Обережно»), Recommended, Max («Максимально»)
+    [Parameter(ParameterSetName = 'Debloat')]
+    [ValidateSet('Safe', 'Recommended', 'Max')]
+    [string]$Level = 'Recommended',
+
     # Що з ваших змін скасувала Windows (після оновлень); з -Yes — повернути без запитання
     [Parameter(ParameterSetName = 'Guard', Mandatory)]
     [switch]$Guard,
@@ -281,7 +286,7 @@ $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 Add-D9BootMark 'modules'
 if ($PSCmdlet.ParameterSetName -eq 'Gui') { Start-D9GuiWarmup; Add-D9BootMark 'warmup' }   # паралельно з рештою підготовки
 
-$script:D9Version  = '0.40.0-dev'
+$script:D9Version  = '0.41.0-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен
@@ -682,20 +687,26 @@ switch ($PSCmdlet.ParameterSetName) {
 
     'Debloat' {
         Write-Host ""
+        $lvl = $Level.ToLower()
         Write-Host (T-D9 'Деблоат Windows: {0} {1}' $sys.OsName $sys.DisplayVersion) -ForegroundColor Cyan
+        Write-Host (T-D9 'Рівень: {0}' (Get-D9DebloatLevelName $lvl)) -ForegroundColor Cyan
         $dbApps = @(Get-D9DebloatApps)
         $dbFeatures = @(Get-D9DebloatFeatures $catalog $sys)
-        $rec = Get-D9DebloatRecommended $catalog $sys $dbApps $dbFeatures
+        $rec = Get-D9DebloatSelection -Catalog $catalog -SystemInfo $sys -Level $lvl -Apps $dbApps -Features $dbFeatures
         foreach ($a in ($dbApps | Sort-Object GroupOrder, Name)) {
             $mark = if ($rec.Packages -contains $a.Package) { '[x]' } else { '[ ]' }
-            Write-Host ("  {0} {1}  ({2})" -f $mark, $a.Name, $a.GroupName) -ForegroundColor $(if ($mark -eq '[x]') { 'White' } else { 'DarkGray' })
+            Write-Host ("  {0} {1}  ({2}, {3})" -f $mark, $a.Name, $a.GroupName, (Get-D9DebloatLevelName $a.Level)) -ForegroundColor $(if ($mark -eq '[x]') { 'White' } else { 'DarkGray' })
         }
         foreach ($f in $dbFeatures) {
             $mark = if ($rec.TweakIds -contains $f.Id) { '[x]' } elseif ($f.State -eq 'applied') { '[=]' } else { '[ ]' }
-            Write-Host ("  {0} {1}" -f $mark, $f.Name) -ForegroundColor $(if ($mark -eq '[x]') { 'White' } else { 'DarkGray' })
+            Write-Host ("  {0} {1}  ({2})" -f $mark, $f.Name, (Get-D9DebloatLevelName $f.Level)) -ForegroundColor $(if ($mark -eq '[x]') { 'White' } else { 'DarkGray' })
         }
-        Write-Host (T-D9 '  [x] — буде зроблено, [=] — уже зроблено, [ ] — за бажанням (у вікні на вкладці «Деблоат»).') -ForegroundColor DarkGray
-        if (-not $rec.Packages -and -not $rec.TweakIds) { Write-D9Log (T-D9 'Рекомендований деблоат уже виконано — робити нічого.') Ok; exit $ExitCodes.Ok }
+        Write-Host (T-D9 '  [x] — буде зроблено, [=] — уже зроблено, [ ] — інший рівень (-Level Safe | Recommended | Max) або вкладка «Деблоат» у вікні') -ForegroundColor DarkGray
+        if ($rec.Loses) {
+            Write-Host (T-D9 'Перестане працювати:') -ForegroundColor Yellow
+            foreach ($l in $rec.Loses) { Write-Host "  - $l" -ForegroundColor Yellow }
+        }
+        if (-not $rec.Packages -and -not $rec.TweakIds) { Write-D9Log (T-D9 'Деблоат цього рівня вже виконано — робити нічого.') Ok; exit $ExitCodes.Ok }
         if ($WhatIf) { exit $ExitCodes.Ok }
         if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
         if (-not (Confirm-D9 (T-D9 'Виконати деблоат ({0} застосунків, {1} налаштувань)?' $rec.Packages.Count $rec.TweakIds.Count))) { exit $ExitCodes.Cancelled }

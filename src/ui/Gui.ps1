@@ -537,7 +537,7 @@ function Show-D9Gui {
                    'BtnFixAll', 'BtnScan', 'BtnDeepScan', 'BtnOpenReport', 'ScoreText', 'VerdictText', 'CountsText', 'CategoryList', 'FindingsList', 'BtnAllFindings', 'BtnHiddenFindings', 'BtnMoreFindings', 'BtnScoreHelp', 'StaleBanner', 'StaleText', 'BtnStaleRescan', 'FindingsTitle', 'ScoreExplain',
                    'PresetBox', 'BtnSelectPreset', 'BtnSelectNone', 'BtnPreview', 'BtnApply', 'TweaksSummary', 'TweakGrid', 'TweaksSelText', 'DebloatSelText',
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
-                   'DebloatSummary', 'DebloatGrid', 'DebloatSearch', 'DebloatSearchHint', 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone', 'BtnDebloatRefresh',
+                   'DebloatSummary', 'DebloatGrid', 'DebloatSearch', 'DebloatSearchHint', 'BtnDebloatRun', 'BtnDebloatSafe', 'BtnDebloatRecommended', 'BtnDebloatMax', 'BtnDebloatNone', 'BtnDebloatRefresh',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
                    'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'PrefLanguage', 'PrefTheme', 'PrefHiddenText', 'BtnPrefShowHidden', 'BtnPrefUnhideAll', 'BtnPrefWelcome', 'PrefToasts', 'PrefAbout', 'BtnPrefData', 'BtnPrefLogs', 'BtnPrefReports', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
@@ -547,7 +547,7 @@ function Show-D9Gui {
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
                    'BtnDisksRefresh', 'DisksState', 'DisksList', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset',
                    'GuardBar', 'GuardText', 'BtnGuardShow', 'BtnGuardClose', 'UndoBar', 'UndoText', 'BtnUndoLast', 'BtnUndoClose', 'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
-                   'ChkSuDrivers', 'ChkSuDebloat', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'BtnSuPickApps', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
+                   'ChkSuDrivers', 'ChkSuDebloat', 'SuDebloatLevel', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'BtnSuPickApps', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
     }
@@ -1188,6 +1188,16 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         })
     }
     # ---------- Деблоат ----------
+    # Рівні: «Обережно» ⊂ «Рекомендовано» ⊂ «Максимально» (Debloat.ps1); у рядку — рівень і що перестане працювати
+    $state.DebloatLevel = 'recommended'
+    $debloatLevelColors = @{ safe = '#248A3D'; recommended = '#007AFF'; max = '#B25000' }
+    $losesText = { param($l) if ($l) { T-D9 'Перестане працювати: {0}' $l } else { '' } }
+    $selectDebloatLevel = {
+        param([string]$level)
+        $state.DebloatLevel = $level
+        foreach ($row in @($ui.DebloatGrid.ItemsSource)) { if ($row) { $row.Selected = $row.Enabled -and (Test-D9DebloatInLevel ([string]$row.Tag.Level) $level) } }
+        & $updateSelCounts
+    }
     # Застосунки — поштучно (рекомендовані відмічені, Xbox і «корисні» — ні), налаштування — з каталогу твіків
     $fillDebloat = {
         param($r)
@@ -1196,28 +1206,30 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $features = @($r.Features | Sort-Object SectionOrder)
         $secApps = (Get-D9DebloatSection 'apps').Name
         $rows = @(foreach ($a in $apps) {
-            New-D9Row @{ Id = "app:$($a.Package)"; Badge = $secApps; Title = $a.Name; Group = ($a.Found -join ', '); Detail = $a.GroupName; Selected = $a.Recommended; Tag = $a
-                         Kind = $(if ($a.Recommended) { T-D9 'видалити' } else { T-D9 'за бажанням' }); Color = $(if ($a.Recommended) { '#D70015' } else { '#6E6E73' }); Status = (T-D9 'встановлено') }
+            New-D9Row @{ Id = "app:$($a.Package)"; Badge = $secApps; Title = $a.Name; Group = ($a.Found -join ', '); Detail = $a.GroupName; Tag = $a; Enabled = $true
+                         Selected = (Test-D9DebloatInLevel $a.Level $state.DebloatLevel); Hint = (& $losesText $a.Loses)
+                         Kind = (Get-D9DebloatLevelName $a.Level); Color = $debloatLevelColors[[string]$a.Level]; Status = (T-D9 'встановлено') }
         }) + @(foreach ($f in $features) {
             $applicable = $f.State -notin 'notApplicable', 'needsAdmin'; $done = $f.State -eq 'applied'
             # Опис без технічного префікса «Політика X = 0:» — його видно в підказці (Group)
             $plain = [regex]::Replace([string]$f.Description, '^(Політика|Офіційні політики|Policy|Official [A-Za-z ]*policies)[^:]{0,80}:\s*', '')
             if ($plain) { $plain = $plain.Substring(0, 1).ToUpper() + $plain.Substring(1) }
-            $kind = if ($f.Recommended) { T-D9 'рекомендовано' } else { T-D9 'за бажанням' }
+            $kind = Get-D9DebloatLevelName $f.Level
             if ($f.Risk -and $f.Risk -ne 'safe') { $kind += ' · ' + $riskUi[$f.Risk][0] }
             $status = switch ([string]$f.State) { 'applied' { T-D9 'уже зроблено' } 'notApplied' { T-D9 'ще ні' } 'partial' { T-D9 'частково' } 'needsAdmin' { T-D9 'потрібні права адміністратора' } default { $stateNames[[string]$f.State] } }
-            New-D9Row @{ Id = "tweak:$($f.Id)"; Badge = $f.SectionName; Title = $f.Name; Detail = $plain; Tag = $f; Enabled = ($applicable -and -not $done); Selected = ($f.Recommended -and $applicable -and -not $done)
-                         Group = $f.Description; Kind = $kind; Color = $(if ($f.Risk -in 'moderate', 'expert') { $riskUi[$f.Risk][1] } elseif ($f.Recommended) { '#248A3D' } else { '#6E6E73' }); Status = $status + $(if ($f.Reason) { " ($($f.Reason))" }) }
+            New-D9Row @{ Id = "tweak:$($f.Id)"; Badge = $f.SectionName; Title = $f.Name; Detail = $plain; Tag = $f; Enabled = ($applicable -and -not $done); Selected = ((Test-D9DebloatInLevel $f.Level $state.DebloatLevel) -and $applicable -and -not $done); Hint = (& $losesText $f.Loses)
+                         Group = $f.Description; Kind = $kind; Color = $(if ($f.Risk -in 'moderate', 'expert') { $riskUi[$f.Risk][1] } else { $debloatLevelColors[[string]$f.Level] }); Status = $status + $(if ($f.Reason) { " ($($f.Reason))" }) }
         })
         Set-D9Items $ui.DebloatGrid $rows
         & $filterDebloat
         if ($updateSelCounts) { & $updateSelCounts }
         $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.DebloatGrid.ItemsSource)
         if ($view -and $view.CanGroup) { $view.GroupDescriptions.Clear(); $view.GroupDescriptions.Add((New-Object Windows.Data.PropertyGroupDescription 'Badge')) }
-        $rec = @($apps | Where-Object Recommended).Count
-        $ui.DebloatSummary.Text = $(if ($apps) { T-D9 'Застосунків зі списку на цьому ПК: {0}, з них рекомендовано видалити: {1} (відмічені). Xbox і корисні застосунки не відмічені — позначте самі, якщо не потрібні.' $apps.Count $rec } else { T-D9 'Нав''язаних вбудованих застосунків на цьому ПК не знайдено.' }) +
-            ' ' + (T-D9 'Деблоат-налаштувань: {0}, уже застосовано: {1}. Перед змінами створюється точка відновлення; усе повертається на вкладці «Журнал змін».' $features.Count @($features | Where-Object State -eq 'applied').Count)
-        foreach ($b in 'BtnDebloatRun', 'BtnDebloatRecommended', 'BtnDebloatNone') { $ui[$b].IsEnabled = $true }
+        # Скільки пунктів (ще не зроблених) дає кожен рівень
+        $todo = @(@($apps) + @($features | Where-Object { $_.State -in 'notApplied', 'partial' }))
+        $cnt = foreach ($l in 'safe', 'recommended', 'max') { @($todo | Where-Object { Test-D9DebloatInLevel $_.Level $l }).Count }
+        $ui.DebloatSummary.Text = (T-D9 'Рівні: «Обережно» — {0} пунктів (реклама, телеметрія, застаріле), «Рекомендовано» — {1}, «Максимально» — {2}. Відмічено «{3}»; що перестане працювати — помаранчевим у рядку. Перед змінами створюється точка відновлення, усе повертається на вкладці «Журнал змін».' $cnt[0] $cnt[1] $cnt[2] (Get-D9DebloatLevelName $state.DebloatLevel))
+        foreach ($b in 'BtnDebloatRun', 'BtnDebloatSafe', 'BtnDebloatRecommended', 'BtnDebloatMax', 'BtnDebloatNone') { $ui[$b].IsEnabled = $true }
     }
     # Пошук у «Деблоаті»: за назвою й описом
     $filterDebloat = {
@@ -1233,9 +1245,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $startJob (T-D9 'Перевірка вбудованих застосунків') { param($a) @{ Apps = @(Get-D9DebloatApps); Features = @(Get-D9DebloatFeatures $a.Catalog $a.Sys) } } @{ Catalog = $Catalog; Sys = $SystemInfo } { param($r) & $fillDebloat $r }
     }
     $ui.BtnDebloatRefresh.Add_Click($loadDebloat)
-    $ui.BtnDebloatRecommended.Add_Click({
-        foreach ($row in @($ui.DebloatGrid.ItemsSource)) { if ($row) { $row.Selected = $row.Enabled -and [bool]$row.Tag.Recommended } }
-    })
+    $ui.BtnDebloatSafe.Add_Click({ & $selectDebloatLevel 'safe' })
+    $ui.BtnDebloatRecommended.Add_Click({ & $selectDebloatLevel 'recommended' })
+    $ui.BtnDebloatMax.Add_Click({ & $selectDebloatLevel 'max' })
     $ui.BtnDebloatNone.Add_Click({
         foreach ($row in @($ui.DebloatGrid.ItemsSource)) { if ($row) { $row.Selected = $false } }
     })
@@ -1245,6 +1257,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         if (-not $apps -and -not $feats) { [void][Windows.MessageBox]::Show($win, (T-D9 'Позначте застосунки або налаштування галочками.'), 'Debora'); return }
         if (-not (& $needAdmin)) { return }
         $text = (@($apps | ForEach-Object { (T-D9 'Видалити: {0}' $_.Title) }) + @($feats | ForEach-Object { $_.Title })) -join "`r`n"
+        $loses = @(@($apps) + @($feats) | ForEach-Object { $_.Tag.Loses } | Where-Object { $_ } | Select-Object -Unique)
+        if ($loses) { $text = (T-D9 'Перестане працювати:') + "`r`n" + (($loses | ForEach-Object { "• $_" }) -join "`r`n") + "`r`n`r`n" + (T-D9 'Що буде зроблено:') + "`r`n" + $text }
         if (-not (Show-D9TextDialog $win (T-D9 'Деблоат Windows') (T-D9 'Буде видалено застосунків: {0}, застосовано налаштувань: {1}. Спершу створюється точка відновлення; усе можна повернути на вкладці «Журнал змін» (видалені застосунки — також з Microsoft Store).' $apps.Count $feats.Count) $text (T-D9 'Виконати'))) { return }
         $ui.LogExpander.IsExpanded = $true
         & $startJob (T-D9 'Деблоат Windows') { param($a) Invoke-D9Debloat -Catalog $a.Catalog -SystemInfo $a.Sys -Packages $a.Packages -TweakIds $a.TweakIds } @{
@@ -2134,7 +2148,8 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $n = @($state.TweakRows | Where-Object Selected).Count
         $ui.TweaksSelText.Text = if ($n) { T-D9 'Вибрано: {0}' $n } else { T-D9 'Нічого не вибрано' }
         $d = @(@($ui.DebloatGrid.ItemsSource) | Where-Object { $_ -and $_.Selected }).Count
-        $ui.DebloatSelText.Text = if ($d) { T-D9 'Вибрано: {0}' $d } else { T-D9 'Нічого не вибрано' }
+        $dl = @(@($ui.DebloatGrid.ItemsSource) | Where-Object { $_ -and $_.Selected -and $_.Hint }).Count
+        $ui.DebloatSelText.Text = if ($d) { (T-D9 'Вибрано: {0}' $d) + $(if ($dl) { ' · ' + (T-D9 'щось перестане працювати: {0}' $dl) }) } else { T-D9 'Нічого не вибрано' }
     }
     $ui.TweakGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateSelCounts })
     $ui.DebloatGrid.AddHandler([Windows.Controls.Primitives.ButtonBase]::ClickEvent, [Windows.RoutedEventHandler]{ & $updateSelCounts })
@@ -2242,10 +2257,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     $suSteps = [ordered]@{ drivers = 'ChkSuDrivers'; debloat = 'ChkSuDebloat'; tweaks = 'ChkSuTweaks'; apps = 'ChkSuApps'; windowsUpdate = 'ChkSuWindows'; scanFix = 'ChkSuScanFix' }
     [void]$ui.SuPresetBox.Items.Add((T-D9 'Рекомендований для цього ПК ({0})' (Get-D9Text (Get-D9Preset $Catalog $Recommendation.Preset).name)))
     foreach ($p in $Catalog.Presets) { [void]$ui.SuPresetBox.Items.Add((Get-D9Text $p.name)) }
+    $suLevels = @('safe', 'recommended', 'max')
+    foreach ($l in $suLevels) { [void]$ui.SuDebloatLevel.Items.Add((T-D9 'Рівень «{0}»' (Get-D9DebloatLevelName $l))) }
     $fillSetup = {
         param($p)
         $state.SetupProfile = $p
         foreach ($k in $suSteps.Keys) { $ui[$suSteps[$k]].IsChecked = [bool]($p.steps -contains $k) }
+        $ui.SuDebloatLevel.SelectedIndex = [math]::Max(0, [array]::IndexOf($suLevels, [string]$p.debloatLevel))
         $ui.SuPresetBox.SelectedIndex = if ($p.preset -and $p.preset -ne 'Recommended') { [math]::Max(0, [array]::IndexOf(@($Catalog.Presets.id), [string]$p.preset) + 1) } else { 0 }
         Set-D9Items $ui.SuBundles @(foreach ($b in (& $getAppCatalog).bundles) { New-D9Row @{ Id = [string]$b.id; Title = (Get-D9Text $b.name); Detail = (Get-D9Text $b.description); Selected = [bool]($p.bundles -contains $b.id) } })
         $ui.SuAppsBox.Text = ($p.apps -join ', ')
@@ -2260,6 +2278,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             name = $ui.SuNameBox.Text.Trim(); created = $state.SetupProfile.created
             steps = @($suSteps.Keys | Where-Object { $ui[$suSteps[$_]].IsChecked })
             preset = $(if ($idx -gt 0) { @($Catalog.Presets)[$idx - 1].id } else { 'Recommended' })
+            debloatLevel = $suLevels[[math]::Max(0, $ui.SuDebloatLevel.SelectedIndex)]
             bundles = @($ui.SuBundles.ItemsSource | Where-Object Selected | ForEach-Object Id)
             apps = @($ui.SuAppsBox.Text -split '[,;\s]+' | Where-Object { $_ })
             reboot = [bool]$ui.ChkSuReboot.IsChecked

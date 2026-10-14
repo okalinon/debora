@@ -24,6 +24,7 @@ function New-D9SetupProfile {
         created = (Get-Date).ToString('s')
         steps   = @($script:D9SetupSteps.Keys)
         preset  = 'Recommended'
+        debloatLevel = 'recommended'   # рівень деблоату: safe | recommended | max
         bundles = @('basic')
         apps    = @()
         reboot  = $true
@@ -39,6 +40,7 @@ function ConvertTo-D9SetupProfile {
     if ($Raw.created) { $p.created = [string]$Raw.created }
     if ($null -ne $Raw.steps) { $p.steps = @($Raw.steps | ForEach-Object { [string]$_ } | Where-Object { $script:D9SetupSteps.Contains($_) } | Select-Object -Unique) }
     if ($null -ne $Raw.preset) { $p.preset = [string]$Raw.preset }
+    if ([string]$Raw.debloatLevel -in 'safe', 'recommended', 'max') { $p.debloatLevel = [string]$Raw.debloatLevel }
     if ($null -ne $Raw.bundles) { $p.bundles = @($Raw.bundles | ForEach-Object { [string]$_ } | Where-Object { $_ } | Select-Object -Unique) }
     if ($null -ne $Raw.apps) { $p.apps = @($Raw.apps | ForEach-Object { "$_".Trim() } | Where-Object { $_ } | Select-Object -Unique) }
     if ($null -ne $Raw.reboot) { $p.reboot = [bool]$Raw.reboot }
@@ -113,8 +115,12 @@ function Get-D9SetupPlan {
         $detail = switch ($s) {
             'drivers'       { T-D9 'пошук за ID пристроїв, встановлюються лише ті, що точно підходять; попередні драйвери зберігаються' }
             'debloat'       {
-                if ($Quick) { T-D9 'рекомендовані застосунки й налаштування з вкладки «Деблоат»' }
-                else { $rec = Get-D9DebloatRecommended $Catalog $SystemInfo; T-D9 'застосунків: {0}, налаштувань: {1}' $rec.Packages.Count $rec.TweakIds.Count }
+                $lvlName = Get-D9DebloatLevelName $Profile.debloatLevel
+                if ($Quick) { T-D9 'рівень «{0}» з вкладки «Деблоат»' $lvlName }
+                else {
+                    $rec = Get-D9DebloatSelection -Catalog $Catalog -SystemInfo $SystemInfo -Level $Profile.debloatLevel
+                    (T-D9 'рівень «{0}»: застосунків {1}, налаштувань {2}' $lvlName $rec.Packages.Count $rec.TweakIds.Count) + $(if ($rec.Loses) { '. ' + (T-D9 'Перестане працювати: {0}' ($rec.Loses -join '; ')) })
+                }
             }
             'tweaks'        { $p = Resolve-D9SetupPreset $Profile $Catalog $SystemInfo; T-D9 '«{0}»: {1} твіків' (Get-D9Text $p.name) @(Get-D9SetupTweakIds $Profile $p).Count }
             'apps'          {
@@ -141,7 +147,7 @@ function Invoke-D9SetupStep {
             return $(if ($ok) { [pscustomobject]@{ Text = (T-D9 'встановлено драйверів: {0} (потрібне перезавантаження)' $ok); Reboot = $true } } else { T-D9 'драйвери актуальні' })
         }
         'debloat' {
-            $rec = Get-D9DebloatRecommended $Catalog $SystemInfo
+            $rec = Get-D9DebloatSelection -Catalog $Catalog -SystemInfo $SystemInfo -Level $Profile.debloatLevel
             if (-not $rec.Packages -and -not $rec.TweakIds) { return (T-D9 'уже виконано') }
             $session = Invoke-D9Debloat -Catalog $Catalog -SystemInfo $SystemInfo -Packages $rec.Packages -TweakIds $rec.TweakIds -NoRestorePoint
             $ok = @($session.entries | Where-Object result -eq 'ok').Count; $err = @($session.entries | Where-Object result -eq 'error').Count

@@ -505,6 +505,15 @@
     "Повернення змін, скасованих Windows": "Restoring changes undone by Windows",
     "Повернути": "Restore",
     "Повернути зміни": "Restore changes",
-    "Ці зміни ви застосували через Debora, а Windows (зазвичай після оновлення) повернула їх назад. Позначене Debora поверне окремою сесією — її можна відкотити в «Журналі змін». З чого знімете галочку, Debora більше не повертатиме.": "You applied these changes with Debora, and Windows (usually after an update) reverted them. Debora will restore the checked ones as a separate session that you can undo in the Change log. Unchecked items will no longer be restored."
+    "Ці зміни ви застосували через Debora, а Windows (зазвичай після оновлення) повернула їх назад. Позначене Debora поверне окремою сесією — її можна відкотити в «Журналі змін». З чого знімете галочку, Debora більше не повертатиме.": "You applied these changes with Debora, and Windows (usually after an update) reverted them. Debora will restore the checked ones as a separate session that you can undo in the Change log. Unchecked items will no longer be restored.",
+    "Обережно": "Careful",
+    "Рекомендовано": "Recommended",
+    "Максимально": "Maximum",
+    "Перестане працювати:": "Will stop working:",
+    "Перестане працювати: {0}": "Will stop working: {0}",
+    "Рівень «{0}»": "Level “{0}”",
+    "Рівні: «Обережно» — {0} пунктів (реклама, телеметрія, застаріле), «Рекомендовано» — {1}, «Максимально» — {2}. Відмічено «{3}»; що перестане працювати — помаранчевим у рядку. Перед змінами створюється точка відновлення, усе повертається на вкладці «Журнал змін».": "Levels: “Careful” — {0} items (ads, telemetry, obsolete), “Recommended” — {1}, “Maximum” — {2}. “{3}” is checked; what will stop working is shown in orange in each row. A restore point is created first, and everything can be undone on the Change log tab.",
+    "Що буде зроблено:": "What will be done:",
+    "щось перестане працювати: {0}": "something stops working: {0}"
   }
 }

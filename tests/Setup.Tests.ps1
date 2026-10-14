@@ -32,6 +32,16 @@ Describe 'Профіль майстра «Налаштування з нуля»
         (Get-D9SetupProfile).name | Should -Be 'Офіс'
         Test-Path (Get-D9SetupProfilePath) | Should -BeTrue
     }
+    It 'рівень деблоату: типовий «Рекомендовано», зберігається; невідомий або відсутній (старий профіль) — типовий' {
+        (New-D9SetupProfile).debloatLevel | Should -Be 'recommended'
+        (ConvertTo-D9SetupProfile ([pscustomobject]@{ debloatLevel = 'max' })).debloatLevel | Should -Be 'max'
+        (ConvertTo-D9SetupProfile ([pscustomobject]@{ debloatLevel = 'everything' })).debloatLevel | Should -Be 'recommended'
+        (ConvertTo-D9SetupProfile ([pscustomobject]@{ name = 'старий' })).debloatLevel | Should -Be 'recommended'
+        $f = Join-Path $TestDrive 'lvl.json'
+        $p = New-D9SetupProfile; $p.debloatLevel = 'safe'
+        Export-D9SetupProfile $p $f
+        (Import-D9SetupProfile $f).debloatLevel | Should -Be 'safe'
+    }
     It 'відсутній файл і новіша схема — зрозумілі помилки' {
         { Import-D9SetupProfile (Join-Path $TestDrive 'немає.json') } | Should -Throw
         $f = Join-Path $TestDrive 'new.json'; [IO.File]::WriteAllText($f, '{"schema":9,"steps":["apps"]}')

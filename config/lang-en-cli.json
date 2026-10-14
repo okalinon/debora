@@ -285,6 +285,10 @@
     "Зміни, які Debora тримає за журналом: {0}": "Changes Debora keeps from its journal: {0}",
     "Повернути {0} змін?": "Restore {0} changes?",
     "Повернуто: {0} з {1}. Відкат: -Undo {2}": "Restored: {0} of {1}. Undo: -Undo {2}",
-    "Усі ваші зміни на місці — Windows нічого не повернула.": "All your changes are in place — Windows did not undo anything."
+    "Усі ваші зміни на місці — Windows нічого не повернула.": "All your changes are in place — Windows did not undo anything.",
+    "  [x] — буде зроблено, [=] — уже зроблено, [ ] — інший рівень (-Level Safe | Recommended | Max) або вкладка «Деблоат» у вікні": "  [x] — will be done, [=] — already done, [ ] — another level (-Level Safe | Recommended | Max) or the Debloat tab in the window",
+    "Деблоат цього рівня вже виконано — робити нічого.": "Debloat at this level is already done — nothing to do.",
+    "Перестане працювати:": "Will stop working:",
+    "Рівень: {0}": "Level: {0}"
   }
 }

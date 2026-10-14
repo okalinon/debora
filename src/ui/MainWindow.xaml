@@ -784,7 +784,10 @@
         <Grid Margin="20,0,20,0">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <WrapPanel>
-            <Button x:Name="BtnDebloatRecommended" Content="Вибрати рекомендоване" IsEnabled="False" Margin="0,0,8,6"/>
+            <TextBlock Text="Вибрати рівень:" VerticalAlignment="Center" Foreground="#6E6E73" Margin="0,0,10,6"/>
+            <Button x:Name="BtnDebloatSafe" Content="Обережно" IsEnabled="False" Margin="0,0,8,6" ToolTipService.ShowOnDisabled="True" ToolTip="Лише реклама, нав'язані ігри, телеметрія й застаріле — нічого, чим ви можете користуватися"/>
+            <Button x:Name="BtnDebloatRecommended" Content="Рекомендовано" IsEnabled="False" Margin="0,0,8,6" ToolTipService.ShowOnDisabled="True" ToolTip="Плюс Copilot і ШІ та застосунки Microsoft, якими більшість не користується. Що зміниться — у кожному рядку"/>
+            <Button x:Name="BtnDebloatMax" Content="Максимально" IsEnabled="False" Margin="0,0,8,6" ToolTipService.ShowOnDisabled="True" ToolTip="Плюс Xbox і Game Bar, OneDrive, віджети, геолокація й дрібні корисні застосунки. Перегляньте, що перестане працювати"/>
             <Button x:Name="BtnDebloatNone" Content="Зняти все" IsEnabled="False" Margin="0,0,8,6"/>
             <Button x:Name="BtnDebloatRefresh" Content="Оновити" Margin="0,0,8,6"/>
             <Grid Width="300" Margin="8,0,8,6">
@@ -817,11 +820,22 @@
                       <StackPanel Margin="0,4,8,4" ToolTip="{Binding Group}">
                         <TextBlock Text="{Binding Title}" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="#6E6E73" FontSize="13" Margin="0,2,0,0"/>
+                        <!-- Що перестане працювати (порожньо — рядок прихований) -->
+                        <TextBlock Text="{Binding Hint}" TextWrapping="Wrap" Foreground="#B25000" FontSize="13" Margin="0,2,0,0">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding Hint}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                <DataTrigger Binding="{Binding Hint}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
                       </StackPanel>
                     </DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Рекомендація" Width="170">
+                <DataGridTemplateColumn Header="Рівень" Width="170">
                   <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{Binding Color}" FontWeight="SemiBold" TextWrapping="Wrap"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Зараз" Binding="{Binding Status}" Width="170" IsReadOnly="True">
@@ -847,7 +861,10 @@
             <Border Style="{StaticResource Card}">
               <StackPanel>
                 <CheckBox x:Name="ChkSuDrivers" Content="Драйвери з інтернету (каталог Microsoft і Windows Update)" Margin="0,3"/>
-                <CheckBox x:Name="ChkSuDebloat" Content="Деблоат Windows: нав'язані застосунки, реклама, Copilot, телеметрія (рекомендоване)" Margin="0,3"/>
+                <DockPanel Margin="0,3">
+                  <ComboBox x:Name="SuDebloatLevel" DockPanel.Dock="Right" Width="360" Margin="12,0,0,0"/>
+                  <CheckBox x:Name="ChkSuDebloat" Content="Деблоат Windows: нав'язані застосунки, реклама, Copilot, телеметрія" VerticalAlignment="Center"/>
+                </DockPanel>
                 <DockPanel Margin="0,3">
                   <ComboBox x:Name="SuPresetBox" DockPanel.Dock="Right" Width="360" Margin="12,0,0,0"/>
                   <CheckBox x:Name="ChkSuTweaks" Content="Профіль налаштувань: швидкодія, Провідник, захист" VerticalAlignment="Center"/>

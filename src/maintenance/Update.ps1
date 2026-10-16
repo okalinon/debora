@@ -3,7 +3,7 @@
 # за SHA-256 (поле digest від GitHub або SHA256SUMS релізу) — без збігу нічого не замінюється. Попередні файли
 # зберігаються в %ProgramData%\Debloater9\update-backup\<версія>; папки користувача («Звіти», «Драйвери») не чіпаються.
 
-$script:D9UpdateFiles = @('Debora.ps1', 'Debora.dat', 'Debora.exe', 'run.bat', 'run-menu.bat', 'Інструкція.txt', 'SHA256SUMS', 'CHANGELOG.md', 'README.en.md')
+$script:D9UpdateFiles = @('Debora.ps1', 'Debora.dat', 'Debora.exe', 'run.bat', 'run-menu.bat', 'Інструкція.txt', 'SHA256SUMS', 'CHANGELOG.md', 'README.md', 'README.uk.md')
 
 function Get-D9UpdateRepo {
     $cfg = try { ConvertFrom-Json (Get-D9ConfigText 'update.json') } catch { $null }

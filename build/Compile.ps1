@@ -156,14 +156,14 @@ $datFile = Join-Path $OutDir 'Debora.dat'
 Copy-Item (Join-Path $PSScriptRoot 'run.bat') (Join-Path $OutDir 'run.bat') -Force
 Copy-Item (Join-Path $PSScriptRoot 'run-menu.bat') (Join-Path $OutDir 'run-menu.bat') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Інструкція.txt') (Join-Path $OutDir 'Інструкція.txt') -Force
-foreach ($doc in 'CHANGELOG.md', 'README.en.md') { if (Test-Path (Join-Path $root $doc)) { Copy-Item (Join-Path $root $doc) (Join-Path $OutDir $doc) -Force } }
+foreach ($doc in 'CHANGELOG.md', 'README.md', 'README.uk.md') { if (Test-Path (Join-Path $root $doc)) { Copy-Item (Join-Path $root $doc) (Join-Path $OutDir $doc) -Force } }
 # Debora.exe — запускач з маніфестом «від адміністратора» і значком (build\Launcher.cs)
 $exeVersion = if ($Version) { $Version } else { '0.0.0' }
 [void](& (Join-Path $PSScriptRoot 'Build-Launcher.ps1') -OutFile (Join-Path $OutDir 'Debora.exe') -Version $exeVersion)
 $hash = (Get-FileHash $outFile -Algorithm SHA256).Hash.ToLower()
 $datHash = (Get-FileHash $datFile -Algorithm SHA256).Hash.ToLower()
 $sums = "$hash  Debora.ps1`n$datHash  Debora.dat`n"
-foreach ($n in 'Debora.exe', 'run.bat', 'run-menu.bat', 'Інструкція.txt', 'CHANGELOG.md', 'README.en.md') {
+foreach ($n in 'Debora.exe', 'run.bat', 'run-menu.bat', 'Інструкція.txt', 'CHANGELOG.md', 'README.md', 'README.uk.md') {
     $f = Join-Path $OutDir $n
     if (Test-Path $f) { $sums += "$((Get-FileHash $f -Algorithm SHA256).Hash.ToLower())  $n`n" }
 }

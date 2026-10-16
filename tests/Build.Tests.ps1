@@ -37,7 +37,11 @@ Describe 'Збірка' {
         $output | Should -Match 'вкладок 12'
     }
     It 'поруч лежать обидва запускачі й інструкція' {
-        foreach ($f in 'run.bat', 'run-menu.bat', 'Інструкція.txt') { Test-Path (Join-Path $out $f) | Should -BeTrue -Because $f }
+        foreach ($f in 'run.bat', 'run-menu.bat', 'Інструкція.txt', 'Debora.exe') { Test-Path (Join-Path $out $f) | Should -BeTrue -Because $f }
+        $exe = Get-Item (Join-Path $out 'Debora.exe')
+        $exe.VersionInfo.ProductVersion | Should -Be '0.0.0-test'
+        $exe.VersionInfo.FileDescription | Should -Be 'Debora'
+        Get-Content (Join-Path $out 'SHA256SUMS') | Should -Contain ("{0}  Debora.exe" -f (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower())
     }
     It 'вбудована база пристроїв працює в зібраному файлі' {
         $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $file -Drivers -Language en 2>&1 | Out-String   # en: прихований процес псує кирилицю в консолі

@@ -158,7 +158,7 @@ function Initialize-D9InstallUsb {
     if ($ProgramFolder -and (Test-Path (Join-Path $ProgramFolder 'Debora.ps1'))) {
         $dst = "${root}Debora"
         New-Item -ItemType Directory -Path $dst -Force | Out-Null
-        Get-ChildItem $ProgramFolder -File | Where-Object Extension -in '.ps1', '.dat', '.bat', '.txt', '' | Copy-Item -Destination $dst -Force
+        Get-ChildItem $ProgramFolder -File | Where-Object Extension -in '.ps1', '.dat', '.exe', '.bat', '.txt', '.md', '' | Copy-Item -Destination $dst -Force
         Write-D9Log (T-D9 'Debora скопійовано на флешку ({0})' $dst) Ok
         $done += T-D9 'Debora (запуститься після першого входу)'
         if ($Options.SetupProfile -and (Test-Path -LiteralPath $Options.SetupProfile)) {

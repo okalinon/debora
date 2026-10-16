@@ -61,11 +61,17 @@ function Join-D9RowHint {
 function Set-D9DesktopShortcut {
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Script)
     $sc = (New-Object -ComObject WScript.Shell).CreateShortcut($Path)
-    $sc.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    $sc.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Script`" -Gui"
+    $exe = Join-Path (Split-Path $Script) 'Debora.exe'
+    if (Test-Path -LiteralPath $exe) {
+        # Debora.exe сам просить права адміністратора й має значок
+        $sc.TargetPath = $exe; $sc.Arguments = ''; $sc.IconLocation = "$exe,0"
+    } else {
+        $sc.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        $sc.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Script`" -Gui"
+        $sc.WindowStyle = 7   # згорнуто: консоль не блимає до -WindowStyle Hidden
+        $sc.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"
+    }
     $sc.WorkingDirectory = Split-Path $Script
-    $sc.WindowStyle = 7   # згорнуто: консоль не блимає до -WindowStyle Hidden
-    $sc.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"
     $sc.Description = 'Debora'
     $sc.Save()
     $bytes = [IO.File]::ReadAllBytes($Path)
@@ -103,8 +109,11 @@ function Update-D9DesktopShortcut {
     if (-not (Test-Path -LiteralPath $lnk)) { return }
     try {
         $target = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk).TargetPath
-        $bat = Join-Path (Split-Path $script:D9ScriptPath) 'run.bat'
-        if ($target -and [string]::Equals($target, $bat, [StringComparison]::OrdinalIgnoreCase)) { Set-D9DesktopShortcut $lnk $script:D9ScriptPath }
+        $dir = Split-Path $script:D9ScriptPath
+        $bat = Join-Path $dir 'run.bat'; $exe = Join-Path $dir 'Debora.exe'
+        $old = $target -and ([string]::Equals($target, $bat, [StringComparison]::OrdinalIgnoreCase) -or
+                             ((Test-Path -LiteralPath $exe) -and $target -like '*\powershell.exe'))   # ярлик 0.39–0.42 → Debora.exe
+        if ($old) { Set-D9DesktopShortcut $lnk $script:D9ScriptPath }
     } catch { }
 }
 
@@ -546,7 +555,7 @@ function Show-D9Gui {
                    'BtnStartupApply', 'BtnStartupRefresh', 'BtnStartupRecommended', 'StartupSummary', 'StartupGrid', 'StartupSelText',
                    'BtnRestorePoint', 'BtnCleanNow', 'BtnRepair', 'BtnNetReset', 'BtnWuReset', 'PauseDays', 'BtnPause', 'BtnResume', 'PauseState', 'BtnWuDrivers', 'WuDriversState',
                    'BtnDisksRefresh', 'DisksState', 'DisksList', 'BatterySep', 'BatteryPanel', 'BatteryStatus', 'BatteryDot', 'BatteryDetail', 'BatterySpark', 'BatterySparkNote', 'BatteryAdvice', 'BtnIconCache', 'BtnMemoryTest', 'BtnSearchReset',
-                   'GuardBar', 'GuardText', 'BtnGuardShow', 'BtnGuardClose', 'UndoBar', 'UndoText', 'BtnUndoLast', 'BtnUndoClose', 'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
+                   'UpdateBar', 'UpdateText', 'BtnUpdateInstall', 'BtnUpdateNotes', 'BtnUpdateClose', 'PrefUpdateText', 'BtnPrefUpdate', 'GuardBar', 'GuardText', 'BtnGuardShow', 'BtnGuardClose', 'UndoBar', 'UndoText', 'BtnUndoLast', 'BtnUndoClose', 'TaskPanel', 'TaskTitle', 'TaskStage', 'TaskBar', 'TaskEta', 'TaskTimer', 'BtnTaskStop', 'BtnQueueToggle', 'QueuePanel', 'QueueList', 'BtnQueueClear',
                    'ChkSuDrivers', 'ChkSuDebloat', 'SuDebloatLevel', 'ChkSuTweaks', 'SuPresetBox', 'ChkSuApps', 'ChkSuWindows', 'ChkSuScanFix', 'ChkSuReboot', 'SuBundles', 'SuAppsBox', 'BtnSuAddSelected', 'BtnSuPickApps', 'SuNameBox', 'BtnSuRun', 'BtnSuPlan', 'BtnSuSave', 'BtnSuLoad', 'SuState') {
         $ui[$n] = $win.FindName($n)
         if (-not $ui[$n]) { throw "У розмітці немає елемента $n" }
@@ -819,6 +828,46 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $state.UndoId = $null; $ui.UndoBar.Visibility = 'Collapsed'
         & $startJob (T-D9 'Відкат змін') { param($a) Undo-D9Session -Id $a.Id } @{ Id = $id } { & $fillSessions; & $loadTweakStates; [void][Windows.MessageBox]::Show($win, (T-D9 'Зміни відкочено.'), 'Debora') }
     })
+    # ---------- Оновлення Debora (Update.ps1) ----------
+    # Перевірка — у фоні після запуску раз на добу (якщо в update.json вказано репозиторій), або кнопкою в «Параметрах»
+    $showUpdate = {
+        $u = $state.UpdateInfo
+        if ($u -and $u.Available) {
+            $ui.UpdateText.Text = T-D9 'Доступна Debora {0} (у вас {1}).' $u.Version $u.Current
+            $ui.UpdateBar.Visibility = 'Visible'
+            $ui.PrefUpdateText.Text = T-D9 'Доступна Debora {0} (у вас {1}).' $u.Version $u.Current
+        } else {
+            $ui.UpdateBar.Visibility = 'Collapsed'
+            if ($u) { $ui.PrefUpdateText.Text = T-D9 'У вас остання версія ({0}).' $u.Current }
+        }
+    }
+    $checkUpdate = {
+        param([switch]$Manual)
+        & $startJob (T-D9 'Перевірка оновлень Debora') { param($a) Get-D9UpdateInfo } $null {
+            param($r, $c)
+            $state.UpdateInfo = $r
+            try { Save-D9UpdateCheck -Latest $(if ($r) { $r.Version } else { '' }) } catch { }
+            & $showUpdate
+            if ($c.Manual -and -not $r) { $ui.PrefUpdateText.Text = $(if (Get-D9UpdateRepo) { T-D9 'Не вдалося перевірити оновлення — немає зв''язку з GitHub.' } else { T-D9 'Перевірка оновлень вимкнена в цій збірці.' }) }
+        } @{ Manual = [bool]$Manual } -Kind 'update:check'
+    }
+    $ui.BtnUpdateClose.Add_Click({ $ui.UpdateBar.Visibility = 'Collapsed' })
+    $ui.BtnUpdateNotes.Add_Click({ if ($state.UpdateInfo.Url) { Start-Process $state.UpdateInfo.Url } })
+    $ui.BtnPrefUpdate.Add_Click({ & $checkUpdate -Manual })
+    $ui.BtnUpdateInstall.Add_Click({
+        $u = $state.UpdateInfo
+        if (-not $u -or -not $u.Available) { return }
+        if (-not (& $needAdmin)) { return }
+        if ([Windows.MessageBox]::Show($win, (T-D9 'Оновити Debora {0} → {1}? Архів перевіряється за контрольною сумою, попередні файли зберігаються; після оновлення Debora перезапуститься.' $u.Current $u.Version), 'Debora', 'YesNo', 'Question') -ne 'Yes') { return }
+        $ui.LogExpander.IsExpanded = $true
+        & $startJob (T-D9 'Оновлення Debora') { param($a) Install-D9Update -Info $a.Info } @{ Info = $u } {
+            param($path)
+            $ui.UpdateBar.Visibility = 'Collapsed'
+            [void][Windows.MessageBox]::Show($win, (T-D9 'Debora оновлено до {0}. Зараз вона перезапуститься.' $state.UpdateInfo.Version), 'Debora')
+            & $restartGui
+        } -Kind 'update:install'
+    })
+
     # ---------- Зміни, які скасувала Windows (Guard.ps1) ----------
     # Перевірка — у фоні після запуску, коли змінилась збірка Windows, минула доба або минулого разу щось знайшлось
     $showGuardBar = {
@@ -2425,6 +2474,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         { $prev = Get-D9Checklist; if ($prev) { & $fillChecklist $prev }; & $fillSessions; Add-D9BootMark 'sessions' }
         { & $refreshMaintenance; & $refreshSchedule; Update-D9DesktopShortcut; Add-D9BootMark 'maintenance' }
         { $st = Get-D9GuardStatus; if ((Test-D9GuardDue $SystemInfo) -or ($st -and $st.drift -gt 0)) { & $checkGuard } }
+        { if (Test-D9UpdateCheckDue) { & $checkUpdate } }
         {
             Add-D9BootMark 'ready'; Write-D9LogFileLine (Get-D9BootReport)
             # Замір швидкості запуску (розробка): D9_BOOT_EXIT=1 — закрити вікно, щойно все завантажено

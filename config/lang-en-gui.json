@@ -517,6 +517,14 @@
     "щось перестане працювати: {0}": "something stops working: {0}",
     "Налаштування продовжиться після перезавантаження: лишилось {0}. Якщо цього не сталося — натисніть «Почати налаштування», і Debora запропонує продовжити.": "Setup will continue after a restart: {0} left. If it did not, press Start setup and Debora will offer to continue.",
     "Оновлення Windows потребують перезавантаження. ПК перезавантажиться за хвилину, а після входу налаштування продовжиться саме (у вікні консолі). Збережіть відкриті документи.": "Windows updates need a restart. The PC will restart in a minute, and setup will continue by itself after you sign in (in a console window). Save your open documents.",
-    "Попереднє налаштування не завершено (лишилось: {0}). Продовжити його?": "The previous setup is not finished ({0} left). Continue it?"
+    "Попереднє налаштування не завершено (лишилось: {0}). Продовжити його?": "The previous setup is not finished ({0} left). Continue it?",
+    "Доступна Debora {0} (у вас {1}).": "Debora {0} is available (you have {1}).",
+    "Не вдалося перевірити оновлення — немає зв'язку з GitHub.": "Could not check for updates — GitHub is not reachable.",
+    "Перевірка оновлень вимкнена в цій збірці.": "Update checks are turned off in this build.",
+    "У вас остання версія ({0}).": "You have the latest version ({0}).",
+    "Debora оновлено до {0}. Зараз вона перезапуститься.": "Debora was updated to {0}. It will restart now.",
+    "Оновити Debora {0} → {1}? Архів перевіряється за контрольною сумою, попередні файли зберігаються; після оновлення Debora перезапуститься.": "Update Debora {0} → {1}? The archive is checked against its checksum and the previous files are kept; Debora restarts afterwards.",
+    "Оновлення Debora": "Updating Debora",
+    "Перевірка оновлень Debora": "Checking for Debora updates"
   }
 }

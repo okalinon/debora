@@ -408,6 +408,15 @@
     "Не вдалося підготувати продовження після перезавантаження: {0}. Продовжую без перезавантаження.": "Could not prepare continuing after a restart: {0}. Continuing without a restart.",
     "Невідомий шлях до програми — продовження після перезавантаження неможливе.": "Unknown program path — continuing after a restart is not possible.",
     "Потрібне перезавантаження. Після входу налаштування продовжиться саме ({0}).": "A restart is needed. Setup will continue by itself after you sign in ({0}).",
-    "Продовження налаштування після перезавантаження {0}: лишилось {1}": "Continuing setup after restart {0}: {1} left"
+    "Продовження налаштування після перезавантаження {0}: лишилось {1}": "Continuing setup after restart {0}: {1} left",
+    "Debora оновлено: {0} → {1}. Попередні файли: {2}": "Debora updated: {0} → {1}. Previous files: {2}",
+    "В архіві оновлення немає Debora.ps1.": "The update archive has no Debora.ps1.",
+    "Для архіву оновлення немає контрольної суми — оновлення скасовано.": "The update archive has no checksum — update cancelled.",
+    "Завантаження Debora {0}...": "Downloading Debora {0}...",
+    "Контрольна сума архіву не збігається — оновлення скасовано (очікувано {0}, отримано {1}).": "The archive checksum does not match — update cancelled (expected {0}, got {1}).",
+    "Копію для розкладу не оновлено: {0}": "The scheduled maintenance copy was not updated: {0}",
+    "Не вдалося перевірити оновлення: {0}": "Could not check for updates: {0}",
+    "Неочікуване джерело оновлення: {0}": "Unexpected update source: {0}",
+    "Папку програми не знайдено — оновіть вручну: {0}": "Program folder not found — update manually: {0}"
   }
 }

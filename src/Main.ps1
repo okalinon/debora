@@ -65,6 +65,10 @@
 #>
 [CmdletBinding(DefaultParameterSetName = 'Info')]
 param(
+    # Відомості про ПК і перелік команд (те саме, що запуск без параметрів; Debora.exe без параметрів відкриває вікно)
+    [Parameter(ParameterSetName = 'Info')]
+    [switch]$Help,
+
     [Parameter(ParameterSetName = 'Gui', Mandatory)]
     [switch]$Gui,
 
@@ -178,6 +182,10 @@ param(
     [ValidateSet('Safe', 'Recommended', 'Max')]
     [string]$Level = 'Recommended',
 
+    # Перевірити й встановити новішу версію Debora (GitHub Releases); з -Yes — без запитання
+    [Parameter(ParameterSetName = 'Update', Mandatory)]
+    [switch]$Update,
+
     # Що з ваших змін скасувала Windows (після оновлень); з -Yes — повернути без запитання
     [Parameter(ParameterSetName = 'Guard', Mandatory)]
     [switch]$Guard,
@@ -265,6 +273,7 @@ param(
     [Parameter(ParameterSetName = 'Debloat')]
     [Parameter(ParameterSetName = 'Setup')]
     [Parameter(ParameterSetName = 'Guard')]
+    [Parameter(ParameterSetName = 'Update')]
     [switch]$Yes,
 
     [ValidateSet('auto', 'uk', 'en')]
@@ -290,7 +299,7 @@ $script:D9UiDir        = Join-Path $script:D9SrcRoot 'ui'
 Add-D9BootMark 'modules'
 if ($PSCmdlet.ParameterSetName -eq 'Gui') { Start-D9GuiWarmup; Add-D9BootMark 'warmup' }   # паралельно з рештою підготовки
 
-$script:D9Version  = '0.42.0-dev'
+$script:D9Version  = '1.0.0-dev'
 $script:D9Language = Resolve-D9Language $Language
 $script:D9ScriptPath = $PSCommandPath
 if ($PSCmdlet.ParameterSetName -ne 'Gui') { Initialize-D9Console }   # у вікні консоль прихована — шрифт не потрібен
@@ -673,6 +682,21 @@ switch ($PSCmdlet.ParameterSetName) {
         exit $ExitCodes.Ok
     }
 
+    'Update' {
+        Write-Host ""
+        if (-not (Get-D9UpdateRepo)) { Write-D9Log (T-D9 'Перевірка оновлень вимкнена в цій збірці.') Warn; exit $ExitCodes.Ok }
+        $info = Get-D9UpdateInfo
+        Save-D9UpdateCheck -Latest $(if ($info) { $info.Version } else { '' })
+        if (-not $info) { Write-D9Log (T-D9 'Не вдалося перевірити оновлення — немає зв''язку з GitHub.') Error; exit $ExitCodes.Partial }
+        if (-not $info.Available) { Write-D9Log (T-D9 'У вас остання версія ({0}).' $info.Current) Ok; exit $ExitCodes.Ok }
+        Write-Host (T-D9 'Доступна Debora {0} (у вас {1}).' $info.Version $info.Current) -ForegroundColor Cyan
+        if ($info.Notes) { Write-Host $info.Notes -ForegroundColor DarkGray }
+        if (-not (Confirm-D9 (T-D9 'Оновити зараз?'))) { exit $ExitCodes.Cancelled }
+        [void](Install-D9Update -Info $info)
+        Write-D9Log (T-D9 'Готово. Запустіть Debora знову.') Ok
+        exit $ExitCodes.Ok
+    }
+
     'Guard' {
         Write-Host ""
         $desired = @(Get-D9GuardDesired)
@@ -938,7 +962,9 @@ switch ($PSCmdlet.ParameterSetName) {
         Write-Host (T-D9 '  -Diagnostics                    зібрати zip для розбору проблеми')
         Write-Host (T-D9 '  -Disks                          стан дисків: температура, знос, помилки (SMART)')
         if ($sys.HasBattery) { Write-Host (T-D9 '  -Battery                        стан батареї: знос, прогноз, поради') }
-        Write-Host (T-D9 '  -Debloat [-WhatIf]              деблоат: нав''язані застосунки, реклама, Copilot, телеметрія')
+        Write-Host (T-D9 '  -Debloat [-Level Safe|Recommended|Max] [-WhatIf]  деблоат: застосунки, реклама, Copilot, телеметрія')
+        Write-Host (T-D9 '  -Guard [-Yes]                   повернути зміни, які скасувала Windows після оновлень')
+        Write-Host (T-D9 '  -Update [-Yes]                  перевірити й встановити нову версію Debora')
         Write-Host (T-D9 '  -Setup [-ProfilePath f] [-WhatIf] налаштування з нуля: драйвери, деблоат, профіль, програми, оновлення, перевірка')
         Write-Host (T-D9 '  -Apps / -InstallApp / -UpgradeApps   програми через winget')
         Write-Host (T-D9 '  -DriverUpdate [-WhatIf]         нові драйвери з інтернету: знайти, завантажити, встановити')

@@ -2,3 +2,4 @@ dist/
 tests/.out/
 *.log
 Live/
+release/

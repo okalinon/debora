@@ -293,6 +293,15 @@
     "Debora продовжує налаштування з нуля — профіль «{0}». Не закривайте це вікно.": "Debora is continuing setup from scratch — profile “{0}”. Do not close this window.",
     "Готово. Вікно можна закрити.": "Done. You can close this window.",
     "Налаштування з нуля завершено: {0}": "Setup from scratch finished: {0}",
-    "Немає налаштування, яке треба продовжити.": "There is no setup to continue."
+    "Немає налаштування, яке треба продовжити.": "There is no setup to continue.",
+    "Доступна Debora {0} (у вас {1}).": "Debora {0} is available (you have {1}).",
+    "Не вдалося перевірити оновлення — немає зв'язку з GitHub.": "Could not check for updates — GitHub is not reachable.",
+    "Перевірка оновлень вимкнена в цій збірці.": "Update checks are turned off in this build.",
+    "У вас остання версія ({0}).": "You have the latest version ({0}).",
+    "Готово. Запустіть Debora знову.": "Done. Start Debora again.",
+    "Оновити зараз?": "Update now?",
+    "  -Debloat [-Level Safe|Recommended|Max] [-WhatIf]  деблоат: застосунки, реклама, Copilot, телеметрія": "  -Debloat [-Level Safe|Recommended|Max] [-WhatIf]  debloat: apps, ads, Copilot, telemetry",
+    "  -Guard [-Yes]                   повернути зміни, які скасувала Windows після оновлень": "  -Guard [-Yes]                   restore changes Windows undid after updates",
+    "  -Update [-Yes]                  перевірити й встановити нову версію Debora": "  -Update [-Yes]                  check for and install a new Debora version"
   }
 }

@@ -1501,7 +1501,9 @@
             <Border Style="{StaticResource Card}">
               <StackPanel>
                 <TextBlock x:Name="PrefAbout" Style="{StaticResource RowNote}" TextWrapping="Wrap"/>
+                <TextBlock x:Name="PrefUpdateText" Style="{StaticResource RowNote}" TextWrapping="Wrap" Margin="0,6,0,0"/>
                 <WrapPanel Margin="0,10,0,0">
+                  <Button x:Name="BtnPrefUpdate" Content="Перевірити оновлення" Margin="0,0,8,0"/>
                   <Button x:Name="BtnPrefData" Content="Папка даних" Margin="0,0,8,0"/>
                   <Button x:Name="BtnPrefLogs" Content="Журнали" Margin="0,0,8,0"/>
                   <Button x:Name="BtnPrefReports" Content="Звіти" Margin="0"/>
@@ -1515,6 +1517,15 @@
 
     <!-- Смуги над журналом: повернуте Windows, швидкий відкат, поточна задача (одна під одною) -->
     <StackPanel Grid.Row="1" Grid.Column="1">
+    <!-- Доступна новіша версія Debora (GitHub Releases) -->
+    <Border x:Name="UpdateBar" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,10" Visibility="Collapsed" Background="#EAF2FF">
+      <DockPanel>
+        <Button x:Name="BtnUpdateClose" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Пізніше" Margin="14,0,0,0" VerticalAlignment="Center"/>
+        <Button x:Name="BtnUpdateInstall" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Оновити" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        <Button x:Name="BtnUpdateNotes" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Що нового" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="UpdateText" VerticalAlignment="Center" TextWrapping="Wrap"/>
+      </DockPanel>
+    </Border>
     <!-- Windows повернула зміни, які ви застосували (після оновлення): переглянути й повернути -->
     <Border x:Name="GuardBar" Style="{StaticResource Panel}" Margin="40,0,40,6" Padding="18,10" Visibility="Collapsed" Background="#FFF4E5">
       <DockPanel>

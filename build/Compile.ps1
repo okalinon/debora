@@ -30,7 +30,7 @@ $modules = @(
 foreach ($folder in 'actions', 'scan', 'drivers', 'maintenance', 'ui') {
     $modules += Get-ChildItem (Join-Path $src $folder) -Filter '*.ps1' | Sort-Object Name | ForEach-Object FullName
 }
-$configFiles = 'tweaks.json', 'presets.json', 'checks.json', 'lifecycle.json', 'known-bloat.json', 'software-risks.json', 'driver-sources.json', 'apps.json', 'startup-known.json', 'bugchecks.json', 'battery-charge-limit.json', 'debloat.json'
+$configFiles = 'tweaks.json', 'presets.json', 'checks.json', 'lifecycle.json', 'known-bloat.json', 'software-risks.json', 'driver-sources.json', 'apps.json', 'startup-known.json', 'bugchecks.json', 'battery-charge-limit.json', 'debloat.json', 'update.json'
 $configFiles += @(Get-ChildItem (Join-Path $PSScriptRoot '..\config') -Filter 'lang-*.json' | ForEach-Object Name)   # словники мов
 $knowledgeFiles = 'pci.ids', 'usb.ids'
 
@@ -156,9 +156,18 @@ $datFile = Join-Path $OutDir 'Debora.dat'
 Copy-Item (Join-Path $PSScriptRoot 'run.bat') (Join-Path $OutDir 'run.bat') -Force
 Copy-Item (Join-Path $PSScriptRoot 'run-menu.bat') (Join-Path $OutDir 'run-menu.bat') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Інструкція.txt') (Join-Path $OutDir 'Інструкція.txt') -Force
+foreach ($doc in 'CHANGELOG.md', 'README.en.md') { if (Test-Path (Join-Path $root $doc)) { Copy-Item (Join-Path $root $doc) (Join-Path $OutDir $doc) -Force } }
+# Debora.exe — запускач з маніфестом «від адміністратора» і значком (build\Launcher.cs)
+$exeVersion = if ($Version) { $Version } else { '0.0.0' }
+[void](& (Join-Path $PSScriptRoot 'Build-Launcher.ps1') -OutFile (Join-Path $OutDir 'Debora.exe') -Version $exeVersion)
 $hash = (Get-FileHash $outFile -Algorithm SHA256).Hash.ToLower()
 $datHash = (Get-FileHash $datFile -Algorithm SHA256).Hash.ToLower()
-[IO.File]::WriteAllText((Join-Path $OutDir 'SHA256SUMS'), "$hash  Debora.ps1`n$datHash  Debora.dat`n", (New-Object Text.UTF8Encoding $false))
+$sums = "$hash  Debora.ps1`n$datHash  Debora.dat`n"
+foreach ($n in 'Debora.exe', 'run.bat', 'run-menu.bat', 'Інструкція.txt', 'CHANGELOG.md', 'README.en.md') {
+    $f = Join-Path $OutDir $n
+    if (Test-Path $f) { $sums += "$((Get-FileHash $f -Algorithm SHA256).Hash.ToLower())  $n`n" }
+}
+[IO.File]::WriteAllText((Join-Path $OutDir 'SHA256SUMS'), $sums, (New-Object Text.UTF8Encoding $false))
 
 # 5. Перевірка результату парсером
 Write-Host "5/5 Перевірка парсером..." -ForegroundColor Cyan

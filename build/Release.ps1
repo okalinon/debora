@@ -74,7 +74,8 @@ $log = [IO.File]::ReadAllText((Join-Path $root 'CHANGELOG.md'), [Text.Encoding]:
 $m = [regex]::Match($log, "(?ms)^## $([regex]::Escape($Version))\b.*?(?=^## |\z)")
 $notes = if ($m.Success) { $m.Value.Trim() } else { "## $Version" }
 $notesFile = Join-Path $out "notes-$Version.md"
-[IO.File]::WriteAllText($notesFile, $notes + "`n`n**SHA-256** ``$name.zip``: ``$zipHash```n", $utf8)
+$signing = "**Code signing policy:** Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). Details: [Code signing policy](https://github.com/okalinon/debora#code-signing-policy)."
+[IO.File]::WriteAllText($notesFile, $notes + "`n`n**SHA-256** ``$name.zip``: ``$zipHash```n`n---`n$signing`n", $utf8)
 
 Write-Host ""
 Write-Host "Пакет: $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) МБ)" -ForegroundColor Green

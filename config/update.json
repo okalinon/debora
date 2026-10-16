@@ -1,4 +1,4 @@
 {
   "comment": "Оновлення Debora з GitHub Releases: repo — «власник/назва» репозиторію; порожньо — перевірку оновлень вимкнено. У релізі має бути архів Debora-<версія>.zip і контрольна сума (digest GitHub або SHA256SUMS).",
-  "repo": ""
+  "repo": "okalinon/debora"
 }

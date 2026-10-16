@@ -3,3 +3,4 @@ tests/.out/
 *.log
 Live/
 release/
+CLAUDE.md

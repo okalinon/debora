@@ -7,43 +7,107 @@
 
 **[Українською](README.uk.md)** · [Changelog](CHANGELOG.md) · [Download](https://github.com/okalinon/debora/releases/latest)
 
+![Debora — Windows 11 and 10 debloater and setup tool](docs/images/social-preview.png)
+
 Debora removes Windows bloatware, ads and telemetry, turns off Copilot and Recall, sets up a fresh Windows install
 in one pass and keeps your PC in shape — and every change can be undone. When a Windows update brings something back,
 Debora notices and restores your settings with one click.
 
-![Debora: overview with PC health score and one-click fixes](docs/images/overview.png)
+| 151 | 185 | 567 | 1 click | 0 |
+|:---:|:---:|:---:|:---:|:---:|
+| debloat changes in 3 levels | health checks with a 0–100 score | apps to install via winget | to undo any session | bytes of your data sent anywhere |
 
-## Features
+**Contents:** [How it works](#how-it-works) · [Screenshots](#a-tour-of-debora) · [What exactly changes](#what-exactly-changes) ·
+[Download](#download-and-run) · [FAQ](#faq) · [Guides](#guides) · [Command line](#command-line) · [Privacy](#privacy)
 
-- **Debloat Windows 11 / 10 with three levels** — *Careful* (ads, pushed games, telemetry, obsolete apps),
-  *Recommended* (+ Copilot and AI features, Microsoft apps most people never open) and *Maximum* (+ Xbox, OneDrive,
-  widgets). Every item tells you **what will stop working** before you apply it.
-- **Remove bloatware app by app** — Candy Crush, Clipchamp, Teams, the new Outlook, Phone Link, Xbox, Bing apps and more.
-- **Privacy** — disable telemetry, advertising ID, Start menu and lock screen ads, Bing web search, Edge sidebar and
-  shopping, app access to contacts, calendar, messages; Copilot, Recall and Click to Do.
-- **Changes stay changed** — after Windows updates Debora detects what was turned back on and restores it
-  (automatically during weekly maintenance, if you like).
-- **Exact undo** — a restore point before changes and a journal of every change with its previous value; undo any session.
-- **Setup from scratch** — after a clean install: drivers, debloat, tweaks, apps, Windows Update and scan-and-fix in
-  one run; restarts when updates need it and continues after sign-in. Save the plan and reuse it on other PCs.
-- **PC health scan** — 185 checks with a 0–100 score: security, updates, disk, stability, privacy, performance,
-  battery. Every finding has a **Fix** button or a step-by-step guide. Blue screen codes, crashing modules and slow
-  boot are explained in plain language.
-- **Drivers** — every device with its driver version; new drivers from the official Microsoft Update Catalog and
-  Windows Update, verified by checksum, with backup and rollback.
-- **Apps** — install 567 programs via winget in one click (browsers, messengers, media, office, gaming, creative,
-  developer tools) and keep them updated; uninstall programs with leftover cleanup.
-- **Maintenance** — disk cleanup, SMART disk health, battery wear, startup manager, system file repair (DISM/SFC),
-  network and Windows Update reset, weekly automatic maintenance.
-- **Reinstall Windows** — prepare a USB stick that installs Windows without questions, adds this PC's drivers and runs
-  your setup plan after the first sign-in.
-- **English and Ukrainian** interface, light and dark theme, a full command line.
+## How it works
 
-| Debloat levels | Apps |
+![How Debora works: scan, fix, guard after Windows updates, undo](docs/images/how-it-works.png)
+
+## A tour of Debora
+
+### PC health scan — one score, a button on every finding
+
+185 checks across security, updates, disk, stability, privacy, performance, cleanliness, network, backup and battery. Each finding
+explains the problem in plain words and has a **Fix** button (or a step-by-step guide when only you can decide).
+*Scan and fix everything* runs the whole list after one confirmation and scans again. Blue screen codes, crashing
+modules and slow boot are explained too. The window follows the Windows light or dark theme.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
+  <img alt="Debora health scan: score 97 of 100, categories and findings with Fix buttons" src="docs/images/overview.png">
+</picture>
+
+### Debloat — three levels, and you see what you lose
+
+![Three debloat levels: Careful, Recommended, Maximum](docs/images/levels.png)
+
+Pick a level or tick items one by one. Every row says **what will stop working** (in orange) before anything is
+applied. Only apps and features that exist on your PC are shown; Xbox and the useful apps stay unticked unless you
+choose *Maximum*.
+
+![Debora debloat tab: built-in apps with level and what stops working](docs/images/debloat.png)
+
+### Setup from scratch — a fresh Windows ready in one run
+
+After a clean install: drivers, debloat, settings, apps, Windows updates and scan-and-fix. When updates need a
+restart, Debora restarts and continues by itself after you sign in. Save the plan to a file and reuse it on other PCs
+or on a reinstall USB stick.
+
+![Setup from scratch wizard with steps, debloat level and app bundles](docs/images/setup.png)
+
+### Drivers — from the official Microsoft catalog, with rollback
+
+Every device with its driver version, date and provider. New drivers come from the Microsoft Update Catalog and
+Windows Update recommendations, are checked by SHA-256, and the current driver is exported first so you can roll
+back. PC makers' own tools (Dell, Lenovo, HP) are offered when they fit your model.
+
+![Drivers tab: newer drivers found online with current and new versions](docs/images/drivers.png)
+
+### Apps and uninstall
+
+Install browsers, messengers, media players, office, gaming, creative and developer tools in one click via winget
+(567 apps in 15 categories and ready-made bundles) and keep them updated. Uninstall programs silently where possible,
+then clean up their leftovers: folders go to the Recycle Bin, registry keys are backed up first. Adware and vendor
+bloat are flagged at the top.
+
+| Install apps | Uninstall programs |
 |---|---|
-| ![Debloat levels with what stops working](docs/images/debloat.png) | ![Install apps with winget](docs/images/programs.png) |
+| ![Apps tab: categories and app cards](docs/images/programs.png) | ![Uninstall tab: programs with size, date and recommendations](docs/images/uninstall.png) |
 
-![Setup from scratch wizard](docs/images/setup.png)
+### Startup and maintenance
+
+See which startup programs slow down boot (measured by Windows itself) and which are safe to turn off. Check disk
+health (SMART: temperature, wear, errors) and battery wear with a capacity history and advice to limit charging on
+your laptop brand. Disk cleanup, system file repair (DISM/SFC), network and Windows Update reset, pausing updates for
+7–35 days, weekly automatic maintenance.
+
+| Startup | Disk and battery health |
+|---|---|
+| ![Startup tab: programs with boot delay and recommendations](docs/images/startup.png) | ![Maintenance tab: SSD health and battery wear history](docs/images/maintenance.png) |
+
+### Change history — every change can be undone
+
+Each run is a session in the journal with the previous value of everything it touched. Select a session and click
+*Undo*: Debora restores exactly what was there before and does not overwrite what you or Windows changed later.
+A system restore point is created before changes as a second safety net.
+
+![Change history: sessions with the list of changes and an Undo button](docs/images/history.png)
+
+## What exactly changes
+
+| Area | What Debora does | How to undo |
+|---|---|---|
+| Built-in apps | Removes Store apps for all users and from the Windows image (new accounts don't get them), blocks automatic reinstall of suggested apps | Undo re-registers them while Windows still keeps their files; otherwise Debora names the ones to reinstall from the Microsoft Store |
+| Copilot and AI | Removes the Copilot app, sets Windows policies for Copilot, Recall, Click to Do, AI in Paint, Notepad and Edge | Undo removes the policies |
+| Ads and suggestions | Turns off tips, “suggested” apps and promotions in Start, Settings, the lock screen, File Explorer and Edge | Undo restores each registry value |
+| Telemetry | Lowers diagnostic data, turns off telemetry services and scheduled tasks, advertising ID, feedback requests | Undo restores the previous startup type and values |
+| Start, taskbar, Explorer | Optional: no “Recommended” section, no web results in search, file extensions shown, classic context menu | Undo per session |
+| Services and tasks | Disables services and tasks you do not use (Xbox, Fax, Maps, Retail Demo…) | Undo restores the startup type |
+| Windows features | Optional removal of legacy components (WordPad, PowerShell ISE, Windows Media Player legacy) | Turn back on in Windows Features or undo |
+
+Debora does **not** remove Microsoft Edge or the Microsoft Store and does not disable Windows Update — the scan even
+flags a disabled update service and offers to turn it back on.
 
 ## Download and run
 
@@ -87,11 +151,42 @@ Debora creates a system restore point before changes and records the previous va
 scheduled task and app it touches. *Change history* undoes any session exactly. Nothing is removed without your
 confirmation, and the *Careful* level only touches ads, telemetry and obsolete components.
 
-### Does Debora send any data?
-No. It only downloads drivers, apps and its own updates from official sources (Microsoft, winget, GitHub).
+### Which debloat level should I choose?
+*Recommended* suits most people: it keeps everything you are likely to use and turns off AI features, ads and
+Microsoft apps most people never open. Choose *Careful* on a work PC or if you are unsure. *Maximum* also removes
+Xbox, OneDrive and Widgets — skip it if you play Game Pass games or sync files with OneDrive.
+
+### Will games, Xbox or Game Pass stop working?
+Not on *Careful* or *Recommended*. Xbox apps and services are only on the *Maximum* level and are unticked by default;
+their rows say exactly what stops working (for example, signing in to Xbox in Minecraft or Game Pass games).
+
+### Does Debora remove Microsoft Edge or the Store, or disable Windows Update?
+No. Edge is kept but stops nagging (no first-run wizard, default-browser prompts, Copilot button or news on the new
+tab page). The Store and Windows Update keep working; you can pause updates for 7–35 days in *Maintenance*.
+
+### Can I choose individual items?
+Yes. Levels only tick the boxes for you — untick anything you want to keep, or tick single items without choosing a
+level. The same goes for findings, drivers, startup programs and apps.
+
+### Do I need administrator rights or internet?
+Debora.exe asks for administrator rights once (most changes need them). Debloat, settings, scan, undo and maintenance
+work offline; drivers, apps and Debora's own updates need the internet.
 
 ### Does it work on Windows 10?
 Yes, on Windows 10 and 11. Items that do not exist on your version are hidden.
+
+### Is Debora free? Does it send any data?
+Free and open source (MIT), with no ads or paid version. It sends nothing: it only downloads drivers, apps and its own
+updates from official sources (Microsoft, winget, GitHub) — see [Privacy](#privacy).
+
+### My antivirus or SmartScreen warns about Debora. Why?
+Debora changes system settings and the program is not code-signed yet, which is what SmartScreen reacts to. The
+releases are built from this repository by [GitHub Actions](.github/workflows/release.yml), checksums are in
+`SHA256SUMS`, and free code signing through [SignPath Foundation](https://signpath.org) is being set up.
+
+### How do I update Debora?
+Debora checks GitHub once a day and shows a bar when a new version is out — one click updates it (the previous
+version is kept). You can also check in *Preferences* or run `Debora.exe -Update`.
 
 ### Something went wrong?
 *Change history → Collect diagnostics* creates a zip — attach it to an
@@ -123,6 +218,7 @@ Debora.exe -DriverUpdate -WhatIf
 .\build\Compile.ps1 -Version 1.0.0   # dist\: Debora.ps1, Debora.dat, Debora.exe
 .\build\Test-All.ps1                 # Pester tests
 .\build\Release.ps1 -Version 1.0.0   # release zip with checksums
+.\build\New-Screenshots.ps1          # README screenshots (demo data), then New-Banners.ps1
 ```
 
 Design notes (Ukrainian) are in [docs/](docs/).

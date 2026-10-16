@@ -3,6 +3,13 @@
 Debora — Windows 10/11 debloat, setup from scratch and maintenance (PowerShell 5.1 + WPF, Ukrainian and English).
 Before 0.19.0 the program was called Debloater9.
 
+## 1.0.1 — 2026-10-16
+
+- Releases are now built by GitHub Actions from this repository (prepared for code signing by SignPath Foundation).
+- Preferences: turn off the automatic daily update check (*Check for Debora updates*).
+- README in English and Ukrainian with screenshots, privacy, uninstall and code signing policy; both are in the package.
+- Tests no longer depend on console encoding, screen size or number format.
+
 ## 1.0.0 — 2026-10-16
 
 First public release.

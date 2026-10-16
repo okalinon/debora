@@ -32,9 +32,9 @@ Describe 'Збірка' {
         Get-Content $file -Raw | Should -Match "D9Version\s*=\s*'0\.0\.0-test'"
     }
     It 'вікно будується із вбудованої розмітки' {
-        $output = powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File $file -Gui -SelfTest -Language uk 2>&1 | Out-String
+        $output = powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File $file -Gui -SelfTest -Language en 2>&1 | Out-String   # en: прихований процес псує кирилицю в консолі
         $LASTEXITCODE | Should -Be 0 -Because $output
-        $output | Should -Match 'вкладок 12'
+        $output | Should -Match 'window built: 12 tabs'
     }
     It 'поруч лежать обидва запускачі й інструкція' {
         foreach ($f in 'run.bat', 'run-menu.bat', 'Інструкція.txt', 'Debora.exe') { Test-Path (Join-Path $out $f) | Should -BeTrue -Because $f }

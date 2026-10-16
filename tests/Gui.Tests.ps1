@@ -135,7 +135,7 @@ Describe 'Вікно' {
             function Find-Default($dep) { foreach ($c in [Windows.LogicalTreeHelper]::GetChildren($dep)) { if ($c -is [Windows.Controls.Button] -and $c.IsDefault) { return $c }; if ($c -is [Windows.DependencyObject]) { $x = Find-Default $c; if ($x) { return $x } } } }
             $click = {
                 param($w)
-                $w.Left = -10000; $w.ShowActivated = $false
+                $w.Left = -10000; $w.ShowActivated = $false; $w.WindowState = 'Normal'
                 $w.Add_ContentRendered({ param($s) $b = Find-Default $s; $b.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent))) })
                 $t = New-Object Windows.Threading.DispatcherTimer; $t.Interval = [TimeSpan]::FromSeconds(5); $t.Tag = $w
                 $t.Add_Tick({ param($s) $s.Stop(); $s.Tag.Close() }); $t.Start()
@@ -249,7 +249,7 @@ Describe 'Вікно' {
         $r = Invoke-InGui {
             function Pump { $f = New-Object Windows.Threading.DispatcherFrame; [void][Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvoke([Action]{ $f.Continue = $false }, [Windows.Threading.DispatcherPriority]::Background); [Windows.Threading.Dispatcher]::PushFrame($f) }
             function Get-Boxes($dep) { $out = @(); for ($i = 0; $i -lt [Windows.Media.VisualTreeHelper]::GetChildrenCount($dep); $i++) { $c = [Windows.Media.VisualTreeHelper]::GetChild($dep, $i); if ($c -is [Windows.Controls.CheckBox]) { $out += $c }; $out += Get-Boxes $c }; $out }
-            $win.ShowActivated = $false; $win.Left = -10000; $win.Show()
+            $win.ShowActivated = $false; $win.WindowState = 'Normal'; $win.Left = -10000; $win.Show()   # на малому екрані вікно розгорнуте, а розгорнуте без активації не показується
             # Loaded запускає таймер (стартові кроки в тестах вимкнено) — зупиняємо, щоб задачі не перезаповнили таблицю й не тримали Close()
             $timer.Stop()
             if ($state.Job) { try { $state.Job.PS.Stop() } catch { }; $state.Job.PS.Dispose(); $state.Job.RS.Dispose(); $state.Job = $null }

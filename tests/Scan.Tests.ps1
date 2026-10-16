@@ -196,7 +196,7 @@ Describe 'Чекліст' {
     }
     It 'очищення — один автоматичний крок із сумою місця' {
         $c = Get-Step 'Очистити диск*'
-        $c.title | Should -Match '4,0 ГБ'
+        $c.title | Should -Match '4[,.]0 ГБ'   # роздільник — за регіональними форматами Windows
         @($c.action.ids) | Should -Be @('cleanup.temp', 'cleanup.update-cache')
     }
     It 'ручне очищення — окремий крок' {

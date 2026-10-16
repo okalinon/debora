@@ -17,8 +17,30 @@ Debora notices and restores your settings with one click.
 |:---:|:---:|:---:|:---:|:---:|
 | debloat changes in 3 levels | health checks with a 0–100 score | apps to install via winget | to undo any session | bytes of your data sent anywhere |
 
-**Contents:** [How it works](#how-it-works) · [Screenshots](#a-tour-of-debora) · [What exactly changes](#what-exactly-changes) ·
+**Contents:** [What is debloating?](#what-is-debloating-windows) · [How it works](#how-it-works) · [Screenshots](#a-tour-of-debora) · [What exactly changes](#what-exactly-changes) ·
 [Download](#download-and-run) · [FAQ](#faq) · [Guides](#guides) · [Command line](#command-line) · [Privacy](#privacy)
+
+## What is debloating Windows?
+
+**Bloatware** is everything that comes with Windows or a new PC but that you never asked for: pre-installed games and
+promo apps (Candy Crush, TikTok, trial antivirus), Microsoft apps most people never open, ads and “suggestions” in the
+Start menu, Settings and on the lock screen, telemetry that sends usage data to Microsoft, background services and
+scheduled tasks, and more recently AI features such as Copilot and Recall.
+
+**Debloating** means removing or turning off that part of Windows, so that you are left with the system you actually
+use. It gives you:
+
+- **less noise** — no ads, pop-ups, promoted apps and “finish setting up your device” reminders;
+- **more privacy** — less diagnostic and usage data leaves your PC, apps get less access to your data;
+- **fewer things running in the background** — fewer services, tasks and startup apps competing for resources,
+  which is most noticeable on older and low-end PCs;
+- **a cleaner Start menu and disk** — apps you never use are gone.
+
+Debloating is not a magic speed boost, and done carelessly it can hurt: many debloat scripts remove things for good,
+break the Microsoft Store, Windows Update or Xbox games, and give no way back. Debora is built around the opposite
+approach: it shows what each change does and **what will stop working**, starts with a restore point, records every
+change so it can be undone, does not disable Windows Update or remove Edge and the Store, and brings your choices back when a
+Windows update reverts them.
 
 ## How it works
 

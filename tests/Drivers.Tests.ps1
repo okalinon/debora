@@ -223,6 +223,6 @@ Describe 'Звіт про драйвери' {
     It 'будується на цьому ПК' {
         $rep = Get-D9DriverReport (Get-D9SystemInfo)
         $rep | Should -Not -BeNullOrEmpty
-        @($rep.Important).Count | Should -BeGreaterThan 0
+        @($rep.Devices).Count | Should -BeGreaterThan 0   # «важливих» драйверів виробників на віртуальній машині (CI) може й не бути
     }
 }

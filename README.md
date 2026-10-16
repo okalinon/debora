@@ -58,20 +58,52 @@ once a day and updates itself from this repository (each archive is verified by 
 
 ## FAQ
 
-**Is it safe?** Debora creates a system restore point before changes and records the previous value of every registry
-key, service, scheduled task and app it touches. The *Change history* tab undoes any session exactly. Nothing is
-removed without your confirmation, and the *Careful* level only touches ads, telemetry and obsolete components.
+### How do I disable Copilot in Windows 11?
+Uninstall the Copilot app and set the *TurnOffWindowsCopilot* policy so updates do not bring it back. Debora does
+both (plus Recall, Click to Do and AI in Paint, Notepad and Edge) on the *Recommended* debloat level.
+Step-by-step: [How to disable Copilot and Recall](docs/guides/disable-copilot-windows-11.md).
 
-**Does it send any data?** No. Debora only downloads drivers, apps and its own updates from official sources
-(Microsoft, winget, GitHub).
+### How do I remove bloatware from Windows 11?
+Remove the pre-installed Store apps for all users and as provisioned packages, and turn off automatic installation
+of suggested apps. Debora lists only the apps present on your PC and says what each one does.
+Step-by-step: [How to remove bloatware](docs/guides/remove-bloatware-windows-11.md).
 
-**Why did Copilot (or ads, or an app) come back?** Windows feature updates re-enable many settings. Debora checks after
-every Windows update and offers to restore what you had turned off.
+### How do I turn off telemetry and ads in Windows?
+Lower diagnostic data to the minimum your edition allows, disable the DiagTrack service and telemetry tasks, the
+advertising ID and "suggestions" in Start, Settings and the lock screen.
+Step-by-step: [How to turn off telemetry and ads](docs/guides/disable-telemetry-windows-11.md).
 
-**Windows 10 or 11?** Both. Items that do not exist on your version are hidden.
+### Why did Copilot, ads or removed apps come back after a Windows update?
+Feature updates reinstall built-in apps and reset many settings. Debora detects what was turned back on and restores
+it in one click or during weekly maintenance.
+More: [Keep your settings after Windows updates](docs/guides/windows-updates-reset-settings.md).
 
-**Something went wrong?** *Change history → Collect diagnostics* creates a zip — attach it to an
+### What should I do after a clean install of Windows 11?
+Drivers, Windows Update, debloat and privacy, apps, protection — Debora's *From scratch* wizard does it in one run and
+continues after restarts. Checklist: [After a clean install](docs/guides/setup-windows-11-after-clean-install.md).
+
+### Is it safe? Can I undo the changes?
+Debora creates a system restore point before changes and records the previous value of every registry key, service,
+scheduled task and app it touches. *Change history* undoes any session exactly. Nothing is removed without your
+confirmation, and the *Careful* level only touches ads, telemetry and obsolete components.
+
+### Does Debora send any data?
+No. It only downloads drivers, apps and its own updates from official sources (Microsoft, winget, GitHub).
+
+### Does it work on Windows 10?
+Yes, on Windows 10 and 11. Items that do not exist on your version are hidden.
+
+### Something went wrong?
+*Change history → Collect diagnostics* creates a zip — attach it to an
 [issue](https://github.com/okalinon/debora/issues).
+
+## Guides
+
+- [How to disable Copilot and Recall in Windows 11](docs/guides/disable-copilot-windows-11.md)
+- [How to remove bloatware from Windows 11 and 10](docs/guides/remove-bloatware-windows-11.md)
+- [How to turn off telemetry and ads in Windows 11 and 10](docs/guides/disable-telemetry-windows-11.md)
+- [Windows update turned settings back on — how to keep them](docs/guides/windows-updates-reset-settings.md)
+- [What to do after a clean install of Windows 11 or 10](docs/guides/setup-windows-11-after-clean-install.md)
 
 ## Command line
 
@@ -123,6 +155,11 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 
 Release binaries (`Debora.exe`, `Debora.ps1`) are built by [GitHub Actions](.github/workflows/release.yml) from
 this repository's source, and every signing request is approved manually. Only code from this repository is signed.
+
+## About
+
+Debora is developed in Ukraine by [@okalinon](https://github.com/okalinon). The goal is a free tool that anyone can use safely on
+their own PC: every change is explained before it is made and can be undone afterwards. Issues and ideas are welcome.
 
 ## License
 

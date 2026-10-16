@@ -1,0 +1,35 @@
+name: Bug report / Повідомити про помилку
+description: Something does not work as expected / Щось працює не так
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! The diagnostics zip helps the most: **Change history → Collect diagnostics** (it is saved in the *Reports* folder next to Debora).
+        Дякуємо! Найбільше допомагає архів діагностики: **«Журнал змін» → «Зібрати діагностику»** (зберігається в папці «Звіти» поруч із Debora).
+  - type: input
+    id: version
+    attributes:
+      label: Debora version / Версія Debora
+      placeholder: "1.0.1 (Preferences tab / вкладка «Параметри»)"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version / Версія Windows
+      placeholder: "Windows 11 Pro 24H2 (Settings → System → About)"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / Що сталося?
+      description: What did you do, what did you expect, what happened instead? / Що робили, чого очікували, що сталося натомість?
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics zip / Архів діагностики
+      description: Drag the zip here (remove anything private first) / Перетягніть zip сюди (спершу приберіть особисте)

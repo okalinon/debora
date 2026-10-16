@@ -1,0 +1,15 @@
+name: Idea or new debloat item / Ідея чи новий пункт деблоату
+description: Suggest a feature, a tweak or something Windows should stop doing / Запропонуйте можливість чи налаштування
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What should Debora do? / Що має робити Debora?
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details / Подробиці
+      description: For a debloat item — registry path, policy, service or app package, Windows versions, and what stops working. / Для пункту деблоату — шлях у реєстрі, політика, служба чи пакет, версії Windows і що перестане працювати.

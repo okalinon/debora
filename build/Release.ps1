@@ -88,7 +88,7 @@ if ($Publish) {
     if (-not $gh) { throw 'GitHub CLI (gh) не встановлено: winget install GitHub.cli, потім gh auth login.' }
     $cfg = ConvertFrom-Json ([IO.File]::ReadAllText((Join-Path $root 'config\update.json'), [Text.Encoding]::UTF8))
     if (-not $cfg.repo) { throw 'Не вказано репозиторій: -Repo власник/назва.' }
-    & gh release create "v$Version" $zip $sums --repo $cfg.repo --title "Debora $Version" --notes-file $notesFile
+    & gh release create "v$Version" $zip $sums --repo $cfg.repo --title "Debora $Version — Windows 11/10 debloater and setup tool" --notes-file $notesFile
     if ($LASTEXITCODE -ne 0) { throw 'gh release create не вдався.' }
     Write-Host "Опубліковано: https://github.com/$($cfg.repo)/releases/tag/v$Version" -ForegroundColor Green
 }

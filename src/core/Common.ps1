@@ -77,6 +77,7 @@ function Initialize-D9LogFile {
         $who = if (Test-D9IsAdmin) { 'адміністратор' } else { 'без прав адміністратора' }
         Add-Content -Path $Path -Value ("`r`n{0:yyyy-MM-dd HH:mm:ss} ===== Debora {1}, режим {2}, {3} =====" -f (Get-Date), $script:D9Version, $Mode, $who) -Encoding UTF8 -ErrorAction Stop
         $script:D9LogPath = $Path
+        if ($script:D9DataRootMoveNote) { Write-D9LogFileLine $script:D9DataRootMoveNote 'Info'; $script:D9DataRootMoveNote = $null }
     } catch { $script:D9LogPath = $null }
 }
 

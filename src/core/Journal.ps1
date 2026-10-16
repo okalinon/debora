@@ -54,7 +54,8 @@ function Move-D9LegacyDataRoot {
     }
     Update-D9LegacyRunOnce -Key $RunOnceKey
     Move-D9LegacyPowerKey -OldKey $PowerKey -NewKey $PowerNewKey
-    try { Write-D9LogFileLine "Дані перенесено: $Old → $New (файлів із виправленими шляхами: $count$(if ($linked) { ', залишено зʼєднання' }))" 'Info' } catch { }
+    # Журнал ще не відкрито (перенос — під час першого Get-D9DataRoot): рядок запише Initialize-D9LogFile
+    $script:D9DataRootMoveNote = "Дані перенесено: $Old → $New (файлів із виправленими шляхами: $count$(if ($linked) { ', залишено зʼєднання' }))"
     return $true
 }
 

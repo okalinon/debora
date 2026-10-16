@@ -514,6 +514,9 @@
     "Рівень «{0}»": "Level “{0}”",
     "Рівні: «Обережно» — {0} пунктів (реклама, телеметрія, застаріле), «Рекомендовано» — {1}, «Максимально» — {2}. Відмічено «{3}»; що перестане працювати — помаранчевим у рядку. Перед змінами створюється точка відновлення, усе повертається на вкладці «Журнал змін».": "Levels: “Careful” — {0} items (ads, telemetry, obsolete), “Recommended” — {1}, “Maximum” — {2}. “{3}” is checked; what will stop working is shown in orange in each row. A restore point is created first, and everything can be undone on the Change log tab.",
     "Що буде зроблено:": "What will be done:",
-    "щось перестане працювати: {0}": "something stops working: {0}"
+    "щось перестане працювати: {0}": "something stops working: {0}",
+    "Налаштування продовжиться після перезавантаження: лишилось {0}. Якщо цього не сталося — натисніть «Почати налаштування», і Debora запропонує продовжити.": "Setup will continue after a restart: {0} left. If it did not, press Start setup and Debora will offer to continue.",
+    "Оновлення Windows потребують перезавантаження. ПК перезавантажиться за хвилину, а після входу налаштування продовжиться саме (у вікні консолі). Збережіть відкриті документи.": "Windows updates need a restart. The PC will restart in a minute, and setup will continue by itself after you sign in (in a console window). Save your open documents.",
+    "Попереднє налаштування не завершено (лишилось: {0}). Продовжити його?": "The previous setup is not finished ({0} left). Continue it?"
   }
 }

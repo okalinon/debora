@@ -402,6 +402,12 @@
     "Максимально": "Maximum",
     "Перестане працювати: {0}": "Will stop working: {0}",
     "рівень «{0}» з вкладки «Деблоат»": "level “{0}” from the Debloat tab",
-    "рівень «{0}»: застосунків {1}, налаштувань {2}": "level “{0}”: {1} apps, {2} settings"
+    "рівень «{0}»: застосунків {1}, налаштувань {2}": "level “{0}”: {1} apps, {2} settings",
+    "Debora: перезавантаження для продовження налаштування. Після входу налаштування продовжиться саме.": "Debora: restarting to continue setup. Setup will continue by itself after you sign in.",
+    "завершення": "finishing",
+    "Не вдалося підготувати продовження після перезавантаження: {0}. Продовжую без перезавантаження.": "Could not prepare continuing after a restart: {0}. Continuing without a restart.",
+    "Невідомий шлях до програми — продовження після перезавантаження неможливе.": "Unknown program path — continuing after a restart is not possible.",
+    "Потрібне перезавантаження. Після входу налаштування продовжиться саме ({0}).": "A restart is needed. Setup will continue by itself after you sign in ({0}).",
+    "Продовження налаштування після перезавантаження {0}: лишилось {1}": "Continuing setup after restart {0}: {1} left"
   }
 }

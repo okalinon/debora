@@ -189,6 +189,10 @@ param(
     [Parameter(ParameterSetName = 'PrepareUsb')]
     [string]$ProfilePath,
 
+    # Продовжити налаштування з нуля після перезавантаження (запускає сам майстер через RunOnce)
+    [Parameter(ParameterSetName = 'Setup')]
+    [switch]$Resume,
+
     [Parameter(ParameterSetName = 'ExportProfile', Mandatory)]
     [string]$ExportProfile,
 
@@ -717,6 +721,23 @@ switch ($PSCmdlet.ParameterSetName) {
     }
 
     'Setup' {
+        if ($Resume) {
+            # Після перезавантаження: продовжити з того самого місця, без запитань
+            $state = Get-D9SetupResume
+            if (-not $state) { Write-D9Log (T-D9 'Немає налаштування, яке треба продовжити.') Ok; exit $ExitCodes.Ok }
+            if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
+            $setupProfile = ConvertTo-D9SetupProfile $state.profile
+            Write-Host ""
+            Write-Host (T-D9 'Debora продовжує налаштування з нуля — профіль «{0}». Не закривайте це вікно.' $setupProfile.name) -ForegroundColor Cyan
+            $summary = Invoke-D9Setup -Profile $setupProfile -Catalog $catalog -SystemInfo $sys -AllowReboot:([bool]$setupProfile.reboot) -Resume $state
+            if ($summary.resumeAfterReboot) { exit $ExitCodes.Reboot }
+            $bad = @($summary.results | Where-Object { -not $_.ok })
+            Write-D9Log (T-D9 'Підсумок: {0}' (Format-D9SetupSummary $summary)) $(if ($bad) { 'Warn' } else { 'Ok' })
+            Show-D9Toast 'Debora' (T-D9 'Налаштування з нуля завершено: {0}' (Format-D9SetupSummary $summary))
+            if ($summary.reboot -and $setupProfile.reboot) { Write-D9Log (T-D9 'Перезавантаження через 60 секунд (shutdown /a — скасувати).') Warn; & shutdown.exe /r /t 60 | Out-Null }
+            Write-Host (T-D9 'Готово. Вікно можна закрити.') -ForegroundColor Green
+            exit $(if ($bad) { $ExitCodes.Partial } else { $ExitCodes.Ok })
+        }
         $setupProfile = if ($ProfilePath) { Import-D9SetupProfile $ProfilePath } else { Get-D9SetupProfile }
         Write-Host ""
         Write-Host (T-D9 'Налаштування з нуля — профіль «{0}»' $setupProfile.name) -ForegroundColor Cyan
@@ -728,7 +749,8 @@ switch ($PSCmdlet.ParameterSetName) {
         if ($WhatIf) { exit $ExitCodes.Ok }
         if (-not (Test-D9IsAdmin)) { Write-D9Log (T-D9 'Потрібні права адміністратора (запускайте через run.bat).') Error; exit $ExitCodes.NotAdmin }
         if (-not (Confirm-D9 (T-D9 'Виконати {0} кроків? Спершу — точка відновлення; усе відкочується через -Undo.' @($setupProfile.steps).Count))) { exit $ExitCodes.Cancelled }
-        $summary = Invoke-D9Setup -Profile $setupProfile -Catalog $catalog -SystemInfo $sys -NoRestorePoint:$NoRestorePoint
+        $summary = Invoke-D9Setup -Profile $setupProfile -Catalog $catalog -SystemInfo $sys -NoRestorePoint:$NoRestorePoint -AllowReboot:([bool]$setupProfile.reboot)
+        if ($summary.resumeAfterReboot) { exit $ExitCodes.Reboot }   # ПК перезавантажується, продовження — після входу
         $bad = @($summary.results | Where-Object { -not $_.ok })
         Write-D9Log (T-D9 'Підсумок: {0}' (Format-D9SetupSummary $summary)) $(if ($bad) { 'Warn' } else { 'Ok' })
         if ($summary.reboot -and $setupProfile.reboot -and $Yes) { Write-D9Log (T-D9 'Перезавантаження через 60 секунд (shutdown /a — скасувати).') Warn; & shutdown.exe /r /t 60 }

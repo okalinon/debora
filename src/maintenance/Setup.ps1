@@ -176,7 +176,7 @@ function Invoke-D9SetupStep {
         }
         'windowsUpdate' {
             $r = Install-D9WindowsUpdates
-            return [pscustomobject]@{ Text = (T-D9 'встановлено оновлень: {0}' "$($r.Installed)") + $(if ($r.RebootRecommended) { ' ' + (T-D9 '(потрібне перезавантаження)') }); Reboot = [bool]$r.RebootRecommended }
+            return [pscustomobject]@{ Installed = [int]$r.Installed; Text = (T-D9 'встановлено оновлень: {0}' "$($r.Installed)") + $(if ($r.RebootRecommended) { ' ' + (T-D9 '(потрібне перезавантаження)') }); Reboot = [bool]$r.RebootRecommended }
         }
         'scanFix' {
             $ctx = New-D9ScanContext -Catalog $Catalog -SystemInfo $SystemInfo
@@ -201,32 +201,126 @@ function Invoke-D9SetupStep {
     }
 }
 
-# Повний прохід. Підсумок — setup-last.json у папці даних; повертає @{ results; reboot; scoreBefore; scoreAfter }
+# ---------- Продовження після перезавантаження ----------
+# Після кроку «Оновлення Windows», що вимагає перезавантаження, майстер зберігає стан (setup-resume.json),
+# ставить себе на один запуск після входу (RunOnce, з копії програми в захищеній папці) і перезавантажує ПК;
+# далі продовжує з того самого місця. Оновлення Windows — до 3 раундів (після перезавантаження часто
+# приходять нові), перезавантажень за весь прохід — не більше 4. Драйвери посеред проходу не перезавантажують:
+# їм достатньо фінального перезавантаження.
+$script:D9SetupMaxReboots = 4
+$script:D9SetupMaxWuRounds = 3
+$script:D9SetupRunOnceKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
+$script:D9SetupRunOnceName = 'DeboraSetup'
+
+function Get-D9SetupResumePath { Join-Path (Get-D9DataRoot) 'setup-resume.json' }
+
+function Get-D9SetupResume {
+    $path = Get-D9SetupResumePath
+    if (-not (Test-Path -LiteralPath $path)) { return $null }
+    try { ConvertFrom-Json ([IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)) } catch { $null }
+}
+
+function Save-D9SetupResume {
+    param([Parameter(Mandatory)]$State)
+    $root = Get-D9DataRoot
+    if (-not (Test-Path $root)) { New-Item -ItemType Directory -Path $root -Force | Out-Null }
+    [IO.File]::WriteAllText((Get-D9SetupResumePath), (ConvertTo-Json $State -Depth 8), (New-Object Text.UTF8Encoding $false))
+}
+
+function Clear-D9SetupResume {
+    param([string]$RunOnceKey = $script:D9SetupRunOnceKey)
+    $path = Get-D9SetupResumePath
+    if (Test-Path -LiteralPath $path) { [IO.File]::Delete($path) }
+    if (Test-Path $RunOnceKey) { try { Remove-ItemProperty -Path $RunOnceKey -Name $script:D9SetupRunOnceName -ErrorAction Stop } catch { } }
+}
+
+# Команда продовження: копія програми в %ProgramData%\Debloater9\app (переживе відключену флешку й не підміняється
+# звичайним користувачем) → RunOnce запускає її після входу адміністратора у видимому вікні
+function Register-D9SetupResume {
+    param([string]$Script = $script:D9ScriptPath, [string]$RunOnceKey = $script:D9SetupRunOnceKey, [switch]$NoCopy)
+    if (-not $Script) { throw (T-D9 'Невідомий шлях до програми — продовження після перезавантаження неможливе.') }
+    $target = if ($NoCopy) { $Script } else { Install-D9AppCopy -SourceScript $Script }
+    if (-not (Test-Path $RunOnceKey)) { New-Item -Path $RunOnceKey -Force | Out-Null }
+    $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$target`" -Setup -Resume -Yes"
+    Set-ItemProperty -Path $RunOnceKey -Name $script:D9SetupRunOnceName -Value $cmd
+    $cmd
+}
+
+function Invoke-D9SetupReboot {
+    & shutdown.exe /r /t 60 /c (T-D9 'Debora: перезавантаження для продовження налаштування. Після входу налаштування продовжиться саме.') | Out-Null
+}
+
+# Повний прохід. Підсумок — setup-last.json у папці даних; повертає @{ results; reboot; scoreBefore; scoreAfter; resumeAfterReboot }
+# -AllowReboot — можна перезавантажуватись посеред проходу й продовжувати після входу; -Resume — стан з setup-resume.json.
+# -RebootAction / -ResumeScript / -RunOnceKey / -NoAppCopy — для тестів.
 function Invoke-D9Setup {
-    param([Parameter(Mandatory)]$Profile, [Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo, [switch]$NoRestorePoint)
+    param([Parameter(Mandatory)]$Profile, [Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$SystemInfo, [switch]$NoRestorePoint,
+          [switch]$AllowReboot, $Resume, [scriptblock]$RebootAction = { Invoke-D9SetupReboot }, [string]$ResumeScript = $script:D9ScriptPath,
+          [string]$RunOnceKey = $script:D9SetupRunOnceKey, [switch]$NoAppCopy)
     $Profile = ConvertTo-D9SetupProfile $Profile
-    $started = Get-Date
-    Write-D9Log (T-D9 'Налаштування з нуля, профіль «{0}»: {1}' $Profile.name ($Profile.steps -join ', '))
-    $rp = if ($NoRestorePoint) { $null } else { New-D9RestorePoint }
-    $n = 0; $total = @($Profile.steps).Count
-    $results = foreach ($s in @($Profile.steps)) {
+    if ($Resume) {
+        $started = try { [datetime]$Resume.started } catch { Get-Date }
+        $pending = New-Object System.Collections.ArrayList
+        foreach ($p in @($Resume.pending)) { if ($p -and $script:D9SetupSteps.Contains([string]$p)) { [void]$pending.Add([string]$p) } }
+        $results = New-Object System.Collections.ArrayList
+        foreach ($r in @($Resume.results)) { if ($r) { [void]$results.Add($r) } }
+        $reboots = [int]$Resume.reboots; $wuRounds = [int]$Resume.wuRounds; $rp = [bool]$Resume.restorePoint
+        $needReboot = $false   # потрібне раніше перезавантаження вже відбулось
+        Write-D9Log (T-D9 'Продовження налаштування після перезавантаження {0}: лишилось {1}' $reboots ($pending -join ', '))
+    } else {
+        $started = Get-Date
+        $pending = New-Object System.Collections.ArrayList
+        foreach ($p in @($Profile.steps)) { [void]$pending.Add([string]$p) }
+        $results = New-Object System.Collections.ArrayList
+        $reboots = 0; $wuRounds = 0; $needReboot = $false
+        Write-D9Log (T-D9 'Налаштування з нуля, профіль «{0}»: {1}' $Profile.name ($Profile.steps -join ', '))
+        $rp = if ($NoRestorePoint) { $null } else { New-D9RestorePoint }
+    }
+    $total = $results.Count + $pending.Count
+    while ($pending.Count) {
         if (Test-D9CancelRequested) { Write-D9Log (T-D9 'Зупинено на вашу вимогу — решту пропущено.') Warn; break }
-        $n++
+        $s = [string]$pending[0]; $pending.RemoveAt(0)
+        $n = $results.Count + 1
         if ($script:D9OnProgress) { & $script:D9OnProgress $n $total (Get-D9SetupStepName $s) }
         Set-D9Stage -Name (Get-D9SetupStepName $s) -Step $n -Of $total -Key "setup:$s"
         Write-D9Log "— [$n/$total] $(Get-D9SetupStepName $s)"
-        try {
+        $installed = 0
+        $row = try {
             $out = Invoke-D9SetupStep -Step $s -Profile $Profile -Catalog $Catalog -SystemInfo $SystemInfo
             if ($out -is [string] -or $null -eq $out.Text) { $text = [string]$out; $reboot = $false } else { $text = [string]$out.Text; $reboot = [bool]$out.Reboot }
+            if ($out -isnot [string] -and $out.PSObject.Properties['Installed']) { $installed = [int]$out.Installed }
             Write-D9Log "  $text" Ok
-            [pscustomobject]@{ step = $s; ok = $true; text = $text; reboot = $reboot; before = $(if ($out.PSObject.Properties['Before']) { $out.Before }); after = $(if ($out.PSObject.Properties['After']) { $out.After }) }
+            [pscustomobject]@{ step = $s; ok = $true; text = $text; reboot = $reboot
+                               before = $(if ($out -isnot [string] -and $out.PSObject.Properties['Before']) { $out.Before }); after = $(if ($out -isnot [string] -and $out.PSObject.Properties['After']) { $out.After }) }
         }
         catch { Write-D9Log ('  ' + (T-D9 'Помилка: {0}' $_.Exception.Message)) Error; [pscustomobject]@{ step = $s; ok = $false; text = $_.Exception.Message; reboot = $false } }
+        [void]$results.Add($row)
+        if ($row.reboot) { $needReboot = $true }
+        # Оновлення Windows вимагають перезавантаження: перезавантажитись і продовжити (ще раунд оновлень, потім решта)
+        if ($s -eq 'windowsUpdate' -and $row.reboot -and $AllowReboot -and $reboots -lt $script:D9SetupMaxReboots) {
+            $wuRounds++
+            if ($installed -gt 0 -and $wuRounds -lt $script:D9SetupMaxWuRounds) { [void]$pending.Insert(0, 'windowsUpdate'); $total++ }
+            $state = [ordered]@{ schema = 1; profile = $Profile; pending = @($pending); results = @($results); started = $started.ToString('s')
+                                 restorePoint = [bool]$rp; reboots = $reboots + 1; wuRounds = $wuRounds; saved = (Get-Date).ToString('s') }
+            try {
+                Save-D9SetupResume $state
+                $cmd = Register-D9SetupResume -Script $ResumeScript -RunOnceKey $RunOnceKey -NoCopy:$NoAppCopy
+                $left = if ($pending.Count) { $pending -join ', ' } else { T-D9 'завершення' }
+                Write-D9Log (T-D9 'Потрібне перезавантаження. Після входу налаштування продовжиться саме ({0}).' $left) Warn
+                Write-D9Log "  $cmd" Detail
+                & $RebootAction
+                return [pscustomobject]@{ profile = $Profile.name; started = $started.ToString('s'); results = @($results); reboot = $true; resumeAfterReboot = $true; pending = @($pending) }
+            } catch {
+                Write-D9Log (T-D9 'Не вдалося підготувати продовження після перезавантаження: {0}. Продовжую без перезавантаження.' $_.Exception.Message) Warn
+                Clear-D9SetupResume -RunOnceKey $RunOnceKey
+            }
+        }
     }
-    $scanRow = @($results | Where-Object step -eq 'scanFix') | Select-Object -First 1
+    Clear-D9SetupResume -RunOnceKey $RunOnceKey
+    $scanRow = @($results | Where-Object step -eq 'scanFix') | Select-Object -Last 1
     $summary = [pscustomobject]@{
         profile = $Profile.name; started = $started.ToString('s'); finished = (Get-Date).ToString('s'); restorePoint = [bool]$rp
-        results = @($results); reboot = [bool](@($results | Where-Object { $_.reboot }))
+        results = @($results); reboot = $needReboot; reboots = $reboots; resumeAfterReboot = $false
         scoreBefore = $(if ($scanRow) { $scanRow.before }); scoreAfter = $(if ($scanRow) { $scanRow.after })
     }
     $root = Get-D9DataRoot

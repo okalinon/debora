@@ -872,7 +872,7 @@
                 <CheckBox x:Name="ChkSuApps" Content="Програми (набори й окремі — нижче)" Margin="0,3"/>
                 <CheckBox x:Name="ChkSuWindows" Content="Оновлення Windows (може тривати довго)" Margin="0,3"/>
                 <CheckBox x:Name="ChkSuScanFix" Content="Сканування й автоматичне виправлення знайденого" Margin="0,3"/>
-                <CheckBox x:Name="ChkSuReboot" Content="Перезавантажити ПК наприкінці, якщо потрібно" Margin="0,12,0,0"/>
+                <CheckBox x:Name="ChkSuReboot" Content="Перезавантажувати, коли потрібно (після оновлень Windows налаштування продовжиться саме після входу)" Margin="0,12,0,0"/>
               </StackPanel>
             </Border>
             <TextBlock Style="{StaticResource Section}" Text="Програми"/>

@@ -2270,7 +2270,9 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $ui.SuNameBox.Text = $p.name
         $ui.ChkSuReboot.IsChecked = [bool]$p.reboot
         $last = Get-D9SetupLast
-        $ui.SuState.Text = if ($last) { T-D9 'Останній прохід {0}: {1}.' (([datetime]$last.finished).ToString('dd.MM.yyyy HH:mm')) (Format-D9SetupSummary $last) } else { T-D9 'Профіль зберігається сам; флешка з вкладки «Перевстановлення» виконає його після першого входу.' }
+        $resume = Get-D9SetupResume
+        $ui.SuState.Text = if ($resume) { T-D9 'Налаштування продовжиться після перезавантаження: лишилось {0}. Якщо цього не сталося — натисніть «Почати налаштування», і Debora запропонує продовжити.' ((@($resume.pending) | ForEach-Object { ((Get-D9SetupStepName $_) -split ':')[0] }) -join ', ') }
+                           elseif ($last) { T-D9 'Останній прохід {0}: {1}.' (([datetime]$last.finished).ToString('dd.MM.yyyy HH:mm')) (Format-D9SetupSummary $last) } else { T-D9 'Профіль зберігається сам; флешка з вкладки «Перевстановлення» виконає його після першого входу.' }
     }
     $readSetup = {
         $idx = $ui.SuPresetBox.SelectedIndex
@@ -2325,6 +2327,18 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
     })
     $ui.BtnSuRun.Add_Click({
         if (-not (& $needAdmin)) { return }
+        # Незавершений прохід (перезавантаження не продовжило його само) — продовжити з того самого місця
+        $resume = Get-D9SetupResume
+        if ($resume -and [Windows.MessageBox]::Show($win, (T-D9 'Попереднє налаштування не завершено (лишилось: {0}). Продовжити його?' ((@($resume.pending) | ForEach-Object { ((Get-D9SetupStepName $_) -split ':')[0] }) -join ', ')), 'Debora', 'YesNo', 'Question') -eq 'Yes') {
+            $ui.LogExpander.IsExpanded = $true
+            & $startJob (T-D9 'Налаштування з нуля') { param($a) $p = ConvertTo-D9SetupProfile $a.State.profile; Invoke-D9Setup -Profile $p -Catalog $a.Catalog -SystemInfo $a.Sys -AllowReboot:([bool]$p.reboot) -Resume $a.State } @{ State = $resume; Catalog = $Catalog; Sys = $SystemInfo } {
+                param($s)
+                & $fillSessions; & $loadTweakStates; & $loadSetup
+                if ($s.resumeAfterReboot) { [void][Windows.MessageBox]::Show($win, (T-D9 'Оновлення Windows потребують перезавантаження. ПК перезавантажиться за хвилину, а після входу налаштування продовжиться саме (у вікні консолі). Збережіть відкриті документи.'), 'Debora', 'OK', 'Information') }
+                else { [void][Windows.MessageBox]::Show($win, (T-D9 'Готово. {0}.' (Format-D9SetupSummary $s)), 'Debora') }
+            }
+            return
+        }
         $p = & $readSetup
         if (-not $p.steps) { [void][Windows.MessageBox]::Show($win, (T-D9 'Позначте хоча б один крок.'), 'Debora'); return }
         Save-D9SetupProfile $p | Out-Null
@@ -2332,9 +2346,13 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
             param($plan, $c)
             if (-not (Show-D9TextDialog $win (T-D9 'Налаштування з нуля') (T-D9 'Профіль «{0}»: {1} кроків. Спершу — точка відновлення; усе відкочується в «Журналі змін». Може тривати від кількох хвилин до години; не вимикайте ПК.' $c.Profile.name @($plan).Count) (& $suPlanText $plan) (T-D9 'Почати'))) { return }
             $ui.LogExpander.IsExpanded = $true
-            & $startJob (T-D9 'Налаштування з нуля') { param($a) Invoke-D9Setup -Profile $a.Profile -Catalog $a.Catalog -SystemInfo $a.Sys } @{ Profile = $c.Profile; Catalog = $Catalog; Sys = $SystemInfo } {
+            & $startJob (T-D9 'Налаштування з нуля') { param($a) Invoke-D9Setup -Profile $a.Profile -Catalog $a.Catalog -SystemInfo $a.Sys -AllowReboot:([bool]$a.Profile.reboot) } @{ Profile = $c.Profile; Catalog = $Catalog; Sys = $SystemInfo } {
                 param($s, $c2)
                 & $fillSessions; & $loadTweakStates; & $fillSetup $c2.Profile
+                if ($s.resumeAfterReboot) {
+                    [void][Windows.MessageBox]::Show($win, (T-D9 'Оновлення Windows потребують перезавантаження. ПК перезавантажиться за хвилину, а після входу налаштування продовжиться саме (у вікні консолі). Збережіть відкриті документи.'), 'Debora', 'OK', 'Information')
+                    return
+                }
                 $msg = (T-D9 'Готово. {0}.' (Format-D9SetupSummary $s))
                 if ($s.reboot) { if ([Windows.MessageBox]::Show($win, "$msg`n`n" + (T-D9 'Перезавантажити комп''ютер зараз, щоб усі зміни запрацювали?'), 'Debora', 'YesNo', 'Question') -eq 'Yes') { Restart-Computer -Force } }
                 else { [void][Windows.MessageBox]::Show($win, $msg, 'Debora') }

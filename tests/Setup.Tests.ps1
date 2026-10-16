@@ -103,3 +103,68 @@ Describe 'Виконання майстра' {
         $s2.restorePoint | Should -BeFalse
     }
 }
+
+Describe 'Продовження після перезавантаження' {
+    BeforeAll {
+        $script:runOnce = 'HKCU:\Software\DeboraTestRunOnce'
+        Mock New-D9RestorePoint { 'rp' }
+        $script:p = ConvertTo-D9SetupProfile ([pscustomobject]@{ name = 'R'; steps = @('drivers', 'windowsUpdate', 'scanFix'); reboot = $true })
+        $script:common = @{ Profile = $p; Catalog = $catalog; SystemInfo = $sys; AllowReboot = $true; ResumeScript = 'C:\Debora\Debora.ps1'; RunOnceKey = $runOnce; NoAppCopy = $true; RebootAction = { $script:rebooted++ } }
+    }
+    BeforeEach {
+        $env:D9_DATA_ROOT = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('Software\DeboraTestRunOnce', $false)
+        $script:rebooted = 0; $script:wu = 0
+    }
+    AfterAll { [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('Software\DeboraTestRunOnce', $false) }
+
+    It 'оновлення Windows з перезавантаженням: стан збережено, RunOnce записано, після входу — ще раунд оновлень і решта' {
+        Mock Invoke-D9SetupStep {
+            switch ($Step) {
+                'drivers'       { [pscustomobject]@{ Text = 'драйвери'; Reboot = $true } }   # драйвери посеред проходу не перезавантажують
+                'windowsUpdate' { $script:wu++; if ($script:wu -eq 1) { [pscustomobject]@{ Text = 'оновлення 2'; Reboot = $true; Installed = 2 } } else { [pscustomobject]@{ Text = 'нових немає'; Reboot = $false; Installed = 0 } } }
+                'scanFix'       { [pscustomobject]@{ Text = 'оцінка'; Reboot = $false; Before = 70; After = 90 } }
+            }
+        }
+        $first = Invoke-D9Setup @common
+        $first.resumeAfterReboot | Should -BeTrue
+        $rebooted | Should -Be 1
+        $state = Get-D9SetupResume
+        @($state.pending) | Should -Be @('windowsUpdate', 'scanFix')
+        $state.reboots | Should -Be 1
+        (Get-ItemProperty $runOnce).DeboraSetup | Should -Match '-Setup -Resume -Yes'
+        # «Після входу»
+        $final = Invoke-D9Setup @common -Resume $state
+        $final.resumeAfterReboot | Should -BeFalse
+        $final.results.step | Should -Be @('drivers', 'windowsUpdate', 'windowsUpdate', 'scanFix')
+        $final.reboot | Should -BeFalse -Because 'перезавантаження після оновлень уже відбулось, драйверам його теж вистачило'
+        $final.scoreAfter | Should -Be 90
+        Get-D9SetupResume | Should -BeNullOrEmpty
+        (Get-ItemProperty $runOnce -ErrorAction SilentlyContinue).DeboraSetup | Should -BeNullOrEmpty
+        (Get-D9SetupLast).reboots | Should -Be 1
+    }
+    It 'оновлення без кінця: не більше 3 раундів, потім решта кроків' {
+        Mock Invoke-D9SetupStep {
+            switch ($Step) {
+                'windowsUpdate' { $script:wu++; [pscustomobject]@{ Text = "раунд $script:wu"; Reboot = $true; Installed = 1 } }
+                default { [pscustomobject]@{ Text = $Step; Reboot = $false } }
+            }
+        }
+        $r = Invoke-D9Setup @common
+        $guard = 0
+        while ($r.resumeAfterReboot -and $guard -lt 10) { $guard++; $r = Invoke-D9Setup @common -Resume (Get-D9SetupResume) }
+        $wu | Should -Be 3
+        $rebooted | Should -Be 3
+        $r.results.step[-1] | Should -Be 'scanFix'
+        Get-D9SetupResume | Should -BeNullOrEmpty
+    }
+    It 'без дозволу на перезавантаження — один прохід, як раніше' {
+        Mock Invoke-D9SetupStep { [pscustomobject]@{ Text = $Step; Reboot = ($Step -eq 'windowsUpdate'); Installed = 1 } }
+        $c = $common.Clone(); $c.AllowReboot = $false
+        $r = Invoke-D9Setup @c
+        $r.resumeAfterReboot | Should -BeFalse
+        $r.reboot | Should -BeTrue
+        $rebooted | Should -Be 0
+        Get-D9SetupResume | Should -BeNullOrEmpty
+    }
+}

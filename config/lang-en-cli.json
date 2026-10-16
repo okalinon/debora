@@ -289,6 +289,10 @@
     "  [x] — буде зроблено, [=] — уже зроблено, [ ] — інший рівень (-Level Safe | Recommended | Max) або вкладка «Деблоат» у вікні": "  [x] — will be done, [=] — already done, [ ] — another level (-Level Safe | Recommended | Max) or the Debloat tab in the window",
     "Деблоат цього рівня вже виконано — робити нічого.": "Debloat at this level is already done — nothing to do.",
     "Перестане працювати:": "Will stop working:",
-    "Рівень: {0}": "Level: {0}"
+    "Рівень: {0}": "Level: {0}",
+    "Debora продовжує налаштування з нуля — профіль «{0}». Не закривайте це вікно.": "Debora is continuing setup from scratch — profile “{0}”. Do not close this window.",
+    "Готово. Вікно можна закрити.": "Done. You can close this window.",
+    "Налаштування з нуля завершено: {0}": "Setup from scratch finished: {0}",
+    "Немає налаштування, яке треба продовжити.": "There is no setup to continue."
   }
 }

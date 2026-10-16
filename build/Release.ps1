@@ -8,7 +8,7 @@
 .EXAMPLE
     .\build\Release.ps1 -Version 1.0.0
 .EXAMPLE
-    .\build\Release.ps1 -Version 1.0.0 -Repo olegdev/debora -Publish
+    .\build\Release.ps1 -Version 1.0.0 -Repo owner/debora -Publish
 #>
 param(
     [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,

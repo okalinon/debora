@@ -95,6 +95,35 @@ Debora.exe -DriverUpdate -WhatIf
 
 Design notes (Ukrainian) are in [docs/](docs/).
 
+## Privacy
+
+Debora does not collect or send any data about you or your PC. It connects to the internet only to:
+
+- check GitHub once a day for a newer Debora version (only the public release list is requested;
+  turn it off in *Preferences → Check for Debora updates*);
+- download what you ask for: drivers (Microsoft Update Catalog, Windows Update), programs (winget, GitHub releases)
+  and Debora updates.
+
+All logs, reports and the change journal stay on your PC (`%ProgramData%\Debloater9`, the `Reports` folder).
+
+## Uninstall
+
+Debora is portable: delete its folder. To remove everything else, first turn off weekly maintenance
+(*Maintenance → Automatic maintenance → Turn off*, or `Debora.exe -Schedule Off`), then delete `%ProgramData%\Debloater9`
+(journal, logs, backups) and `%LOCALAPPDATA%\Debora` (cache). Changes made to Windows stay until you undo them in
+*Change history*.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by
+[SignPath Foundation](https://signpath.org).
+
+- Committers and reviewers: [okalinon](https://github.com/okalinon)
+- Approvers: [okalinon](https://github.com/okalinon)
+
+Release binaries (`Debora.exe`, `Debora.ps1`) are built by [GitHub Actions](.github/workflows/release.yml) from
+this repository's source, and every signing request is approved manually. Only code from this repository is signed.
+
 ## License
 
 [MIT](LICENSE)

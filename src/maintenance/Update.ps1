@@ -82,9 +82,14 @@ function Install-D9Update {
 # Стан перевірки (раз на добу): %ProgramData%\Debloater9\update-check.json
 function Get-D9UpdateCheckPath { Join-Path (Get-D9DataRoot) 'update-check.json' }
 
+# Автоматична перевірка вимикається в «Параметрах» (HKCU:\Software\Debora\UpdateCheck = 0); кнопкою — завжди можна
+function Test-D9UpdateCheckEnabled {
+    (Get-ItemProperty 'HKCU:\Software\Debora' -Name UpdateCheck -ErrorAction SilentlyContinue).UpdateCheck -ne 0
+}
+
 function Test-D9UpdateCheckDue {
     param([int]$Hours = 20, [datetime]$Now = (Get-Date))
-    if (-not (Get-D9UpdateRepo) -or $script:D9Version -like '*-dev') { return $false }
+    if (-not (Get-D9UpdateRepo) -or $script:D9Version -like '*-dev' -or -not (Test-D9UpdateCheckEnabled)) { return $false }
     $path = Get-D9UpdateCheckPath
     $s = try { ConvertFrom-Json ([IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)) } catch { $null }
     if (-not $s) { return $true }

@@ -9,12 +9,17 @@
     .\build\Release.ps1 -Version 1.0.0
 .EXAMPLE
     .\build\Release.ps1 -Version 1.0.0 -Repo owner/debora -Publish
+.EXAMPLE
+    .\build\Release.ps1 -Version 1.0.0 -PackageOnly -Dist .\signed
+    # GitHub Actions після підпису SignPath: лише перерахувати SHA256SUMS для підписаних файлів і запакувати
 #>
 param(
     [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
     [string]$Repo,
     [switch]$Publish,
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$PackageOnly,   # без збірки й тестів: запакувати готову папку -Dist (наприклад, підписані файли)
+    [string]$Dist
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -32,11 +37,18 @@ if ($Repo) {
 }
 
 # 1. Збірка (з самоперевіркою вікна; оновлює й Live\)
-& (Join-Path $PSScriptRoot 'Compile.ps1') -Version $Version
-$dist = Join-Path $root 'dist'
+if (-not $PackageOnly) { & (Join-Path $PSScriptRoot 'Compile.ps1') -Version $Version }
+$dist = if ($Dist) { (Resolve-Path $Dist).Path } else { Join-Path $root 'dist' }
+if (-not (Test-Path (Join-Path $dist 'Debora.ps1'))) { throw "У $dist немає Debora.ps1" }
+
+# Контрольні суми файлів пакета — заново (після підпису SignPath файли змінились)
+$sumLines = foreach ($f in Get-ChildItem $dist -File | Where-Object Name -ne 'SHA256SUMS' | Sort-Object Name) {
+    "$((Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower())  $($f.Name)"
+}
+[IO.File]::WriteAllText((Join-Path $dist 'SHA256SUMS'), (($sumLines -join "`n") + "`n"), $utf8)
 
 # 2. Тести
-if (-not $SkipTests) {
+if (-not $SkipTests -and -not $PackageOnly) {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-All.ps1')
     if ($LASTEXITCODE -ne 0) { throw 'Тести не пройшли — реліз зупинено.' }
 }

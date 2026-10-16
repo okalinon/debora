@@ -280,6 +280,8 @@
     "Деблоат Windows: нав'язані застосунки, реклама, Copilot, телеметрія": "Debloat Windows: pushed apps, ads, Copilot, telemetry",
     "Перезавантажувати, коли потрібно (після оновлень Windows налаштування продовжиться саме після входу)": "Restart when needed (after Windows updates, setup continues by itself after sign-in)",
     "Що нового": "What's new",
-    "Перевірити оновлення": "Check for updates"
+    "Перевірити оновлення": "Check for updates",
+    "Перевіряти оновлення Debora": "Check for Debora updates",
+    "Раз на добу Debora запитує в GitHub номер останньої версії. Жодних даних про ПК не надсилається.": "Once a day Debora asks GitHub for the latest version number. No data about your PC is sent."
   }
 }

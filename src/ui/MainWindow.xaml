@@ -1495,6 +1495,10 @@
                   <CheckBox x:Name="PrefToasts" DockPanel.Dock="Right" VerticalAlignment="Center"/>
                   <StackPanel Margin="0,0,16,0"><TextBlock Style="{StaticResource RowTitle}" Text="Сповіщення Windows"/><TextBlock Style="{StaticResource RowNote}" Text="Коли довга задача завершилась, а вікно Debora неактивне." TextWrapping="Wrap"/></StackPanel>
                 </DockPanel>
+                <DockPanel Margin="0,6,0,6">
+                  <CheckBox x:Name="PrefUpdateCheck" DockPanel.Dock="Right" VerticalAlignment="Center"/>
+                  <StackPanel Margin="0,0,16,0"><TextBlock Style="{StaticResource RowTitle}" Text="Перевіряти оновлення Debora"/><TextBlock Style="{StaticResource RowNote}" Text="Раз на добу Debora запитує в GitHub номер останньої версії. Жодних даних про ПК не надсилається." TextWrapping="Wrap"/></StackPanel>
+                </DockPanel>
               </StackPanel>
             </Border>
             <TextBlock Style="{StaticResource Section}" Text="Дані й про програму"/>

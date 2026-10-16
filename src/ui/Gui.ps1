@@ -548,7 +548,7 @@ function Show-D9Gui {
                    'BtnDriverScan', 'BtnOemPage', 'OemText', 'DriverProblemsList', 'DriverFolder', 'BtnBrowse', 'BtnFindDrivers',
                    'DebloatSummary', 'DebloatGrid', 'DebloatSearch', 'DebloatSearchHint', 'BtnDebloatRun', 'BtnDebloatSafe', 'BtnDebloatRecommended', 'BtnDebloatMax', 'BtnDebloatNone', 'BtnDebloatRefresh',
                    'DriverPackageGrid', 'BtnInstallDrivers', 'DriverInstalledGrid', 'BtnDevicesExport', 'DeviceView', 'DeviceSearch', 'DeviceSearchHint', 'DevicesSummary', 'BtnDriverOnline', 'BtnDriverOnlineInstall', 'DriverOnlineGrid', 'BtnOemTool',
-                   'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'PrefLanguage', 'PrefTheme', 'PrefHiddenText', 'BtnPrefShowHidden', 'BtnPrefUnhideAll', 'BtnPrefWelcome', 'PrefToasts', 'PrefAbout', 'BtnPrefData', 'BtnPrefLogs', 'BtnPrefReports', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
+                   'SessionDetailPanel', 'SessionDetailTitle', 'SessionDetailBox', 'PrefLanguage', 'PrefTheme', 'PrefHiddenText', 'BtnPrefShowHidden', 'BtnPrefUnhideAll', 'BtnPrefWelcome', 'PrefToasts', 'PrefUpdateCheck', 'PrefAbout', 'BtnPrefData', 'BtnPrefLogs', 'BtnPrefReports', 'BtnUndo', 'BtnRefreshSessions', 'BtnSystemRestore', 'BtnDiagnostics', 'SessionGrid',
                    'AppSearch', 'AppSearchHint', 'AppBundles', 'AppCategoryList', 'AppCards', 'AppSelectedText', 'BtnAppsClear', 'UninstSearch', 'UninstSearchHint', 'ChkUninstBloat', 'UninstSummary', 'UninstGrid', 'BtnUninstRefresh', 'BtnUninstall', 'UninstSelectedText', 'BtnAppsInstall', 'BtnAppsRefresh', 'BtnAppsUpgrade', 'AppsSummary', 'BtnWingetStore',
                    'UsbBox', 'BtnUsbRefresh', 'UsbInfo', 'UserNameBox', 'AccountPasswordBox', 'EditionBox', 'ChkUsbDrivers', 'ChkUsbBypass', 'ChkUsbPost', 'BtnPrepareUsb', 'BtnExportDrivers',
                    'ChkMtGuard', 'ChkMtCleanup', 'ChkMtDefender', 'ChkMtApps', 'ChkMtDrivers', 'ChkMtWindows', 'MtDay', 'MtTime', 'BtnScheduleOn', 'BtnScheduleOff', 'BtnMaintainNow', 'ScheduleState',
@@ -1745,6 +1745,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         $ui.PrefLanguage.SelectedIndex = [math]::Max(0, [array]::IndexOf($prefLangCodes, $(if ($savedLang -in 'uk', 'en') { [string]$savedLang } else { 'auto' })))
         $ui.PrefTheme.SelectedIndex = [math]::Max(0, [array]::IndexOf($prefThemeCodes, (Resolve-D9Theme)))
         $ui.PrefToasts.IsChecked = (Get-ItemProperty 'HKCU:\Software\Debora' -Name Toasts -ErrorAction SilentlyContinue).Toasts -ne 0
+        $ui.PrefUpdateCheck.IsChecked = Test-D9UpdateCheckEnabled
         $n = (Get-D9HiddenFindings).Count
         $ui.PrefHiddenText.Text = if ($n) { T-D9 'Прийнятих і прихованих: {0}. Вони не показуються й не знижують оцінку.' $n } else { T-D9 'Немає прихованих знахідок.' }
         $ui.BtnPrefShowHidden.IsEnabled = [bool]$n; $ui.BtnPrefUnhideAll.IsEnabled = [bool]$n
@@ -1773,6 +1774,7 @@ catch { , @{ ok = $false; error = $_.Exception.Message } }
         & $restartGui
     })
     $ui.PrefToasts.Add_Click({ Set-D9Pref Toasts $(if ($ui.PrefToasts.IsChecked) { $null } else { 0 }) })
+    $ui.PrefUpdateCheck.Add_Click({ Set-D9Pref UpdateCheck $(if ($ui.PrefUpdateCheck.IsChecked) { $null } else { 0 }) })
     $ui.BtnPrefShowHidden.Add_Click({ $ui.Tabs.SelectedItem = @($ui.Tabs.Items | Where-Object Uid -eq 'overview')[0]; & $showHidden })
     $ui.BtnPrefUnhideAll.Add_Click({
         $h = Get-D9HiddenFindings

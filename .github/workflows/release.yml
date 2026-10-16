@@ -1,0 +1,88 @@
+# Release: tag v<version> → build from this repository, tests, code signing by SignPath (when configured),
+# zip with checksums, GitHub release. Signing needs repository variable SIGNPATH_ORGANIZATION_ID and secret
+# SIGNPATH_API_TOKEN (from SignPath Foundation); without them the release is published unsigned.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without "v" (the tag v<version> must exist)'
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref }}
+
+      - name: Version
+        id: v
+        shell: powershell
+        run: |
+          $v = if ('${{ inputs.version }}') { '${{ inputs.version }}' } else { '${{ github.ref_name }}'.TrimStart('v') }
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Bad version: $v" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Install Pester
+        shell: powershell
+        run: Install-Module Pester -MinimumVersion 5.5 -Force -SkipPublisherCheck -Scope CurrentUser
+
+      - name: Build
+        shell: powershell
+        run: .\build\Compile.ps1 -Version ${{ steps.v.outputs.version }} -OutDir dist
+
+      - name: Tests
+        shell: powershell
+        run: .\build\Test-All.ps1
+
+      - name: Upload unsigned build
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: debora-unsigned
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Sign with SignPath
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: debora
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Unsigned fallback
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID == '' }}
+        shell: powershell
+        run: Copy-Item dist signed -Recurse
+
+      - name: Package
+        shell: powershell
+        run: .\build\Release.ps1 -Version ${{ steps.v.outputs.version }} -PackageOnly -Dist signed
+
+      - name: Publish GitHub release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ steps.v.outputs.version }}'
+          $tag = "v$v"
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag "release/Debora-$v.zip" release/SHA256SUMS --clobber
+          } else {
+            gh release create $tag "release/Debora-$v.zip" release/SHA256SUMS --title "Debora $v" --notes-file "release/notes-$v.md"
+          }

@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: powershell
+        run: Install-Module Pester -MinimumVersion 5.5 -Force -SkipPublisherCheck -Scope CurrentUser
+
+      - name: Build
+        shell: powershell
+        run: .\build\Compile.ps1 -Version 0.0.0-ci -OutDir dist
+
+      - name: Tests
+        shell: powershell
+        run: .\build\Test-All.ps1

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration for the GitHub artifact "debora-unsigned" (files of dist\ at the root):
+     sign the launcher and the PowerShell script; the data file and docs are not code. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="Debora.exe" product-name="Debora">
+      <authenticode-sign/>
+    </pe-file>
+    <powershell-file path="Debora.ps1">
+      <authenticode-sign/>
+    </powershell-file>
+  </zip-file>
+</artifact-configuration>

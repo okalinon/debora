@@ -11,7 +11,7 @@ body:
     id: version
     attributes:
       label: Debora version / Версія Debora
-      placeholder: "1.0.1 (Preferences tab / вкладка «Параметри»)"
+      placeholder: "1.0.2 (Preferences tab / вкладка «Параметри»)"
     validations:
       required: true
   - type: input

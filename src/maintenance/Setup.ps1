@@ -234,7 +234,7 @@ function Clear-D9SetupResume {
     if (Test-Path $RunOnceKey) { try { Remove-ItemProperty -Path $RunOnceKey -Name $script:D9SetupRunOnceName -ErrorAction Stop } catch { } }
 }
 
-# Команда продовження: копія програми в %ProgramData%\Debloater9\app (переживе відключену флешку й не підміняється
+# Команда продовження: копія програми в %ProgramData%\Debora\app (переживе відключену флешку й не підміняється
 # звичайним користувачем) → RunOnce запускає її після входу адміністратора у видимому вікні
 function Register-D9SetupResume {
     param([string]$Script = $script:D9ScriptPath, [string]$RunOnceKey = $script:D9SetupRunOnceKey, [switch]$NoCopy)

@@ -1,7 +1,7 @@
 ﻿# Дія "driver": встановлення драйвера з INF-файлу через pnputil, з резервною копією попереднього.
 #   { "type": "driver", "inf": "D:\\Драйвери\\wifi\\netathr10x.inf", "name": "...", "hwids": ["PCI\\VEN_168C&DEV_0042", ...] }
 # Знімок стану — які драйвери (oemNN.inf) зараз стоять на пристроях з hwids.
-# Перед встановленням поточні сторонні драйвери експортуються в %ProgramData%\Debloater9\driver-backup\<oemNN.inf>.
+# Перед встановленням поточні сторонні драйвери експортуються в %ProgramData%\Debora\driver-backup\<oemNN.inf>.
 
 function Get-D9DriverBackupDir {
     $dir = Join-Path (Get-D9DataRoot) 'driver-backup'

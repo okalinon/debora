@@ -222,7 +222,7 @@ Describe 'Чекліст' {
 
 Describe 'Автоматичні виправлення' {
     BeforeAll {
-        $script:fixKey = "HKCU:\Software\Debloater9Test\fix-$([guid]::NewGuid().ToString('N'))"
+        $script:fixKey = "HKCU:\Software\DeboraTest\fix-$([guid]::NewGuid().ToString('N'))"
         New-Item $fixKey -Force | Out-Null
         Set-ItemProperty $fixKey -Name Remote -Value 1 -Type DWord
         $regFix = @{ type = 'actions'; actions = @([pscustomobject]@{ type = 'registry'; path = $fixKey; name = 'Remote'; value = 0; kind = 'DWord' }) }
@@ -239,7 +239,7 @@ Describe 'Автоматичні виправлення' {
         )
         $script:fixList = New-D9Checklist -Scan (New-TestScan $fixFindings) -Catalog $catalog
     }
-    AfterAll { Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue }
+    AfterAll { Remove-Item 'HKCU:\Software\DeboraTest' -Recurse -Force -ErrorAction SilentlyContinue }
 
     It 'дії в checks.json мають правильний формат, дії обслуговування існують' {
         $types = @('registry', 'service', 'appx', 'scheduledTask', 'powercfg', 'command', 'driver')
@@ -317,7 +317,7 @@ Describe 'Автоматичні виправлення' {
 
 Describe 'Автоматичні галочки' {
     BeforeAll {
-        $script:testRoot = "HKCU:\Software\Debloater9Test\$([guid]::NewGuid().ToString('N'))"
+        $script:testRoot = "HKCU:\Software\DeboraTest\$([guid]::NewGuid().ToString('N'))"
         $script:tweak = [pscustomobject]@{
             id = 'ui.test-check'; category = 'ui'; risk = 'safe'
             name = [pscustomobject]@{ uk = 'т'; en = 't' }; description = [pscustomobject]@{ uk = 'т'; en = 't' }
@@ -325,7 +325,7 @@ Describe 'Автоматичні галочки' {
         }
         $script:ctx = [pscustomobject]@{ Catalog = [pscustomobject]@{ Tweaks = @($tweak); Presets = @() }; System = (New-TestSystemInfo) }
     }
-    AfterAll { Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue }
+    AfterAll { Remove-Item 'HKCU:\Software\DeboraTest' -Recurse -Force -ErrorAction SilentlyContinue }
 
     It 'крок із твіками відмічається, коли твіки застосовано' {
         $list = [pscustomobject]@{ created = (Get-Date).ToString('s'); items = @(
@@ -363,7 +363,7 @@ Describe 'HTML-звіт' {
 
 Describe 'Універсальні правила' {
     BeforeAll {
-        $script:ruleKey = "HKCU:\Software\Debloater9Test\rules-$([guid]::NewGuid().ToString('N'))"
+        $script:ruleKey = "HKCU:\Software\DeboraTest\rules-$([guid]::NewGuid().ToString('N'))"
         New-Item $ruleKey -Force | Out-Null
         function New-RuleCheck([string]$Probe, [hashtable]$Params) {
             $base = @{ severity = 'warning'; title = @{ uk = 'знайдено {value}' }; details = @{ uk = 'd' } }
@@ -372,7 +372,7 @@ Describe 'Універсальні правила' {
         }
         $script:ruleCtx = [pscustomobject]@{ Now = Get-Date }
     }
-    AfterAll { Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue }
+    AfterAll { Remove-Item 'HKCU:\Software\DeboraTest' -Recurse -Force -ErrorAction SilentlyContinue }
 
     It 'реєстр: ne "" спрацьовує лише на непорожній рядок, відсутнє значення — норма' {
         $c = New-RuleCheck 'Test-D9RegistryRule' @{ path = $ruleKey; name = 'Pwd'; bad = @{ op = 'ne'; value = '' } }

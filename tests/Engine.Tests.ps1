@@ -1,6 +1,6 @@
 ﻿BeforeAll {
     . (Join-Path $PSScriptRoot '_Load.ps1')
-    $script:testRoot = "HKCU:\Software\Debloater9Test\$([guid]::NewGuid().ToString('N'))"
+    $script:testRoot = "HKCU:\Software\DeboraTest\$([guid]::NewGuid().ToString('N'))"
     $env:D9_DATA_ROOT = Join-Path $TestDrive 'data'
 
     function New-RegTweak([string]$Id, [string]$Name, $Value, $Requires) {
@@ -24,7 +24,7 @@
 }
 
 AfterAll {
-    Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item 'HKCU:\Software\DeboraTest' -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue
 }
 
@@ -190,5 +190,69 @@ Describe 'Таймер, історія тривалості й оцінка ча
         Format-D9EtaText 5000 3780 '' | Should -Match 'цього разу довше'
         Format-D9EtaText 10 0 'до 3 хв' | Should -Be 'зазвичай до 3 хв'
         Format-D9EtaText 10 0 '' | Should -Be ''
+    }
+}
+
+Describe 'Папка даних: перенесення зі старої назви' {
+    BeforeEach {
+        $script:pd = Join-Path $TestDrive "pd-$([guid]::NewGuid().ToString('N'))\ProgramData"
+        New-Item -ItemType Directory -Path $pd -Force | Out-Null
+        $script:old = Join-Path $pd 'Debloater9'
+        $script:new = Join-Path $pd 'Debora'
+        $script:regKey = "HKCU:\Software\DeboraTest\legacy-$([guid]::NewGuid().ToString('N'))"
+    }
+    AfterAll { Remove-Item 'HKCU:\Software\DeboraTest' -Recurse -Force -ErrorAction SilentlyContinue }
+
+    It 'нова установка — нова папка' {
+        Resolve-D9DataRoot -ProgramData $pd -IsAdmin $true | Should -Be $new
+    }
+    It 'без прав адміністратора стара папка лишається робочою' {
+        New-Item -ItemType Directory -Path (Join-Path $old 'sessions') -Force | Out-Null
+        Resolve-D9DataRoot -ProgramData $pd -IsAdmin $false | Should -Be $old
+        Test-Path $old | Should -BeTrue
+    }
+    It 'шляхи в JSON виправляються, решта тексту — ні' {
+        ConvertTo-D9NewDataPath '{"p":"C:\\ProgramData\\Debloater9\\driver-backup\\a.inf"}' | Should -Be '{"p":"C:\\ProgramData\\Debora\\driver-backup\\a.inf"}'
+        ConvertTo-D9NewDataPath '-File "C:\ProgramData\Debloater9\app\Debora.ps1"' | Should -Be '-File "C:\ProgramData\Debora\app\Debora.ps1"'
+        ConvertTo-D9NewDataPath 'Debloater9Test' | Should -Be 'Debloater9Test'
+    }
+    It 'переносить папку, виправляє журнал, RunOnce і схеми живлення' {
+        New-Item -ItemType Directory -Path (Join-Path $old 'sessions') -Force | Out-Null
+        $json = '{"backup":"' + ((Join-Path $old 'driver-backup\x.inf') -replace '\\', '\\') + '"}'
+        [IO.File]::WriteAllText((Join-Path $old 'sessions\s1.json'), $json)
+        New-Item -Path "$regKey\RunOnce" -Force | Out-Null
+        Set-ItemProperty "$regKey\RunOnce" -Name DeboraSetup -Value 'powershell.exe -File "C:\ProgramData\Debloater9\app\Debora.ps1" -Setup -Resume'
+        New-Item -Path "$regKey\Old\PowerSchemes" -Force | Out-Null
+        Set-ItemProperty "$regKey\Old\PowerSchemes" -Name 'guid-a' -Value 'guid-b'
+
+        Move-D9LegacyDataRoot -Old $old -New $new -TaskName 'DeboraTest-none' -RunOnceKey "$regKey\RunOnce" -PowerNewKey "$regKey-new" -PowerKey "$regKey\Old" | Should -BeTrue
+        Test-Path $old | Should -BeFalse
+        $text = [IO.File]::ReadAllText((Join-Path $new 'sessions\s1.json'))
+        $text | Should -Match 'ProgramData\\\\Debora\\\\driver-backup'
+        $text | Should -Not -Match 'Debloater9'
+        (Get-ItemProperty "$regKey\RunOnce").DeboraSetup | Should -Match 'ProgramData\\Debora\\app'
+        Test-Path "$regKey\Old" | Should -BeFalse
+        (Get-ItemProperty "$regKey-new\PowerSchemes").'guid-a' | Should -Be 'guid-b'
+    }
+    It 'обидві папки — зливає стару в нову, нічого не перезаписуючи' {
+        New-Item -ItemType Directory -Path (Join-Path $old 'sessions'), (Join-Path $new 'sessions') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $old 'sessions\a.json'), 'old-a')
+        [IO.File]::WriteAllText((Join-Path $new 'sessions\b.json'), 'new-b')
+        Move-D9LegacyDataRoot -Old $old -New $new -TaskName 'DeboraTest-none' -RunOnceKey "$regKey\none" -PowerNewKey "$regKey-new" -PowerKey "$regKey\none" | Should -BeTrue
+        @(Get-ChildItem (Join-Path $new 'sessions')).Count | Should -Be 2
+        Test-Path $old | Should -BeFalse
+    }
+    It 'файл є в обох папках — лишається новіший' {
+        New-Item -ItemType Directory -Path $old, $new -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $new 'guard.json'), 'new')
+        [IO.File]::WriteAllText((Join-Path $old 'guard.json'), 'old-but-newer')
+        (Get-Item (Join-Path $new 'guard.json')).LastWriteTime = (Get-Date).AddDays(-1)
+        [IO.File]::WriteAllText((Join-Path $old 'update-check.json'), 'older')
+        (Get-Item (Join-Path $old 'update-check.json')).LastWriteTime = (Get-Date).AddDays(-2)
+        [IO.File]::WriteAllText((Join-Path $new 'update-check.json'), 'current')
+        Move-D9LegacyDataRoot -Old $old -New $new -TaskName 'DeboraTest-none' -RunOnceKey "$regKey\none" -PowerNewKey "$regKey-new" -PowerKey "$regKey\none" | Should -BeTrue
+        [IO.File]::ReadAllText((Join-Path $new 'guard.json')) | Should -Be 'old-but-newer'
+        [IO.File]::ReadAllText((Join-Path $new 'update-check.json')) | Should -Be 'current'
+        Test-Path $old | Should -BeFalse
     }
 }

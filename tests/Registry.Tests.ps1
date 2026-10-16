@@ -1,6 +1,6 @@
 ﻿BeforeAll {
     . (Join-Path $PSScriptRoot '_Load.ps1')
-    $script:testRoot = "HKCU:\Software\Debloater9Test\$([guid]::NewGuid().ToString('N'))"
+    $script:testRoot = "HKCU:\Software\DeboraTest\$([guid]::NewGuid().ToString('N'))"
     function Get-RegAction([hashtable]$Props) {
         $base = @{ type = 'registry'; path = $testRoot; name = 'Value'; value = 0; kind = 'DWord' }
         foreach ($k in $Props.Keys) { $base[$k] = $Props[$k] }
@@ -17,7 +17,7 @@
 }
 
 AfterAll {
-    Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item 'HKCU:\Software\DeboraTest' -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Дія registry' {

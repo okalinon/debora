@@ -1,7 +1,7 @@
 ﻿# Оновлення самої Debora з GitHub Releases (config/update.json → repo «власник/назва»; порожньо — перевірку вимкнено).
 # Реліз має zip-архів пакета (Debora-<версія>.zip: Debora.ps1, Debora.dat, Debora.exe, run.bat…). Архів перевіряється
 # за SHA-256 (поле digest від GitHub або SHA256SUMS релізу) — без збігу нічого не замінюється. Попередні файли
-# зберігаються в %ProgramData%\Debloater9\update-backup\<версія>; папки користувача («Звіти», «Драйвери») не чіпаються.
+# зберігаються в %ProgramData%\Debora\update-backup\<версія>; папки користувача («Звіти», «Драйвери») не чіпаються.
 
 $script:D9UpdateFiles = @('Debora.ps1', 'Debora.dat', 'Debora.exe', 'run.bat', 'run-menu.bat', 'Інструкція.txt', 'SHA256SUMS', 'CHANGELOG.md', 'README.md', 'README.uk.md')
 
@@ -79,7 +79,7 @@ function Install-D9Update {
     }
 }
 
-# Стан перевірки (раз на добу): %ProgramData%\Debloater9\update-check.json
+# Стан перевірки (раз на добу): %ProgramData%\Debora\update-check.json
 function Get-D9UpdateCheckPath { Join-Path (Get-D9DataRoot) 'update-check.json' }
 
 # Автоматична перевірка вимикається в «Параметрах» (HKCU:\Software\Debora\UpdateCheck = 0); кнопкою — завжди можна

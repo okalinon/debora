@@ -23,5 +23,5 @@ You will get an answer within a week. Fixed issues are published in the release 
 
 - Release builds are made by [GitHub Actions](.github/workflows/release.yml) from this repository.
 - Every release lists SHA-256 checksums; self-update refuses an archive whose checksum does not match.
-- The scheduled-maintenance copy of Debora lives in `%ProgramData%\Debloater9\app`, writable only by SYSTEM and
+- The scheduled-maintenance copy of Debora lives in `%ProgramData%\Debora\app`, writable only by SYSTEM and
   administrators.

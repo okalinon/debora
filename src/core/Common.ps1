@@ -66,7 +66,7 @@ function Write-D9Log {
     Write-Host $Message -ForegroundColor $color
 }
 
-# Постійний журнал виконання: %ProgramData%\Debloater9\logs\РРРР-ММ.log (або -LogPath).
+# Постійний журнал виконання: %ProgramData%\Debora\logs\РРРР-ММ.log (або -LogPath).
 # Якщо писати нікуди (немає прав на файл, створений адміністратором) — працюємо без файлу.
 function Initialize-D9LogFile {
     param([string]$Path, [string]$Mode)

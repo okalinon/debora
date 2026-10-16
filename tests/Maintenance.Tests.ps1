@@ -1,10 +1,10 @@
 ﻿BeforeAll {
     . (Join-Path $PSScriptRoot '_Load.ps1')
     $env:D9_DATA_ROOT = Join-Path $TestDrive 'data'
-    $script:testRoot = "HKCU:\Software\Debloater9Test\$([guid]::NewGuid().ToString('N'))"
+    $script:testRoot = "HKCU:\Software\DeboraTest\$([guid]::NewGuid().ToString('N'))"
 }
 AfterAll {
-    Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item 'HKCU:\Software\DeboraTest' -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue
 }
 

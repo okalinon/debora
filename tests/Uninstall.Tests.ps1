@@ -2,14 +2,14 @@
     . (Join-Path $PSScriptRoot '_Load.ps1')
     $env:D9_DATA_ROOT = Join-Path $TestDrive 'data'
     function New-Prog([hashtable]$P) {
-        $base = @{ Name = 'Test'; Version = '1'; Publisher = ''; Size = 0; InstallDate = $null; Key = 'HKCU:\Software\Debloater9Test\none'; KeyName = 'x'
+        $base = @{ Name = 'Test'; Version = '1'; Publisher = ''; Size = 0; InstallDate = $null; Key = 'HKCU:\Software\DeboraTest\none'; KeyName = 'x'
                    UninstallString = ''; QuietUninstallString = ''; IsMsi = $false; Bloat = $null; Keep = $false }
         foreach ($k in $P.Keys) { $base[$k] = $P[$k] }
         [pscustomobject]$base
     }
 }
 AfterAll {
-    Remove-Item 'HKCU:\Software\Debloater9Test' -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item 'HKCU:\Software\DeboraTest' -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item Env:\D9_DATA_ROOT -ErrorAction SilentlyContinue
 }
 
@@ -42,11 +42,11 @@ Describe 'Команда видалення' {
 
 Describe 'Видалення (справжній запуск)' {
     BeforeAll {
-        $script:key = "HKCU:\Software\Debloater9Test\uninst-$([guid]::NewGuid().ToString('N'))"
+        $script:key = "HKCU:\Software\DeboraTest\uninst-$([guid]::NewGuid().ToString('N'))"
         New-Item $key -Force | Out-Null
         $regPath = $key -replace '^HKCU:\\', 'HKCU\'
         $script:gone = New-Prog @{ Name = 'Зникне'; Key = $key; QuietUninstallString = "reg.exe delete `"$regPath`" /f" }
-        $script:stays = New-Prog @{ Name = 'Лишиться'; Key = 'HKCU:\Software\Debloater9Test'; QuietUninstallString = 'cmd.exe /c exit 0' }
+        $script:stays = New-Prog @{ Name = 'Лишиться'; Key = 'HKCU:\Software\DeboraTest'; QuietUninstallString = 'cmd.exe /c exit 0' }
         $script:res = @(Uninstall-D9Programs -Programs @($gone, $stays))
     }
     It 'деінсталятор прибрав запис — «видалено»' {
@@ -111,20 +111,20 @@ Describe 'Розмір, папка й залишки програм' {
         } finally { $env:APPDATA = $old; [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree('SOFTWARE\ZzDeboraTestApp', $false) }
     }
     It 'розділ реєстру видаляється лише після резервної копії .reg' {
-        New-Item -Path 'HKCU:\SOFTWARE\Debloater9Test\leftover\sub' -Force | Out-Null
-        Set-ItemProperty 'HKCU:\SOFTWARE\Debloater9Test\leftover' -Name v -Value 1
-        $r = Remove-D9UninstallLeftovers -Items @([pscustomobject]@{ Type = 'registry'; Path = 'HKCU:\SOFTWARE\Debloater9Test\leftover'; Size = 0 })
+        New-Item -Path 'HKCU:\SOFTWARE\DeboraTest\leftover\sub' -Force | Out-Null
+        Set-ItemProperty 'HKCU:\SOFTWARE\DeboraTest\leftover' -Name v -Value 1
+        $r = Remove-D9UninstallLeftovers -Items @([pscustomobject]@{ Type = 'registry'; Path = 'HKCU:\SOFTWARE\DeboraTest\leftover'; Size = 0 })
         $r.Removed | Should -Be 1
-        Test-Path 'HKCU:\SOFTWARE\Debloater9Test\leftover' | Should -BeFalse
+        Test-Path 'HKCU:\SOFTWARE\DeboraTest\leftover' | Should -BeFalse
         $reg = Get-ChildItem $r.Backup -Filter '*.reg'
         $reg.Count | Should -Be 1
-        (Get-Content $reg[0].FullName -Raw) | Should -Match 'Debloater9Test\\leftover'
+        (Get-Content $reg[0].FullName -Raw) | Should -Match 'DeboraTest\\leftover'
     }
 }
 
 Describe 'Записи без деінсталятора й порожні аргументи' {
     It 'деінсталятор без аргументів запускається (раніше: «ArgumentList is null or empty»)' {
-        $key = 'HKCU:\Software\Debloater9Test\noargs'
+        $key = 'HKCU:\Software\DeboraTest\noargs'
         New-Item -Path $key -Force | Out-Null
         $prog = New-Prog @{ Name = 'NoArgs'; Key = $key; UninstallString = "$env:SystemRoot\System32\whoami.exe" }
         (Get-D9UninstallCommand $prog).Args | Should -BeNullOrEmpty
@@ -133,7 +133,7 @@ Describe 'Записи без деінсталятора й порожні ар�
         $r.message | Should -Not -Match 'ArgumentList'
     }
     It 'осиротілий запис (немає ні деінсталятора, ні папки) — прибирається лише запис, з копією .reg' {
-        $key = 'HKCU:\Software\Debloater9Test\orphan'
+        $key = 'HKCU:\Software\DeboraTest\orphan'
         New-Item -Path $key -Force | Out-Null
         $prog = New-Prog @{ Name = 'Orphan'; Key = (Get-Item $key).PSPath; UninstallString = 'Q:\NoSuchDir\NoSuch App\app.exe' }
         (Get-D9UninstallCommand $prog).Method | Should -Be 'orphan'
@@ -142,7 +142,7 @@ Describe 'Записи без деінсталятора й порожні ар�
         Test-Path $key | Should -BeFalse
     }
     It 'деінсталятора немає, а папка програми є — нічого не чіпаємо, радимо лаунчер' {
-        $key = 'HKCU:\Software\Debloater9Test\missing'
+        $key = 'HKCU:\Software\DeboraTest\missing'
         New-Item -Path $key -Force | Out-Null
         $dir = Join-Path $TestDrive 'Game'
         New-Item -ItemType Directory -Path $dir -Force | Out-Null

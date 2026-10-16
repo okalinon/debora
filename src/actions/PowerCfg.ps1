@@ -2,7 +2,7 @@
 #   { "type": "powercfg", "scheme": "high" }      # high | balanced | ultimate | saver | GUID
 #   { "type": "powercfg", "hibernate": false }
 # Якщо схема прихована (часто на Windows 11), створюємо її копію й запам'ятовуємо
-# GUID копії в HKLM:\SOFTWARE\Debloater9\PowerSchemes, щоб потім розпізнати.
+# GUID копії в HKLM:\SOFTWARE\Debora\PowerSchemes, щоб потім розпізнати (до 1.0.2 — у старій гілці, її теж читаємо).
 
 $script:D9PowerSchemes = @{
     high     = '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
@@ -10,7 +10,8 @@ $script:D9PowerSchemes = @{
     ultimate = 'e9a42b02-d5df-448d-aa00-03f14749eb61'
     saver    = 'a1841308-3541-4fab-bc81-f71556f20b4a'
 }
-$script:D9PowerMarkerKey = 'HKLM:\SOFTWARE\Debloater9\PowerSchemes'
+$script:D9PowerMarkerKey = 'HKLM:\SOFTWARE\Debora\PowerSchemes'
+$script:D9PowerLegacyMarkerKey = 'HKLM:\SOFTWARE\Debloater9\PowerSchemes'
 
 function Resolve-D9PowerScheme {
     param([string]$Scheme)
@@ -27,7 +28,10 @@ function Get-D9ActivePowerScheme {
 
 function Get-D9PowerSchemeCopy {
     param([string]$Guid)
-    (Get-ItemProperty -Path $script:D9PowerMarkerKey -Name $Guid -ErrorAction SilentlyContinue).$Guid
+    foreach ($key in $script:D9PowerMarkerKey, $script:D9PowerLegacyMarkerKey) {
+        $copy = (Get-ItemProperty -Path $key -Name $Guid -ErrorAction SilentlyContinue).$Guid
+        if ($copy) { return $copy }
+    }
 }
 
 function Get-D9PowerCfgState {

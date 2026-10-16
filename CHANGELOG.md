@@ -1,7 +1,12 @@
 # Changelog
 
 Debora — Windows 10/11 debloat, setup from scratch and maintenance (PowerShell 5.1 + WPF, Ukrainian and English).
-Before 0.19.0 the program was called Debloater9.
+
+## 1.0.2 — 2026-10-16
+
+- The old working name is gone everywhere: data now lives in `%ProgramData%\Debora`. The first run as
+  administrator moves the existing folder there and fixes the paths in the change journal, the scheduled task
+  and a pending setup resume, so undo keeps working. Power plan markers move to `HKLM\SOFTWARE\Debora`.
 
 ## 1.0.1 — 2026-10-16
 
@@ -58,11 +63,11 @@ First public release.
   finding details with files and folders.
 
 ## 0.19 – 0.23 — 2026-10-10
-- Renamed to **Debora**; 553 apps with icons; apps from GitHub releases (ArtCraft suite); uninstall with sizes, dates
+- 553 apps with icons; apps from GitHub releases (ArtCraft suite); uninstall with sizes, dates
   and leftover cleanup; Ukrainian and English interface; fixes from live administrator runs.
 
 ## 0.6 – 0.18 — 2026-10-10
-- First versions as Debloater9: tweak engine with journal and exact undo, scanner with score and checklist,
+- First versions: tweak engine with journal and exact undo, scanner with score and checklist,
   online drivers (Microsoft Update Catalog), apps via winget, reinstall USB (autounattend.xml + drivers),
   scheduled maintenance, dark theme, startup advice, disk health (SMART), deeper analysis (blue screens, crashes,
   slow boot).

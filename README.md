@@ -136,12 +136,12 @@ Debora does not collect or send any data about you or your PC. It connects to th
 - download what you ask for: drivers (Microsoft Update Catalog, Windows Update), programs (winget, GitHub releases)
   and Debora updates.
 
-All logs, reports and the change journal stay on your PC (`%ProgramData%\Debloater9`, the `Reports` folder).
+All logs, reports and the change journal stay on your PC (`%ProgramData%\Debora`, the `Reports` folder).
 
 ## Uninstall
 
 Debora is portable: delete its folder. To remove everything else, first turn off weekly maintenance
-(*Maintenance → Automatic maintenance → Turn off*, or `Debora.exe -Schedule Off`), then delete `%ProgramData%\Debloater9`
+(*Maintenance → Automatic maintenance → Turn off*, or `Debora.exe -Schedule Off`), then delete `%ProgramData%\Debora`
 (journal, logs, backups) and `%LOCALAPPDATA%\Debora` (cache). Changes made to Windows stay until you undo them in
 *Change history*.
 

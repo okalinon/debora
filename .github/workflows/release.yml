@@ -80,10 +80,12 @@ jobs:
         run: |
           $v = '${{ steps.v.outputs.version }}'
           $tag = "v$v"
-          # Без 2>$null: у Windows PowerShell 5.1 вивід програми в потік помилок зупиняє крок
+          # Без 2>$null: у Windows PowerShell 5.1 вивід програми в потік помилок зупиняє крок.
+          # Лише ASCII в коді: тимчасовий .ps1 без BOM читається як ANSI, і тире «—» стає лапкою
+          # (так впав реліз v1.0.2 на першій спробі)
           $exists = @(gh release list --limit 100 --json tagName --jq '.[].tagName') -contains $tag
           if ($exists) {
             gh release upload $tag "release/Debora-$v.zip" release/SHA256SUMS --clobber
           } else {
-            gh release create $tag "release/Debora-$v.zip" release/SHA256SUMS --title "Debora $v — Windows 11/10 debloater and setup tool" --notes-file "release/notes-$v.md"
+            gh release create $tag "release/Debora-$v.zip" release/SHA256SUMS --title "Debora $v $([char]0x2014) Windows 11/10 debloater and setup tool" --notes-file "release/notes-$v.md"
           }
